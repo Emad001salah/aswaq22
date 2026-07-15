@@ -36,7 +36,7 @@ import { storageService } from './services/storage.service.ts';
 import { correlationMiddleware }          from './middleware/correlation.ts';
 import { csrfMiddleware, csrfTokenRouter } from './middleware/csrf.ts';
 import { errorMiddleware }                from './middleware/error.ts';
-import { authMiddleware }                 from './middleware/auth.ts';
+import { authMiddleware, rolesGuard }     from './middleware/auth.ts';
 
 // Controllers
 import { AdsController }     from './controllers/ads.controller.ts';
@@ -249,21 +249,7 @@ export class App {
       limits: { fileSize: 100 * 1024 * 1024 } // 100MB
     });
 
-    const adminAuthMiddleware = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
-      const email = req.headers['x-user-email'] as string;
-      if (!email) return res.status(401).json({ error: 'Unauthorized' });
-
-      try {
-        const user = await prisma.user.findUnique({ where: { email } });
-        if (!user || (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN')) {
-          return res.status(403).json({ error: 'Forbidden' });
-        }
-        (req as any).adminUser = user;
-        next();
-      } catch (err) {
-        next(err);
-      }
-    };
+    const adminAccessGuards = [authMiddleware, rolesGuard(['ADMIN', 'SUPER_ADMIN'])];
 
     this.app.use('/api/v1/health', HealthController());
     this.app.use('/api/v1/auth',   AuthController());
@@ -507,19 +493,21 @@ export class App {
         // Check if id is a valid UUID
         const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
         if (!uuidRegex.test(id)) {
-          logger.info({ message: `PATCH /api/promo: ID ${id} is not standard UUID, returning mock fallback` });
-          // If it's a mock ID, just echo back the updated object
-          return res.json({
-            id,
-            videoUrl,
-            title,
-            isLive: videoUrl === 'webcam' || videoUrl === 'camera',
-          });
+          return res.status(400).json({ error: 'Invalid promo id format' });
         }
 
-        const updateData: any = {};
-        if (videoUrl) updateData.videoUrl = videoUrl;
-        if (title) updateData.title = title;
+        if (typeof title !== 'string' || title.trim().length === 0) {
+          return res.status(400).json({ error: 'Title must be a non-empty string' });
+        }
+
+        if (typeof videoUrl !== 'string' || videoUrl.trim().length === 0) {
+          return res.status(400).json({ error: 'Video URL must be a non-empty string' });
+        }
+
+        const updateData: any = {
+          title: title.trim(),
+          videoUrl: videoUrl.trim(),
+        };
         
         logger.info({ message: `PATCH /api/promo: Updating database for ${id} with data: ${JSON.stringify(updateData)}` });
 
@@ -560,7 +548,7 @@ export class App {
     });
 
     // POST /api/admin/promo-upload - Admin video upload
-    this.app.post('/api/admin/promo-upload', adminAuthMiddleware, upload.single('video'), async (req, res) => {
+    this.app.post('/api/admin/promo-upload', ...adminAccessGuards, upload.single('video'), async (req, res) => {
       if (!req.file) {
         return res.status(400).json({ success: false, message: 'لم يتم رفع أي ملف فيديو' });
       }
@@ -577,18 +565,28 @@ export class App {
     });
 
     // POST /api/admin/promo - Create Promo Reel
-    this.app.post('/api/admin/promo', adminAuthMiddleware, async (req, res, next) => {
+    this.app.post('/api/admin/promo', ...adminAccessGuards, async (req, res, next) => {
       const { title, videoUrl } = req.body;
-      if (!videoUrl) {
-        return res.status(400).json({ error: 'Video URL is required' });
+
+      if (typeof title !== 'string' || title.trim().length === 0) {
+        return res.status(400).json({ error: 'Title must be a non-empty string' });
       }
-      const adminUser = (req as any).adminUser;
+
+      if (typeof videoUrl !== 'string' || videoUrl.trim().length === 0) {
+        return res.status(400).json({ error: 'Video URL must be a non-empty string' });
+      }
+
+      const adminUserId = (req as any).user?.id;
+      if (!adminUserId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+
       try {
         const newReel = await prisma.reel.create({
           data: {
-            title: title || 'فيديو ترويجي جديد',
-            videoUrl,
-            userId: adminUser.id,
+            title: title.trim(),
+            videoUrl: videoUrl.trim(),
+            userId: adminUserId,
           },
           include: {
             user: { select: { name: true, avatar: true } }
@@ -601,7 +599,7 @@ export class App {
     });
 
     // DELETE /api/admin/promo/:id - Delete Promo Reel
-    this.app.delete('/api/admin/promo/:id', adminAuthMiddleware, async (req, res, next) => {
+    this.app.delete('/api/admin/promo/:id', ...adminAccessGuards, async (req, res, next) => {
       const { id } = req.params;
       try {
         await prisma.reel.delete({
@@ -614,7 +612,7 @@ export class App {
     });
 
     // GET /api/admin/polls - Get all polls for admin
-    this.app.get('/api/admin/polls', adminAuthMiddleware, async (req, res, next) => {
+    this.app.get('/api/admin/polls', ...adminAccessGuards, async (req, res, next) => {
       try {
         const polls = await prisma.poll.findMany({
           orderBy: { createdAt: 'desc' },
@@ -626,7 +624,7 @@ export class App {
     });
 
     // POST /api/admin/polls - Create Poll
-    this.app.post('/api/admin/polls', adminAuthMiddleware, async (req, res, next) => {
+    this.app.post('/api/admin/polls', ...adminAccessGuards, async (req, res, next) => {
       const { question, options, countryCode } = req.body;
       if (!question || !options || !Array.isArray(options) || options.length === 0) {
         return res.status(400).json({ error: 'Question and options array are required' });
@@ -647,7 +645,7 @@ export class App {
     });
 
     // DELETE /api/admin/polls/:id - Delete Poll
-    this.app.delete('/api/admin/polls/:id', adminAuthMiddleware, async (req, res, next) => {
+    this.app.delete('/api/admin/polls/:id', ...adminAccessGuards, async (req, res, next) => {
       const { id } = req.params;
       try {
         await prisma.poll.delete({
@@ -660,7 +658,7 @@ export class App {
     });
 
     // POST /api/admin/polls/:id/reset - Reset Poll Votes
-    this.app.post('/api/admin/polls/:id/reset', adminAuthMiddleware, async (req, res, next) => {
+    this.app.post('/api/admin/polls/:id/reset', ...adminAccessGuards, async (req, res, next) => {
       const { id } = req.params;
       try {
         const poll = await prisma.poll.findUnique({ where: { id } });
@@ -911,7 +909,7 @@ export class App {
 
 
     // ── Admin Employees Management ────────────────────────────────────────────
-    this.app.get('/api/admin/employees', adminAuthMiddleware, async (req, res, next) => {
+    this.app.get('/api/admin/employees', ...adminAccessGuards, async (req, res, next) => {
       try {
         const adminUser = (req as any).adminUser;
         if (adminUser.role !== 'SUPER_ADMIN') {
@@ -943,7 +941,7 @@ export class App {
       }
     });
 
-    this.app.post('/api/admin/employees', adminAuthMiddleware, async (req, res, next) => {
+    this.app.post('/api/admin/employees', ...adminAccessGuards, async (req, res, next) => {
       try {
         const adminUser = (req as any).adminUser;
         if (adminUser.role !== 'SUPER_ADMIN') {
@@ -971,7 +969,7 @@ export class App {
       }
     });
 
-    this.app.patch('/api/admin/employees/:id', adminAuthMiddleware, async (req, res, next) => {
+    this.app.patch('/api/admin/employees/:id', ...adminAccessGuards, async (req, res, next) => {
       try {
         const adminUser = (req as any).adminUser;
         if (adminUser.role !== 'SUPER_ADMIN') {
@@ -1014,7 +1012,7 @@ export class App {
     });
 
     // ── Admin Stats & Logs ───────────────────────────────────────────────────
-    this.app.get('/api/admin/stats', adminAuthMiddleware, async (req, res, next) => {
+    this.app.get('/api/admin/stats', ...adminAccessGuards, async (req, res, next) => {
       try {
         const adminUser = (req as any).adminUser;
         const reqMarket = req.query.market as string;
@@ -1081,7 +1079,7 @@ export class App {
       }
     });
 
-    this.app.get('/api/admin/logs', adminAuthMiddleware, async (req, res, next) => {
+    this.app.get('/api/admin/logs', ...adminAccessGuards, async (req, res, next) => {
       try {
         const logs = await prisma.adminLog.findMany({
           orderBy: { timestamp: 'desc' },
@@ -1105,7 +1103,7 @@ export class App {
       }
     });
 
-    this.app.get('/api/admin/security/stats', adminAuthMiddleware, async (req, res, next) => {
+    this.app.get('/api/admin/security/stats', ...adminAccessGuards, async (req, res, next) => {
       function getRelativeTimeArabic(date: Date): string {
         const now = new Date();
         const diffMs = now.getTime() - date.getTime();
@@ -1242,7 +1240,7 @@ export class App {
       }
     });
 
-    this.app.post('/api/admin/security/force-logout', adminAuthMiddleware, async (req, res, next) => {
+    this.app.post('/api/admin/security/force-logout', ...adminAccessGuards, async (req, res, next) => {
       try {
         const adminUser = (req as any).adminUser;
         await prisma.refreshToken.updateMany({
@@ -1262,7 +1260,7 @@ export class App {
       }
     });
 
-    this.app.post('/api/admin/security/clear-cache', adminAuthMiddleware, async (req, res, next) => {
+    this.app.post('/api/admin/security/clear-cache', ...adminAccessGuards, async (req, res, next) => {
       try {
         const adminUser = (req as any).adminUser;
         await prisma.adminLog.create({
@@ -1279,7 +1277,7 @@ export class App {
       }
     });
 
-    this.app.post('/api/admin/security/backup-db', adminAuthMiddleware, async (req, res, next) => {
+    this.app.post('/api/admin/security/backup-db', ...adminAccessGuards, async (req, res, next) => {
       try {
         const adminUser = (req as any).adminUser;
         await prisma.adminLog.create({
@@ -1296,7 +1294,7 @@ export class App {
       }
     });
 
-    this.app.post('/api/admin/security/rotate-keys', adminAuthMiddleware, async (req, res, next) => {
+    this.app.post('/api/admin/security/rotate-keys', ...adminAccessGuards, async (req, res, next) => {
       try {
         const adminUser = (req as any).adminUser;
         await prisma.adminLog.create({
@@ -1314,7 +1312,7 @@ export class App {
     });
 
     // ── Admin Ads Management ────────────────────────────────────────────────
-    this.app.get('/api/admin/ads', adminAuthMiddleware, async (req, res, next) => {
+    this.app.get('/api/admin/ads', ...adminAccessGuards, async (req, res, next) => {
       try {
         const adminUser = (req as any).adminUser;
         const { cursor, limit = '50', search } = req.query;
@@ -1353,7 +1351,7 @@ export class App {
       }
     });
 
-    this.app.patch('/api/admin/ads/:id/status', adminAuthMiddleware, async (req, res, next) => {
+    this.app.patch('/api/admin/ads/:id/status', ...adminAccessGuards, async (req, res, next) => {
       try {
         const { id } = req.params;
         const { status, isFeatured } = req.body;
@@ -1374,7 +1372,7 @@ export class App {
     });
 
     // ── Admin Users Management ────────────────────────────────────────────────
-    this.app.get('/api/admin/users', adminAuthMiddleware, async (req, res, next) => {
+    this.app.get('/api/admin/users', ...adminAccessGuards, async (req, res, next) => {
       try {
         const adminUser = (req as any).adminUser;
         const { cursor, limit = '50', search } = req.query;
@@ -1427,7 +1425,7 @@ export class App {
       }
     });
 
-    this.app.patch('/api/admin/users/:id', adminAuthMiddleware, async (req, res, next) => {
+    this.app.patch('/api/admin/users/:id', ...adminAccessGuards, async (req, res, next) => {
       try {
         const { id } = req.params;
         const { action } = req.body; 
@@ -1526,7 +1524,7 @@ export class App {
     });
 
     // POST /api/admin/settings/logo - Upload platform logo image
-    this.app.post('/api/admin/settings/logo', adminAuthMiddleware, upload.single('logo'), async (req, res) => {
+    this.app.post('/api/admin/settings/logo', ...adminAccessGuards, upload.single('logo'), async (req, res) => {
       logger.info({ message: `settings/logo upload request received, file present: ${!!req.file}` });
       if (!req.file) {
         return res.status(400).json({ success: false, message: 'لم يتم رفع أي ملف' });
