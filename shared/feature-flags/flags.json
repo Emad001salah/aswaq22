@@ -1,0 +1,7 @@
+{
+  "logistics_service": false,
+  "chat_service": true,
+  "reels_service": false,
+  "payments_service": false,
+  "ai_search": false
+}

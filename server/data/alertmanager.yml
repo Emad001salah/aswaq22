@@ -1,0 +1,146 @@
+global:
+  resolve_timeout: 5m
+  smtp_smarthost:    "smtp.gmail.com:587"
+  smtp_from:         "alerts@aswaq.sa"
+  smtp_auth_username: "alerts@aswaq.sa"
+  smtp_auth_password: "$SMTP_PASSWORD"     # injected via Secret
+
+# ── Templates ───────────────────────────────────────────────────────────────
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'
+
+# ── Routing Tree ─────────────────────────────────────────────────────────────
+route:
+  receiver:         default
+  group_by:         [alertname, severity, component]
+  group_wait:       30s
+  group_interval:   5m
+  repeat_interval:  4h
+
+  routes:
+    # SEV1 / Critical — wake someone up immediately
+    - matchers:
+        - severity = critical
+      receiver: critical-pagerduty
+      group_wait:      0s
+      repeat_interval: 30m
+      continue: true   # also send to Slack
+
+    - matchers:
+        - severity = critical
+      receiver: critical-slack
+
+    # SEV2 / Warning — Slack only
+    - matchers:
+        - severity = warning
+      receiver: warning-slack
+      group_wait: 2m
+      repeat_interval: 2h
+
+    # SLO burn rate — dedicated channel
+    - matchers:
+        - slo = availability
+      receiver: slo-slack
+      group_wait: 0s
+      repeat_interval: 1h
+
+    # Backup alerts — separate channel
+    - matchers:
+        - component = backup
+      receiver: backup-slack
+
+# ── Receivers ────────────────────────────────────────────────────────────────
+receivers:
+
+  - name: default
+    slack_configs:
+      - api_url:  "$SLACK_WEBHOOK_URL"
+        channel:  "#alerts"
+        title:    "{{ .GroupLabels.alertname }}"
+        text:     "{{ range .Alerts }}{{ .Annotations.summary }}\n{{ end }}"
+
+  - name: critical-pagerduty
+    pagerduty_configs:
+      - routing_key: "$PAGERDUTY_INTEGRATION_KEY"
+        severity:    critical
+        summary:     "{{ .GroupLabels.alertname }}: {{ (index .Alerts 0).Annotations.summary }}"
+        description: "{{ (index .Alerts 0).Annotations.description }}"
+        links:
+          - href: "{{ (index .Alerts 0).Annotations.runbook }}"
+            text: "Runbook"
+          - href: "{{ (index .Alerts 0).Annotations.dashboard }}"
+            text: "Dashboard"
+
+  - name: critical-slack
+    slack_configs:
+      - api_url:  "$SLACK_WEBHOOK_URL"
+        channel:  "#incidents"
+        color:    "#FF0000"
+        title:    "🚨 {{ .GroupLabels.alertname }} — {{ .GroupLabels.severity | toUpper }}"
+        title_link: "{{ (index .Alerts 0).Annotations.dashboard }}"
+        text: |
+          {{ range .Alerts }}
+          *{{ .Annotations.summary }}*
+          {{ .Annotations.description }}
+          <{{ .Annotations.runbook }}|📖 Runbook>
+          {{ end }}
+        footer: "Aswaq Monitoring"
+
+  - name: warning-slack
+    slack_configs:
+      - api_url:  "$SLACK_WEBHOOK_URL"
+        channel:  "#alerts"
+        color:    "#FFA500"
+        title:    "⚠️ {{ .GroupLabels.alertname }}"
+        text: |
+          {{ range .Alerts }}
+          {{ .Annotations.summary }}
+          {{ .Annotations.description }}
+          {{ end }}
+
+  - name: slo-slack
+    slack_configs:
+      - api_url:  "$SLACK_WEBHOOK_URL"
+        channel:  "#slo-alerts"
+        color:    '{{ if eq .GroupLabels.severity "critical" }}#FF0000{{ else }}#FFA500{{ end }}'
+        title:    "📊 SLO Burn Rate Alert — {{ .GroupLabels.severity | toUpper }}"
+        text: |
+          {{ range .Alerts }}
+          {{ .Annotations.summary }}
+          {{ .Annotations.description }}
+          <{{ .Annotations.dashboard }}|View Dashboard>
+          {{ end }}
+
+  - name: backup-slack
+    slack_configs:
+      - api_url:  "$SLACK_WEBHOOK_URL"
+        channel:  "#ops-backup"
+        color:    "#FF0000"
+        title:    "💾 {{ .GroupLabels.alertname }}"
+        text: |
+          {{ range .Alerts }}
+          {{ .Annotations.summary }}
+          {{ .Annotations.description }}
+          {{ end }}
+
+# ── Inhibition Rules ─────────────────────────────────────────────────────────
+# If database is down, suppress all "application" level alerts
+inhibit_rules:
+  - source_matchers:
+      - alertname = DatabaseDown
+    target_matchers:
+      - component = app
+    equal: [namespace]
+
+  - source_matchers:
+      - alertname = RedisDown
+    target_matchers:
+      - component = cache
+    equal: [namespace]
+
+  # If critical fires, suppress warning of the same alert
+  - source_matchers:
+      - severity = critical
+    target_matchers:
+      - severity = warning
+    equal: [alertname, component]

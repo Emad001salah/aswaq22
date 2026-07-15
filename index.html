@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>أسواق - المنصة الأولى للإعلانات والبيع المباشر</title>
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="أَسْوَاق" />
+    <link rel="apple-touch-icon" href="/aswaq-icon-192.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/aswaq-icon-192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/aswaq-icon-512.png" />
+    <meta name="theme-color" content="#090d16" />
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+    <style>
+      /* Fix Leaflet z-index conflicts with our UI */
+      .leaflet-pane { z-index: 1 !important; }
+      .leaflet-top, .leaflet-bottom { z-index: 10 !important; }
+      .leaflet-control { z-index: 10 !important; }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <!-- Leaflet JS - loaded before React app -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    <!-- Google Maps API: loaded dynamically by googleMaps.ts with loading=async -->
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

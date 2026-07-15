@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>تسجيل الدخول بـ Google</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      text-align: center;
+      gap: 16px;
+    }
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid #334155;
+      border-top-color: #10b981;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    p { margin: 0; font-size: 14px; color: #94a3b8; }
+    .error { color: #f87171; font-size: 13px; max-width: 300px; }
+  </style>
+</head>
+<body>
+  <div class="spinner"></div>
+  <p id="msg">جارٍ تسجيل الدخول بـ Google...</p>
+
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js';
+    import {
+      getAuth,
+      GoogleAuthProvider,
+      signInWithRedirect,
+      getRedirectResult
+    } from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js';
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCiNKstQCpNSrtsyj8GbjY-cPQcwRU5IcY",
+      authDomain: "aswaq-48f3f.firebaseapp.com",
+      projectId: "aswaq-48f3f",
+      storageBucket: "aswaq-48f3f.firebasestorage.app",
+      messagingSenderId: "688414669812",
+      appId: "1:688414669812:web:e5096df993e3d1ac27d7a1"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const msgEl = document.getElementById('msg');
+
+    function sendResult(type, payload) {
+      const target = window.opener || window.parent;
+      if (target && target !== window) {
+        target.postMessage({ type, ...payload }, window.location.origin);
+      }
+      setTimeout(() => window.close(), 500);
+    }
+
+    async function main() {
+      try {
+        // Check if returning from a Google redirect
+        const result = await getRedirectResult(auth);
+
+        if (result && result.user) {
+          msgEl.textContent = 'تم! جارٍ الإغلاق...';
+          const idToken = await result.user.getIdToken();
+          sendResult('GOOGLE_AUTH_SUCCESS', { idToken });
+          return;
+        }
+
+        // First load — start the redirect to Google
+        msgEl.textContent = 'جارٍ فتح Google...';
+        const provider = new GoogleAuthProvider();
+        provider.setCustomParameters({ prompt: 'select_account' });
+        await signInWithRedirect(auth, provider);
+
+      } catch (err) {
+        console.error('[auth-helper] error:', err);
+        const code = err.code || '';
+        const messages = {
+          'auth/popup-closed-by-user': 'أُغلقت نافذة Google. أغلق هذه النافذة وحاول مجدداً.',
+          'auth/user-cancelled': 'تم الإلغاء.',
+          'auth/network-request-failed': 'تحقق من اتصالك بالإنترنت.',
+        };
+        msgEl.textContent = messages[code] || `خطأ: ${err.message}`;
+        msgEl.className = 'error';
+        sendResult('GOOGLE_AUTH_ERROR', { code, message: err.message });
+      }
+    }
+
+    main();
+  </script>
+</body>
+</html>

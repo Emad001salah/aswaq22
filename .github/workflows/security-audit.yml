@@ -1,0 +1,315 @@
+name: 🔒 Weekly Security Audit
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Runs every Monday at 07:00 UTC, and on-demand via workflow_dispatch.
+# Reports go to GitHub Security tab (SARIF) and as a Slack/email alert.
+# ─────────────────────────────────────────────────────────────────────────────
+on:
+  schedule:
+    - cron: '0 7 * * 1'    # Every Monday 07:00 UTC
+  workflow_dispatch:
+    inputs:
+      severity:
+        description: 'Minimum severity to report'
+        required: false
+        default: 'HIGH'
+        type: choice
+        options: [CRITICAL, HIGH, MEDIUM, LOW]
+
+env:
+  NODE_VERSION: '20'
+  SEVERITY: ${{ inputs.severity || 'HIGH' }}
+
+jobs:
+  # ──────────────────────────────────────────────────────────────────────────
+  # 1. Dependency vulnerabilities (Snyk + npm audit + OWASP Dependency-Check)
+  # ──────────────────────────────────────────────────────────────────────────
+  dependency-scan:
+    name: 📦 Dependency Vulnerabilities
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: npm audit
+        run: npm audit --audit-level=high --json > npm-audit.json || true
+
+      - name: Parse npm audit summary
+        run: |
+          echo "## npm audit Summary" >> $GITHUB_STEP_SUMMARY
+          cat npm-audit.json | python3 -c "
+          import json, sys
+          d = json.load(sys.stdin)
+          meta = d.get('metadata', {}).get('vulnerabilities', {})
+          for sev, count in meta.items():
+              print(f'| {sev.capitalize()} | {count} |')
+          " | { echo '| Severity | Count |'; echo '|---|---|'; cat; } >> $GITHUB_STEP_SUMMARY
+
+      - name: Snyk — full dependency audit
+        uses: snyk/actions/node@master
+        if: ${{ vars.SNYK_ENABLED == 'true' }}
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: >-
+            --all-projects
+            --severity-threshold=${{ env.SEVERITY }}
+            --sarif-file-output=snyk-weekly.sarif
+
+      - name: Upload Snyk SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: snyk-weekly.sarif
+        continue-on-error: true
+
+      - name: Upload audit reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: weekly-dependency-audit
+          path: |
+            npm-audit.json
+            snyk-weekly.sarif
+          retention-days: 90
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # 2. SAST — Static Application Security Testing (Snyk Code + CodeQL)
+  # ──────────────────────────────────────────────────────────────────────────
+  sast:
+    name: 🔬 SAST (Code Analysis)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # CodeQL (GitHub native, no token needed)
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+          queries:   security-extended
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: /language:javascript-typescript
+
+      # Snyk Code
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+
+      - name: Snyk Code SAST
+        uses: snyk/actions/node@master
+        if: ${{ vars.SNYK_ENABLED == 'true' }}
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          command: code test
+          args: >-
+            --severity-threshold=${{ env.SEVERITY }}
+            --sarif-file-output=snyk-sast.sarif
+
+      - name: Upload Snyk SAST SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: snyk-sast.sarif
+        continue-on-error: true
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # 3. Container image scan (Trivy against latest pushed image)
+  # ──────────────────────────────────────────────────────────────────────────
+  container-scan:
+    name: 🐳 Container Image Scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      packages: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Trivy — image scan (latest main)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ghcr.io/${{ github.repository }}:main
+          format:    sarif
+          output:    trivy-weekly-image.sarif
+          severity:  CRITICAL,${{ env.SEVERITY }}
+          exit-code: '0'
+        continue-on-error: true
+
+      - name: Upload Trivy image SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-weekly-image.sarif
+        continue-on-error: true
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # 4. IaC Security — Terraform + Helm
+  # ──────────────────────────────────────────────────────────────────────────
+  iac-security:
+    name: 🏗️ IaC Security (Terraform + Helm)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # tfsec — Terraform
+      - name: tfsec
+        uses: aquasecurity/tfsec-action@v1.0.3
+        with:
+          working_directory: terraform
+          format:            sarif
+          sarif_file:        tfsec-weekly.sarif
+          soft_fail:         true
+
+      - name: Upload tfsec SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: tfsec-weekly.sarif
+        continue-on-error: true
+
+      # Checkov — Terraform + Docker
+      - name: Checkov
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: .
+          framework: terraform,dockerfile,kubernetes
+          output_format: sarif
+          output_file_path: checkov.sarif
+          soft_fail: true
+        continue-on-error: true
+
+      - name: Upload Checkov SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: checkov.sarif
+        continue-on-error: true
+
+      # Helm lint
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: '3.15.0'
+
+      - name: Helm lint + template render
+        run: |
+          helm lint helm/ --strict
+          helm template aswaq helm/ \
+            --set image.tag=weekly-scan \
+            --set env.NODE_ENV=production \
+            > rendered-manifests.yaml
+          echo "✅ Helm template rendered successfully ($(wc -l < rendered-manifests.yaml) lines)"
+
+      - name: Kubesec — K8s manifest security analysis
+        run: |
+          docker run --rm -i kubesec/kubesec:v2 scan - < rendered-manifests.yaml \
+            > kubesec-report.json 2>&1 || true
+          echo "## Kubesec Results" >> $GITHUB_STEP_SUMMARY
+          cat kubesec-report.json | python3 -c "
+          import json, sys
+          try:
+              reports = json.load(sys.stdin)
+              for r in reports:
+                  sc = r.get('score', 0)
+                  msg = r.get('message', '')
+                  print(f'| Score: {sc} | {msg} |')
+          except: pass
+          " 2>/dev/null >> $GITHUB_STEP_SUMMARY || true
+
+      - name: Upload IaC reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: weekly-iac-security
+          path: |
+            tfsec-weekly.sarif
+            checkov.sarif
+            rendered-manifests.yaml
+            kubesec-report.json
+          retention-days: 90
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # 5. Weekly Summary Notification
+  # ──────────────────────────────────────────────────────────────────────────
+  notify:
+    name: 📢 Security Summary
+    runs-on: ubuntu-latest
+    needs: [dependency-scan, sast, container-scan, iac-security]
+    if: always()
+
+    steps:
+      - name: Build summary
+        run: |
+          echo "## 🔒 Weekly Security Audit — $(date +%Y-%m-%d)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Dependency Scan | ${{ needs.dependency-scan.result == 'success' && '✅' || '❌' }} ${{ needs.dependency-scan.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| SAST | ${{ needs.sast.result == 'success' && '✅' || '❌' }} ${{ needs.sast.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Container Scan | ${{ needs.container-scan.result == 'success' && '✅' || '❌' }} ${{ needs.container-scan.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| IaC Security | ${{ needs.iac-security.result == 'success' && '✅' || '❌' }} ${{ needs.iac-security.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📊 Full reports available in the Security tab and workflow artifacts."
+
+      # Optional Slack notification — set SLACK_WEBHOOK_URL in repo secrets
+      - name: Slack notification
+        if: ${{ secrets.SLACK_WEBHOOK_URL != '' }}
+        uses: slackapi/slack-github-action@v1.26.0
+        with:
+          payload: |
+            {
+              "text": "🔒 *Weekly Security Audit — Aswaq*",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Weekly Security Scan Complete*\nDep: ${{ needs.dependency-scan.result }} | SAST: ${{ needs.sast.result }} | Container: ${{ needs.container-scan.result }} | IaC: ${{ needs.iac-security.result }}\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View full report>"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK

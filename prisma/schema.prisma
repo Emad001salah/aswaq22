@@ -1,0 +1,685 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email            String              @unique
+  name             String
+  phone            String?             @unique
+  password         String
+  avatar           String?
+  role             UserRole            @default(USER)
+  bio              String?
+  coverPhoto       String?
+  isVerified       VerificationStatus? @default(none) @map("is_verified")
+  countryId        String?             @default("ye")
+  city             String?
+  managedCountry   String?
+  permissions      String[]            @default([])
+  
+  // حقول الأمان والمصادقة المضافة للإنتاج
+  phoneVerified    Boolean             @default(false) @map("phone_verified")
+  emailVerified    Boolean             @default(false) @map("email_verified")
+  lastLoginAt      DateTime?           @map("last_login_at")
+  deletedAt        DateTime?           @map("deleted_at")
+
+  createdAt        DateTime            @default(now()) @map("created_at")
+  updatedAt        DateTime            @updatedAt @map("updated_at")
+  
+  ads              Ad[]
+  sentMessages     Message[]           @relation("SentMessages")
+  receivedMessages Message[]           @relation("ReceivedMessages")
+  notifications    Notification[]
+  likes            AdLike[]            // Explicit join – fast indexed queries
+  comments         Comment[]
+  reels            Reel[]
+  refreshTokens    RefreshToken[]
+  buyerOrders      Order[]             @relation("BuyerOrders")
+  sellerOrders     Order[]             @relation("SellerOrders")
+  deliveryAgent    DeliveryAgent?
+  sessions           Session[] @relation("UserSessions")
+  passwordResetTokens PasswordResetToken[] @relation("UserPasswordResetTokens")
+
+  @@map("users")
+}
+
+enum UserRole {
+  USER
+  SUPER_ADMIN
+  ADMIN
+  AGENT
+  MERCHANT
+  MODERATOR
+}
+
+enum VerificationStatus {
+  none
+  pending
+  verified
+  rejected
+}
+
+model Ad {
+  id            String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title         String
+  description   String
+  price         Float
+  currency      String         @default("YER")
+  
+  categoryId    String         @map("category_id") @db.Uuid
+  category      Category       @relation(fields: [categoryId], references: [id])
+  
+  subCategoryId String?        @map("sub_category_id") @db.Uuid
+  subCategory   SubCategory?   @relation(fields: [subCategoryId], references: [id])
+  
+  jobType       JobType?
+  city          String
+  district      String?
+  
+  images        AdImage[]
+  
+  status        AdStatus       @default(PENDING)
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+  userId        String         @map("user_id") @db.Uuid
+  user          User           @relation(fields: [userId], references: [id])
+  showOnMap     Boolean        @default(true)
+  latitude      Float?
+  longitude     Float?
+  views         Int            @default(0)
+  likedBy       AdLike[]       // Explicit join table
+  comments      Comment[]
+  videoUrl      String?
+  contactNumber String?
+  orders        Order[]
+  conversations Conversation[]
+
+  @@index([userId])
+  @@index([status, createdAt(sort: Desc)])
+  @@index([categoryId, status])
+  @@index([city, status])
+  @@index([latitude, longitude]) // الفهرس الجغرافي السريع
+  @@map("ads")
+}
+
+enum AdStatus {
+  PENDING
+  ACTIVE
+  SOLD
+  EXPIRED
+  REJECTED
+}
+
+enum JobType {
+  seeking
+  hiring
+}
+
+model AdImage {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  adId      String   @map("ad_id") @db.Uuid
+  ad        Ad       @relation(fields: [adId], references: [id], onDelete: Cascade)
+  url       String
+  sortOrder Int      @default(0) @map("sort_order")
+  width     Int?
+  height    Int?
+  blurHash  String?  @map("blur_hash")
+
+  @@index([adId, sortOrder])
+  @@map("ad_images")
+}
+
+model RefreshToken {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash   String    @unique @map("token_hash")
+  sessionId   String    @map("session_id")
+  deviceInfo  Json?     @map("device_info")
+  ipAddress   String?   @map("ip_address")
+  country     String?   @map("country")
+  expiresAt   DateTime  @map("expires_at")
+  revokedAt   DateTime? @map("revoked_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([tokenHash])
+  @@index([sessionId])
+  @@map("refresh_tokens")
+}
+
+model Session {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  user         User     @relation("UserSessions", fields: [userId], references: [id], onDelete: Cascade)
+  ipAddress    String?
+  country      String?
+  userAgent    String?
+  createdAt    DateTime @default(now()) @map("created_at")
+  lastActiveAt DateTime @default(now()) @map("last_active_at")
+  revokedAt    DateTime?
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model PasswordResetToken {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  user       User     @relation("UserPasswordResetTokens", fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash  String   @unique @map("token_hash")
+  expiresAt  DateTime @map("expires_at")
+  usedAt     DateTime?
+
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
+model Comment {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  text      String
+  adId      String   @map("ad_id") @db.Uuid
+  authorId  String   @map("author_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  ad        Ad       @relation(fields: [adId], references: [id], onDelete: Cascade)
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([adId])
+  @@map("comments")
+}
+
+model Conversation {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  adId           String    @map("ad_id") @db.Uuid
+  ad             Ad        @relation(fields: [adId], references: [id], onDelete: Cascade)
+  participantOne String    @map("participant_one") @db.Uuid
+  participantTwo String    @map("participant_two") @db.Uuid
+  messages       Message[]
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  @@unique([adId, participantOne, participantTwo])
+  @@index([participantOne])
+  @@index([participantTwo])
+  @@map("conversations")
+}
+
+model Message {
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  text           String
+  senderId       String       @map("sender_id") @db.Uuid
+  receiverId     String       @map("receiver_id") @db.Uuid
+  conversationId String       @map("conversation_id") @db.Uuid
+  read           Boolean      @default(false)
+  timestamp      DateTime     @default(now())
+  sender         User         @relation("SentMessages", fields: [senderId], references: [id])
+  receiver       User         @relation("ReceivedMessages", fields: [receiverId], references: [id])
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([senderId, receiverId])
+  @@index([conversationId])
+  @@index([timestamp(sort: Asc)])
+  @@map("messages")
+}
+
+model Notification {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  title       String
+  description String
+  type        String
+  read        Boolean  @default(false)
+  timestamp   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id])
+
+  @@index([userId, read])
+  @@map("notifications")
+}
+
+model Category {
+  id            String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nameAr        String
+  nameEn        String
+  icon          String
+  subCategories SubCategory[]
+  ads           Ad[]
+
+  @@map("categories")
+}
+
+model SubCategory {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  categoryId String   @map("category_id") @db.Uuid
+  nameAr     String
+  nameEn     String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  ads        Ad[]
+
+  @@map("sub_categories")
+}
+
+model Report {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  adId        String   @map("ad_id") @db.Uuid
+  reporterId  String   @map("reporter_id") @db.Uuid
+  reason      String
+  status      String   @default("pending") // "pending", "resolved", "dismissed"
+  timestamp   DateTime @default(now())
+
+  @@map("reports")
+}
+
+model AdminLog {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  adminId     String   @map("admin_id") @db.Uuid
+  action      String   // e.g., "DELETE_AD", "VERIFY_USER", "UPDATE_SETTINGS"
+  details     String?  // JSON detail string
+  ipAddress   String?  @map("ip_address")
+  timestamp   DateTime @default(now())
+
+  @@map("admin_logs")
+}
+
+model SecurityEvent {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  type        String   // "FAILED_LOGIN", "RATE_LIMIT", "BANNED_IP"
+  ipAddress   String   @map("ip_address")
+  details     String?
+  timestamp   DateTime @default(now())
+
+  @@map("security_events")
+}
+
+model Review {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tags       String   // e.g. "سريع الرد,تعامل راقٍ"
+  comment    String?
+  raterId    String   @map("rater_id") @db.Uuid
+  ratedId    String   @map("rated_id") @db.Uuid
+  adId       String?  @map("ad_id") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@map("reviews")
+}
+
+model Reel {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  user      User     @relation(fields: [userId], references: [id])
+  videoUrl  String   @map("video_url")
+  ownerName String   @default("المدير")
+  title     String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("reels")
+}
+
+model AdLike {
+  adId      String   @map("ad_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  ad        Ad       @relation(fields: [adId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([adId, userId])           // Composite PK prevents duplicate likes
+  @@index([userId])              // Fast lookup: all ads liked by a user
+  @@index([adId])                // Fast lookup: count likes for an ad
+  @@map("ad_likes")
+}
+
+model OutboxEvent {
+  id          String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  aggregate   String            // e.g. "Ad", "User"
+  aggregateId String            // UUID of the affected entity
+  eventType   String            // "CREATED" | "UPDATED" | "DELETED"
+  payload     Json              // Full document for Meilisearch indexing
+  attempts    Int               @default(0)
+  status      OutboxEventStatus @default(PENDING)
+  processedAt DateTime?         @map("processed_at")
+  createdAt   DateTime          @default(now()) @map("created_at")
+
+  @@index([status, createdAt])   // Worker polls PENDING events in order
+  @@map("outbox_events")
+}
+
+enum OutboxEventStatus {
+  PENDING
+  PROCESSED
+  FAILED
+}
+
+model AnalyticsEvent {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  event       String   // "ad_viewed" | "search_performed" | "ad_posted" | "otp_requested" | "registration_abandoned" | "post_abandoned" | "report_submitted" | "search_no_results"
+  userId      String?  // null = anonymous
+  sessionId   String?  @map("session_id")
+  properties  Json     @default("{}") // { query, category, adId, step, duration_ms, ... }
+  ip          String?
+  userAgent   String?  @map("user_agent")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([event, createdAt])
+  @@index([userId, createdAt])
+  @@index([createdAt])
+  @@map("analytics_events")
+}
+
+model FeatureFlag {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  key         String   @unique // "beta_chat" | "ai_recommendations" | "premium_ads" | "map_view"
+  name        String
+  description String?
+  enabled     Boolean  @default(false)
+  rolloutPct  Int      @default(0) @map("rollout_pct") // 0-100 — percentage of users
+  allowedUsers String[] @map("allowed_users") // specific user IDs always get this flag
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("feature_flags")
+}
+
+model BetaInvitation {
+  id          String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email       String?
+  phone       String?
+  code        String              @unique @default(cuid()) // الكود المُرسَل للمستخدم
+  status      BetaInviteStatus    @default(PENDING)
+  invitedBy   String?             @map("invited_by") // admin user ID
+  activatedBy String?             @map("activated_by") // user ID who activated
+  activatedAt DateTime?           @map("activated_at")
+  expiresAt   DateTime            @map("expires_at")
+  notes       String?             // ملاحظات داخلية
+  createdAt   DateTime            @default(now()) @map("created_at")
+
+  @@index([code])
+  @@index([status])
+  @@map("beta_invitations")
+}
+
+enum BetaInviteStatus {
+  PENDING
+  ACTIVATED
+  EXPIRED
+  REVOKED
+}
+
+model Order {
+  id          String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  buyerId     String      @map("buyer_id") @db.Uuid
+  sellerId    String      @map("seller_id") @db.Uuid
+  adId        String      @map("ad_id") @db.Uuid
+  quantity    Int         @default(1)
+  totalPrice  Float       @map("total_price")
+  status      OrderStatus @default(PENDING)
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+
+  buyer       User        @relation("BuyerOrders", fields: [buyerId], references: [id])
+  seller      User        @relation("SellerOrders", fields: [sellerId], references: [id])
+  ad          Ad          @relation(fields: [adId], references: [id])
+  shipment    Shipment?
+
+  @@map("orders")
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  CANCELLED
+  COMPLETED
+}
+
+model Shipment {
+  id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId        String         @unique @map("order_id") @db.Uuid
+  carrierMethod  CarrierMethod  @map("carrier_method")
+  carrierName    String?        @map("carrier_name")   // e.g. "Aramex", "SMSA", "Local courier"
+  trackingNumber String?        @unique @map("tracking_number")
+  status         ShipmentStatus @default(PENDING)
+  
+  agentId        String?        @map("agent_id") @db.Uuid
+  agent          DeliveryAgent? @relation(fields: [agentId], references: [id], onDelete: SetNull)
+
+  // Billing and Fees
+  basePrice      Float          @map("base_price")
+  distanceFee    Float          @map("distance_fee")
+  weightFee      Float          @map("weight_fee")
+  volumeFee      Float          @map("volume_fee")
+  insuranceFee   Float          @default(0) @map("insurance_fee")
+  codFee         Float          @default(0) @map("cod_fee")
+  remoteAreaFee  Float          @default(0) @map("remote_area_fee")
+  discount       Float          @default(0)
+  totalCost      Float          @map("total_cost")
+  codAmount      Float          @default(0) @map("cod_amount") // Amount to collect on delivery
+
+  // Physical specifications
+  weight         Float          @default(1.0)
+  width          Float          @default(10.0)
+  height         Float          @default(10.0)
+  depth          Float          @default(10.0)
+
+  // Standard Floats for application-level integration (triggers sync postgis fields in DB)
+  pickupLat      Float?         @map("pickup_lat")
+  pickupLng      Float?         @map("pickup_lng")
+  deliveryLat    Float?         @map("delivery_lat")
+  deliveryLng    Float?         @map("delivery_lng")
+  
+  estimatedTime  DateTime?      @map("estimated_time")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  order          Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  events         ShipmentEvent[]
+  verifications  DeliveryVerification[]
+  ledgerEntries  ShippingLedger[]
+
+  @@index([status])
+  @@map("shipments")
+}
+
+enum CarrierMethod {
+  SELF
+  P2P_AGENT
+  CARRIER
+  STORE_PICKUP
+  BRANCH_PICKUP
+}
+
+enum ShipmentStatus {
+  PENDING
+  WAITING_PICKUP
+  PICKED_UP
+  IN_TRANSIT
+  OUT_FOR_DELIVERY
+  DELIVERED
+  FAILED
+  RETURN_REQUESTED
+  RETURNED
+  CANCELLED
+  LOST
+  DAMAGED
+}
+
+model DeliveryAgent {
+  id             String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId         String           @unique @map("user_id") @db.Uuid
+  vehicleType    String?          @map("vehicle_type")
+  licensePlate   String?          @map("license_plate")
+  status         AgentStatus      @default(OFFLINE)
+  currentLat     Float?           @map("current_lat")
+  currentLng     Float?           @map("current_lng")
+  walletBalance  Float            @default(0) @map("wallet_balance") // Earned payouts
+  codBalance     Float            @default(0) @map("cod_balance")     // Collected COD cash (liability)
+  rating         Float            @default(5.0)
+  totalDeliveries Int             @default(0) @map("total_deliveries")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  shipments      Shipment[]
+
+  @@map("delivery_agents")
+}
+
+enum AgentStatus {
+  OFFLINE
+  ONLINE
+  AVAILABLE
+  BUSY
+  ON_BREAK
+  SUSPENDED
+}
+
+model ShipmentEvent {
+  id          String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  shipmentId  String         @map("shipment_id") @db.Uuid
+  status      ShipmentStatus
+  description String?
+  lat         Float?
+  lng         Float?
+  createdAt   DateTime       @default(now()) @map("created_at")
+
+  shipment    Shipment       @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  @@map("shipment_events")
+}
+
+model CarrierConfiguration {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  carrierKey  String   @unique @map("carrier_key") // e.g. "aramex", "smsa"
+  name        String
+  apiUrl      String   @map("api_url")
+  username    String
+  password    String
+  accountNo   String   @map("account_no")
+  apiKey      String?  @map("api_key")
+  enabled     Boolean  @default(true)
+  metadata    Json     @default("{}")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("carrier_configurations")
+}
+
+model DeliveryVerification {
+  id             String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  shipmentId     String           @map("shipment_id") @db.Uuid
+  method         VerifyMethod
+  code           String?          // OTP code
+  signatureUrl   String?          @map("signature_url")
+  photoUrl       String?          @map("photo_url")
+  verifiedAt     DateTime?        @map("verified_at")
+  createdAt      DateTime         @default(now()) @map("created_at")
+
+  shipment       Shipment         @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  @@map("delivery_verifications")
+}
+
+enum VerifyMethod {
+  OTP
+  SIGNATURE
+  PHOTO
+  QR
+}
+
+model ShippingLedger {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  shipmentId  String   @map("shipment_id") @db.Uuid
+  agentId     String?  @map("agent_id") @db.Uuid
+  sellerId    String   @map("seller_id") @db.Uuid
+  amount      Float
+  type        LedgerType
+  description String
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  shipment    Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  @@map("shipping_ledger")
+}
+
+enum LedgerType {
+  COD_COLLECT      // Cash collected by driver (Driver's liability increases)
+  PAYOUT_MERCHANT  // Credit to merchant's wallet
+  COMMISSION_PLAT  // Platform commission revenue
+  AGENT_DELIVERY_FEE // Agent payout for delivery service
+  SETTLEMENT       // Driver pays cash to platform
+}
+
+model ShippingZone {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  country     String
+  city        String
+  district    String?
+  basePrice   Float    @map("base_price")
+  kmRate      Float    @map("km_rate")
+  isRemote    Boolean  @default(false) @map("is_remote")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@unique([country, city, district])
+  @@map("shipping_zones")
+}
+
+model Poll {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  question    String
+  options     String[]
+  votes       Int[]
+  countryCode String   @default("ALL") @map("country_code")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("polls")
+}
+
+model AuditLog {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  action      String
+  entity      String
+  before      String?
+  after       String?
+  performedBy String   @map("performed_by")
+  ipAddress   String?  @map("ip_address")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([entity])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model AdSlot {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  price       Decimal   @db.Decimal(10,2)
+  imageUrl    String?
+  isAvailable Boolean   @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  placements  AdPlacement[]
+
+  @@map("ad_slots")
+}
+
+model AdPlacement {
+  id          String   @id @default(uuid())
+  adSlotId    String
+  advertiserId String   // references User (المعلن)
+  startDate   DateTime
+  endDate     DateTime
+  linkUrl     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  adSlot    AdSlot @relation(fields: [adSlotId], references: [id])
+  advertiser User @relation(fields: [advertiserId], references: [id])
+
+  @@map("ad_placements")
+}

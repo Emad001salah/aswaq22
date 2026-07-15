@@ -1,0 +1,56 @@
+{
+  "name": "أَسْوَاق | Aswaq Marketplace",
+  "short_name": "أَسْوَاق | Aswaq",
+  "description": "منصة أسواق المتطورة للتسويق والبيع والشراء والبث المباشر والتواصل اللحظي.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#090d16",
+  "theme_color": "#090d16",
+  "orientation": "portrait-primary",
+  "categories": ["shopping", "social", "business"],
+  "lang": "ar",
+  "dir": "rtl",
+  "icons": [
+    {
+      "src": "/aswaq-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/aswaq-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/aswaq-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/aswaq-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "الرئيسية",
+      "short_name": "الرئيسية",
+      "description": "تصفح آخر الإعلانات المميزة في أسواق",
+      "url": "/?tab=home",
+      "icons": [{ "src": "/aswaq-icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "أضف إعلان",
+      "short_name": "نشاط جديد",
+      "description": "أضف عرضك أو خدماتك الآن مجاناً",
+      "url": "/?tab=create-ad",
+      "icons": [{ "src": "/aswaq-icon-192.png", "sizes": "192x192" }]
+    }
+  ],
+  "prefer_related_applications": false
+}

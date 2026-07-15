@@ -1,0 +1,108 @@
+Created At: 2026-07-07T02:04:31Z
+Completed At: 2026-07-07T02:04:32Z
+File Path: `file:///d:/Aswaq/server/controllers/oauth.controller.ts`
+Total Lines: 162
+Total Bytes: 6125
+Showing lines 1 to 100
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+import { Request, Response, Router } from 'express';
+import { OAuth2Client } from 'google-auth-library';
+import { authService } from '../services/auth.service';
+import { prisma } from '../../src/lib/prisma';
+
+// ── إعداد عميل Google OAuth2 ───────────────────────────────────────────────
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+const GOOGLE_REDIRECT_URI =
+  process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3000/api/v1/auth/oauth2/callback';
+
+// رابط العودة لتطبيق الويب (بعد نجاح/فشل OAuth) — نعيد التوجيه إلى الصفحة الرئيسية
+const WEB_RETURN_URL = process.env.WEB_RETURN_URL || 'http://localhost:3000/';
+
+// مخطط deep link لتطبيق الجوال (Capacitor)
+const MOBILE_DEEPLINK = process.env.MOBILE_DEEPLINK || 'com.aswaq.enterprise://oauth';
+
+function getClient(): OAuth2Client | null {
+  if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) return null;
+  return new OAuth2Client(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI);
+}
+
+// إنشاء/تحديث المستخدم من بيانات حساب Google ثم إصدار JWT
+async function upsertUserFromGoogle(profile: {
+  googleId: string;
+  email: string;
+  name: string;
+  avatar: string | null;
+}) {
+  let user = await prisma.user.findFirst({
+    where: {
+      email: profile.email || undefined,
+      deletedAt: null,
+    },
+  });
+
+  const randomPassword = require('crypto').randomUUID();
+  const bcrypt = require('bcryptjs');
+  const salt = await bcrypt.genSalt(10);
+  const passwordHash = await bcrypt.hash(randomPassword, salt);
+
+  if (!user) {
+    user = await prisma.user.create({
+      data: {
+        id: profile.googleId,
+        email: profile.email || `${profile.googleId}@google.aswaq.com`,
+        name: profile.name || 'User',
+        avatar: profile.avatar || null,
+        password: passwordHash,
+        role: 'USER',
+        isVerified: 'none',
+      },
+    });
+  } else {
+    const updateData: any = { lastLoginAt: new Date() };
+    if (profile.name && user.name !== profile.name) updateData.name = profile.name;
+    if (profile.avatar && user.avatar !== profile.avatar) updateData.avatar = profile.avatar;
+
+    user = await prisma.user.update({ where: { id: user.id }, data: updateData });
+  }
+
+  const adCount = await prisma.ad.count({ where: { userId: user.id } });
+  const tokens = await authService.generateTokens(user.id, user.email, user.role);
+
+  return {
+    accessToken: tokens.accessToken,
+    refreshToken: tokens.refreshToken,
+    user: {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role.toLowerCase(),
+      avatar: user.avatar,
+      phone: user.phone,
+      hasPostedAd: adCount > 0,
+    },
+  };
+}
+
+export function OAuthController() {
+  const router = Router();
+
+  // ── بدء تدفق OAuth2 (ويب / جوال) ────────────────────────────────────────
+  router.get('/oauth2/google', (req: Request, res: Response) => {
+    const client = getClient();
+    if (!client) {
+      return res.status(500).json({
+        error: 'OAuth Not Configured',
+        message: 'GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET غير معيّنة في البيئة.',
+      });
+    }
+
+    const state = req.query.state === 'mobile' ? 'mobile' : 'web';
+    const url = client.generateAuthUrl({
+      access_type: 'offline',
+      prompt: 'consent',
+      scope: ['openid', 'email', 'profile'],
+      state,
+    });
+
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.

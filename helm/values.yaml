@@ -1,0 +1,145 @@
+# Default values for the Aswaq Helm chart.
+# Override these with values.<env>.yaml or --set flags.
+
+replicaCount: 2
+
+image:
+  repository: ghcr.io/aswaq/server
+  pullPolicy: IfNotPresent
+  tag: ""          # Defaults to chart appVersion
+
+imagePullSecrets: []
+
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  automount: true
+  annotations: {}
+  name: ""
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "4000"
+  prometheus.io/path: "/metrics"
+
+podLabels: {}
+
+podSecurityContext:
+  fsGroup: 1000
+  runAsNonRoot: true
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  runAsUser: 1000
+  capabilities:
+    drop:
+      - ALL
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 3000
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  hosts:
+    - host: api.aswaq.sa
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: aswaq-tls
+      hosts:
+        - api.aswaq.sa
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 3000
+  initialDelaySeconds: 20
+  periodSeconds: 15
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /health
+    port: 3000
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  failureThreshold: 3
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 75
+
+volumes:
+  - name: tmp-dir
+    emptyDir: {}
+
+volumeMounts:
+  - name: tmp-dir
+    mountPath: /tmp
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - aswaq
+          topologyKey: kubernetes.io/hostname
+
+env:
+  NODE_ENV: production
+  PORT: "3000"
+  LOG_LEVEL: info
+
+# Secrets are injected via ExternalSecret or Vault – do NOT put real values here.
+externalSecrets:
+  enabled: false
+  secretStoreName: "aws-secrets-manager"
+  refreshInterval: "5m"
+  data:
+    - secretKey: DATABASE_URL
+      remoteRef:
+        key: aswaq/production
+        property: DATABASE_URL
+    - secretKey: JWT_SECRET
+      remoteRef:
+        key: aswaq/production
+        property: JWT_SECRET
+    - secretKey: JWT_REFRESH_SECRET
+      remoteRef:
+        key: aswaq/production
+        property: JWT_REFRESH_SECRET
+    - secretKey: REDIS_URL
+      remoteRef:
+        key: aswaq/production
+        property: REDIS_URL

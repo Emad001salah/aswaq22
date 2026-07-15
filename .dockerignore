@@ -1,0 +1,18 @@
+# ── Don't bake secrets / heavy dirs into the Docker image ──
+.env
+.env.*
+!.env.example
+node_modules
+npm-debug.log
+dist
+build
+coverage
+android
+ios
+aswaq-mobile ios
+.git
+.github
+logs
+uploads
+*.log
+.DS_Store

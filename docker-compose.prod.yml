@@ -1,0 +1,227 @@
+version: '3.8'
+
+services:
+  # 1. Reverse Proxy & SSL (Public Facing)
+  nginx:
+    build:
+      context: ./config/nginx
+      dockerfile: Dockerfile
+    image: nginx:alpine
+    container_name: aswaq_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./config/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./config/nginx/.htpasswd:/etc/nginx/.htpasswd:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - /var/www/html:/var/www/html:ro
+    depends_on:
+      api:
+        condition: service_healthy
+      grafana:
+        condition: service_started
+      admin:
+        condition: service_started
+    networks:
+      - aswaq_internal
+    restart: unless-stopped
+
+  # 2. Node.js Backend API
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: aswaq_api
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DATABASE_URL=postgresql://aswaq:aswaq_secure_pass@postgres:5432/aswaq_db
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET}
+      - PEPPER_SECRET=${PEPPER_SECRET}
+      - MEILISEARCH_HOST=http://meilisearch:7700
+      - MEILISEARCH_KEY=${MEILI_MASTER_KEY}
+      - MEILI_HOST=http://meilisearch:7700
+      - MEILI_API_KEY=${MEILI_MASTER_KEY}
+      - MEILI_MASTER_KEY=${MEILI_MASTER_KEY}
+      # Google OAuth
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI}
+      - WEB_RETURN_URL=${WEB_RETURN_URL}
+      - FRONTEND_URL=${FRONTEND_URL}
+      - ADMIN_URL=${ADMIN_URL}
+      - MOBILE_DEEPLINK=${MOBILE_DEEPLINK}
+      # Firebase
+      - FIREBASE_SERVICE_ACCOUNT=${FIREBASE_SERVICE_ACCOUNT}
+      - FIREBASE_WEB_API_KEY=${FIREBASE_WEB_API_KEY}
+      # Gemini AI
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      # Google Maps
+      - VITE_GOOGLE_MAPS_API_KEY=${VITE_GOOGLE_MAPS_API_KEY}
+      # SMS (Twilio - اختياري، يعمل بدونه)
+      - TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID:-}
+      - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN:-}
+      - TWILIO_PHONE_NUMBER=${TWILIO_PHONE_NUMBER:-}
+      # Domain
+      - DOMAIN=${DOMAIN}
+    networks:
+      - aswaq_internal
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/v1/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      start-period: 30s
+      retries: 3
+
+
+  # 3. PostgreSQL Database (Internal Only)
+  postgres:
+    image: postgres:15-alpine
+    container_name: aswaq_postgres
+    environment:
+      POSTGRES_USER: aswaq
+      POSTGRES_PASSWORD: aswaq_secure_pass
+      POSTGRES_DB: aswaq_db
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - aswaq_internal
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aswaq -d aswaq_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # 4. Redis Cache & Queues (Internal Only)
+  redis:
+    image: redis:7-alpine
+    container_name: aswaq_redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redisdata:/data
+    networks:
+      - aswaq_internal
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # 5. Meilisearch Engine (Internal Only)
+  meilisearch:
+    image: getmeili/meilisearch:v1.6
+    container_name: aswaq_meilisearch
+    environment:
+      - MEILI_MASTER_KEY=${MEILI_MASTER_KEY}
+      - MEILI_ENV=production
+    volumes:
+      - meilidata:/meili_data
+    networks:
+      - aswaq_internal
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:7700/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # 6. Outbox & Queue Background Worker
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: aswaq_worker
+    command: npm run worker
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://aswaq:aswaq_secure_pass@postgres:5432/aswaq_db
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - aswaq_internal
+    restart: unless-stopped
+
+  # 7. Prometheus Monitoring (Internal Only)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: aswaq_prometheus
+    volumes:
+      - ./server/data/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - promdata:/prometheus
+    networks:
+      - aswaq_internal
+    restart: unless-stopped
+
+  # 8. Grafana Dashboards (Internal Only, Nginx will proxy with Basic Auth)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: aswaq_grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_SERVER_ROOT_URL=https://${DOMAIN}/grafana
+      - GF_SERVER_SERVE_FROM_SUB_PATH=true
+    volumes:
+      - grafanadata:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - aswaq_internal
+    restart: unless-stopped
+
+  # 9. Node Exporter (Host Metrics)
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: aswaq_node_exporter
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    networks:
+      - aswaq_internal
+  # 10. Admin Dashboard
+  admin:
+    build:
+      context: ./admin
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=${VITE_API_URL}
+        - VITE_FIREBASE_API_KEY=${VITE_FIREBASE_API_KEY}
+        - VITE_FIREBASE_AUTH_DOMAIN=${VITE_FIREBASE_AUTH_DOMAIN}
+        - VITE_FIREBASE_PROJECT_ID=${VITE_FIREBASE_PROJECT_ID}
+        - VITE_FIREBASE_STORAGE_BUCKET=${VITE_FIREBASE_STORAGE_BUCKET}
+        - VITE_FIREBASE_MESSAGING_SENDER_ID=${VITE_FIREBASE_MESSAGING_SENDER_ID}
+        - VITE_FIREBASE_APP_ID=${VITE_FIREBASE_APP_ID}
+    container_name: aswaq_admin
+    networks:
+      - aswaq_internal
+    restart: unless-stopped
+
+networks:
+  aswaq_internal:
+    driver: bridge
+
+volumes:
+  pgdata:
+  redisdata:
+  meilidata:
+  promdata:
+  grafanadata:

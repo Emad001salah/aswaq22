@@ -1,0 +1,297 @@
+groups:
+
+# =============================================================================
+# SLO — Availability (Target: 99.9% = 43.8 min/month downtime)
+# =============================================================================
+  - name: slo_availability
+    interval: 30s
+    rules:
+
+      # ── Short window: 5-minute burn rate ─────────────────────────────────
+      - alert: SLO_AvailabilityBurnRate_Critical
+        expr: |
+          (
+            sum(rate(http_requests_total{status=~"5.."}[5m]))
+            /
+            sum(rate(http_requests_total[5m]))
+          ) > 0.14  # 14.4× burn rate = budget exhausted in 1h
+        for: 2m
+        labels:
+          severity: critical
+          slo:       availability
+          team:      platform
+        annotations:
+          summary:     "🔴 Critical: SLO burn rate exhausting error budget"
+          description: "Error rate {{ $value | humanizePercentage }} — at this rate 99.9% SLO will be breached within 1 hour."
+          runbook:     "https://github.com/aswaq/aswaq/wiki/runbooks/slo-breach"
+          dashboard:   "http://grafana:3000/d/aswaq-main"
+
+      - alert: SLO_AvailabilityBurnRate_Warning
+        expr: |
+          (
+            sum(rate(http_requests_total{status=~"5.."}[30m]))
+            /
+            sum(rate(http_requests_total[30m]))
+          ) > 0.05  # 6× burn rate = budget exhausted in ~6h
+        for: 5m
+        labels:
+          severity: warning
+          slo:       availability
+          team:      platform
+        annotations:
+          summary:     "🟡 Warning: SLO error budget burning fast"
+          description: "Error rate {{ $value | humanizePercentage }} (30m window). Investigate before critical threshold."
+          runbook:     "https://github.com/aswaq/aswaq/wiki/runbooks/slo-breach"
+
+# =============================================================================
+# SLO — Latency (Target: p95 < 500ms for 99% of requests)
+# =============================================================================
+  - name: slo_latency
+    interval: 30s
+    rules:
+
+      - alert: SLO_LatencyP95_Critical
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(http_request_duration_seconds_bucket[5m])) by (le)
+          ) > 1.0
+        for: 3m
+        labels:
+          severity: critical
+          slo:       latency
+          team:      platform
+        annotations:
+          summary:     "🔴 Critical: p95 latency > 1000ms"
+          description: "p95 response time is {{ $value | humanizeDuration }}. SLO threshold is 500ms."
+          runbook:     "https://github.com/aswaq/aswaq/wiki/runbooks/latency"
+
+      - alert: SLO_LatencyP95_Warning
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(http_request_duration_seconds_bucket[5m])) by (le)
+          ) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+          slo:       latency
+          team:      platform
+        annotations:
+          summary:     "🟡 Warning: p95 latency > 500ms"
+          description: "p95 response time is {{ $value | humanizeDuration }}."
+
+# =============================================================================
+# Infrastructure Alerts
+# =============================================================================
+  - name: infrastructure
+    rules:
+
+      # ── Database ──────────────────────────────────────────────────────────
+      - alert: DatabaseDown
+        expr: up{job="postgres"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: database
+        annotations:
+          summary:     "🔴 SEV1: PostgreSQL database is DOWN"
+          description: "Database has been unreachable for more than 1 minute. Immediate action required."
+          runbook:     "https://github.com/aswaq/aswaq/wiki/runbooks/database-down"
+
+      - alert: DatabaseConnectionPoolHigh
+        expr: |
+          pg_stat_activity_count{datname="aswaq"}
+          / pg_settings_max_connections > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary:     "🟡 Database connection pool > 80%"
+          description: "{{ $value | humanizePercentage }} of max connections used."
+
+      - alert: DatabaseReplicationLag
+        expr: pg_replication_lag > 10
+        for: 2m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary:     "🟡 Database replication lag > 10 seconds"
+          description: "Replication lag is {{ $value }}s. Data loss risk if primary fails."
+
+      # ── Redis ─────────────────────────────────────────────────────────────
+      - alert: RedisDown
+        expr: up{job="redis"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: redis
+        annotations:
+          summary:     "🔴 SEV2: Redis is DOWN"
+          description: "Redis has been unreachable for > 1 minute. Sessions, queues, and cache are affected."
+          runbook:     "https://github.com/aswaq/aswaq/wiki/runbooks/redis-down"
+
+      - alert: RedisMemoryHigh
+        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.85
+        for: 5m
+        labels:
+          severity: warning
+          component: redis
+        annotations:
+          summary:     "🟡 Redis memory usage > 85%"
+          description: "{{ $value | humanizePercentage }} of max memory used."
+
+      # ── Pod / Container ───────────────────────────────────────────────────
+      - alert: PodCrashLooping
+        expr: |
+          rate(kube_pod_container_status_restarts_total{
+            namespace="aswaq",
+            container="aswaq"
+          }[15m]) * 60 > 1
+        for: 5m
+        labels:
+          severity: critical
+          component: kubernetes
+        annotations:
+          summary:     "🔴 SEV2: Pod crash-looping"
+          description: "Pod {{ $labels.pod }} is restarting more than 1×/min."
+          runbook:     "https://github.com/aswaq/aswaq/wiki/runbooks/pod-crashloop"
+
+      - alert: PodMemoryHigh
+        expr: |
+          container_memory_usage_bytes{
+            namespace="aswaq",
+            container="aswaq"
+          } / container_spec_memory_limit_bytes > 0.85
+        for: 5m
+        labels:
+          severity: warning
+          component: kubernetes
+        annotations:
+          summary:     "🟡 Pod memory usage > 85%"
+          description: "Container {{ $labels.pod }} is using {{ $value | humanizePercentage }} of its memory limit."
+
+      - alert: PodOOMKilled
+        expr: |
+          kube_pod_container_status_last_terminated_reason{
+            namespace="aswaq",
+            reason="OOMKilled"
+          } == 1
+        for: 0m
+        labels:
+          severity: critical
+          component: kubernetes
+        annotations:
+          summary:     "🔴 SEV2: Pod OOMKilled"
+          description: "Pod {{ $labels.pod }} was killed due to Out Of Memory."
+
+      - alert: PodCPUHigh
+        expr: |
+          rate(container_cpu_usage_seconds_total{
+            namespace="aswaq",
+            container="aswaq"
+          }[5m]) / container_spec_cpu_quota * container_spec_cpu_period > 0.75
+        for: 10m
+        labels:
+          severity: warning
+          component: kubernetes
+        annotations:
+          summary:     "🟡 Pod CPU > 75% for 10 minutes"
+          description: "Container {{ $labels.pod }} sustained high CPU."
+
+      # ── Disk ──────────────────────────────────────────────────────────────
+      - alert: DiskSpaceHigh
+        expr: |
+          (node_filesystem_avail_bytes{mountpoint="/"}
+          / node_filesystem_size_bytes{mountpoint="/"}) < 0.20
+        for: 5m
+        labels:
+          severity: warning
+          component: node
+        annotations:
+          summary:     "🟡 Disk space < 20% remaining"
+          description: "Node {{ $labels.instance }} has only {{ $value | humanizePercentage }} disk free."
+
+      - alert: DiskSpaceCritical
+        expr: |
+          (node_filesystem_avail_bytes{mountpoint="/"}
+          / node_filesystem_size_bytes{mountpoint="/"}) < 0.10
+        for: 2m
+        labels:
+          severity: critical
+          component: node
+        annotations:
+          summary:     "🔴 SEV2: Disk space < 10% — CRITICAL"
+          description: "Node {{ $labels.instance }} disk almost full. Immediate action required."
+
+# =============================================================================
+# Business Alerts
+# =============================================================================
+  - name: business
+    rules:
+
+      - alert: OutboxWorkerStopped
+        expr: |
+          rate(aswaq_outbox_processed_total[5m]) == 0
+            and
+          aswaq_outbox_pending_count > 5
+        for: 5m
+        labels:
+          severity: warning
+          component: outbox
+        annotations:
+          summary:     "🟡 Outbox Worker appears stuck"
+          description: "No outbox events processed in 5 minutes but {{ $value }} events are pending."
+
+      - alert: AdApprovalQueueBacklog
+        expr: aswaq_ads_pending_count > 500
+        for: 10m
+        labels:
+          severity: warning
+          component: moderation
+        annotations:
+          summary:     "🟡 Ad approval queue backlog > 500"
+          description: "{{ $value }} ads waiting for moderation approval."
+
+      - alert: BackupMissing
+        expr: |
+          time() - aswaq_last_backup_timestamp > 86400 * 1.5
+        for: 0m
+        labels:
+          severity: critical
+          component: backup
+        annotations:
+          summary:     "🔴 SEV2: No successful backup in 36 hours"
+          description: "Last backup was {{ $value | humanizeDuration }} ago. Manual backup required immediately."
+
+# =============================================================================
+# Aswaq App — Custom Metrics
+# =============================================================================
+  - name: aswaq_app
+    rules:
+
+      - alert: HighErrorRate_5xx
+        expr: |
+          sum(rate(http_requests_total{status=~"5.."}[5m]))
+          / sum(rate(http_requests_total[5m])) > 0.01
+        for: 2m
+        labels:
+          severity: warning
+          team:      backend
+        annotations:
+          summary:     "🟡 5xx error rate > 1%"
+          description: "Current 5xx rate: {{ $value | humanizePercentage }}"
+
+      - alert: AuthFailureSpike
+        expr: |
+          rate(http_requests_total{
+            path=~".*/auth/.*",
+            status="401"
+          }[5m]) > 10
+        for: 2m
+        labels:
+          severity: warning
+          component: security
+        annotations:
+          summary:     "🟡 Spike in 401 auth failures — possible brute force"
+          description: "{{ $value }} auth failures/second in the last 5 minutes."

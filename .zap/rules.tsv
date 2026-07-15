@@ -1,0 +1,42 @@
+# OWASP ZAP Alert Filter Rules
+# ─────────────────────────────────────────────────────────────────────────────
+# Format: ALERT_ID	ACTION	URL_REGEX	PARAMETER	EVIDENCE	COMMENT
+# ACTION: IGNORE | WARN | FAIL
+# ─────────────────────────────────────────────────────────────────────────────
+
+# 10015 — Incomplete or No Cache-control Header Set
+# Accept for API responses (cache is handled at CDN level)
+10015	IGNORE
+
+# 10020 — X-Frame-Options Header Not Set
+# API backend doesn't serve HTML frames
+10020	IGNORE
+
+# 10027 — Information Disclosure — Suspicious Comments
+# Dev comments in built frontend — acceptable for staging
+10027	WARN
+
+# 10096 — Timestamp Disclosure — Unix
+# Timestamps in API responses are intentional
+10096	IGNORE
+
+# 10054 — Cookie Without SameSite Attribute
+# Handled via Helmet configuration
+10054	WARN
+
+# 40012 — Cross Site Scripting (Reflected) — FAIL on production
+40012	FAIL
+
+# 40014 — Cross Site Scripting (Persistent) — FAIL always
+40014	FAIL
+
+# 40018 — SQL Injection — FAIL always
+40018	FAIL
+
+# 90022 — Application Error Disclosure
+# Must not expose stack traces
+90022	FAIL
+
+# 10202 — Absence of Anti-CSRF Tokens
+# API uses JWT + HMAC, not cookie-based CSRF
+10202	IGNORE

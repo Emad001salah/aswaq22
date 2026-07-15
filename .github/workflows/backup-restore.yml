@@ -1,0 +1,159 @@
+name: 💾 Backup & Disaster Recovery
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Automated daily backup + manual DR trigger.
+# ─────────────────────────────────────────────────────────────────────────────
+on:
+  schedule:
+    - cron: '0 2 * * *'    # Daily at 02:00 UTC (05:00 AST)
+  workflow_dispatch:
+    inputs:
+      command:
+        description: 'Command to run'
+        required: true
+        type: choice
+        options: [backup, verify, restore, disaster-recovery]
+      environment:
+        description: 'Target environment'
+        required: true
+        type: choice
+        options: [staging, production]
+      backup_key:
+        description: 'S3 backup key (required for restore/disaster-recovery)'
+        required: false
+        type: string
+      dry_run:
+        description: 'Dry run mode'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  # ──────────────────────────────────────────────────────────────────────────
+  # Automated daily backup (schedule trigger)
+  # ──────────────────────────────────────────────────────────────────────────
+  daily-backup:
+    name: 📦 Daily Backup (production)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install PostgreSQL client tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y postgresql-client-16 gnupg
+
+      - name: Configure AWS credentials (production)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID_PROD }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_PROD }}
+          aws-region:            me-south-1
+
+      - name: Run backup
+        run: |
+          chmod +x scripts/backup-restore.sh
+          ./scripts/backup-restore.sh backup --env production
+
+      - name: Run verify (integrity check)
+        run: ./scripts/backup-restore.sh verify --env production
+
+      - name: Upload backup log
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: daily-backup-log-${{ github.run_id }}
+          path: logs/backup-restore-*.log
+          retention-days: 30
+
+      - name: Backup summary
+        run: |
+          echo "## 💾 Daily Backup — $(date +%Y-%m-%d)" >> $GITHUB_STEP_SUMMARY
+          echo "| | |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| Environment | production |" >> $GITHUB_STEP_SUMMARY
+          echo "| Timestamp | $(date -u '+%Y-%m-%d %H:%M:%S UTC') |" >> $GITHUB_STEP_SUMMARY
+          echo "| S3 Bucket | aswaq-production-backups |" >> $GITHUB_STEP_SUMMARY
+          echo "| Status | ✅ Complete |" >> $GITHUB_STEP_SUMMARY
+
+      - name: Alert on failure
+        if: failure()
+        uses: slackapi/slack-github-action@v1.26.0
+        with:
+          payload: |
+            {
+              "text": "🚨 *BACKUP FAILED* — Aswaq production backup did not complete!\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View run>"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+        continue-on-error: true
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Manual command (workflow_dispatch trigger)
+  # ──────────────────────────────────────────────────────────────────────────
+  manual-command:
+    name: 🛠️ ${{ inputs.command }} (${{ inputs.environment }})
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    environment: ${{ inputs.environment }}   # Requires approval for production DR
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install PostgreSQL client tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y postgresql-client-16 gnupg
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: >-
+            ${{ inputs.environment == 'production'
+                && secrets.AWS_ACCESS_KEY_ID_PROD
+                || secrets.AWS_ACCESS_KEY_ID_STAGING }}
+          aws-secret-access-key: >-
+            ${{ inputs.environment == 'production'
+                && secrets.AWS_SECRET_ACCESS_KEY_PROD
+                || secrets.AWS_SECRET_ACCESS_KEY_STAGING }}
+          aws-region: me-south-1
+
+      - name: Update kubeconfig
+        if: ${{ inputs.command != 'backup' && inputs.command != 'verify' }}
+        run: |
+          CLUSTER=${{ inputs.environment == 'production' && 'aswaq-cluster' || 'aswaq-cluster-staging' }}
+          aws eks update-kubeconfig --name $CLUSTER --region me-south-1
+
+      - name: Run command
+        run: |
+          chmod +x scripts/backup-restore.sh
+          ARGS="${{ inputs.command }} --env ${{ inputs.environment }}"
+          if [ -n "${{ inputs.backup_key }}" ]; then
+            ARGS="$ARGS --backup-key ${{ inputs.backup_key }}"
+          fi
+          if [ "${{ inputs.dry_run }}" == "true" ]; then
+            ARGS="$ARGS --dry-run"
+          fi
+          ./scripts/backup-restore.sh $ARGS
+
+      - name: Upload log
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backup-restore-log-${{ github.run_id }}
+          path: logs/backup-restore-*.log
+          retention-days: 90
+
+      - name: Command summary
+        run: |
+          echo "## 💾 Backup/Restore: ${{ inputs.command }}" >> $GITHUB_STEP_SUMMARY
+          echo "| | |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| Command | ${{ inputs.command }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Environment | ${{ inputs.environment }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Dry Run | ${{ inputs.dry_run }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Backup Key | ${{ inputs.backup_key || 'N/A' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Triggered by | @${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY

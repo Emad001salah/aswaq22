@@ -1,0 +1,11 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "aswaq.fullname" . }}-pdb
+  labels:
+    {{- include "aswaq.labels" . | nindent 4 }}
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      {{- include "aswaq.selectorLabels" . | nindent 6 }}
