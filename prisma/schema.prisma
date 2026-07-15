@@ -36,6 +36,7 @@ model User {
   updatedAt        DateTime            @updatedAt @map("updated_at")
   
   ads              Ad[]
+placements       AdPlacement[] @relation("UserAdvertisements")
   sentMessages     Message[]           @relation("SentMessages")
   receivedMessages Message[]           @relation("ReceivedMessages")
   notifications    Notification[]
@@ -679,7 +680,7 @@ model AdPlacement {
   updatedAt   DateTime @updatedAt
 
   adSlot    AdSlot @relation(fields: [adSlotId], references: [id])
-  advertiser User @relation(fields: [advertiserId], references: [id])
+  advertiser User @relation("UserAdvertisements", fields: [advertiserId], references: [id])
 
   @@map("ad_placements")
 }
