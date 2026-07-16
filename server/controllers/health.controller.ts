@@ -22,13 +22,15 @@ export const HealthController = (): Router => {
   router.get('/', async (req: Request, res: Response) => {
     const startTime = Date.now();
     const checks: Record<string, 'up' | 'down'> = {};
+    const errors: Record<string, string> = {};
 
     // ── 1. Database ──────────────────────────────────────────────────────────
     try {
       await prisma.$queryRaw`SELECT 1`;
       checks.database = 'up';
-    } catch {
+    } catch (err: any) {
       checks.database = 'down';
+      errors.database = err.message || String(err);
     }
 
     // ── 2. Redis ─────────────────────────────────────────────────────────────
@@ -39,13 +41,23 @@ export const HealthController = (): Router => {
         checks.redis = 'up';
       } else {
         checks.redis = 'down';
+        errors.redis = 'Redis client is null (not initialized)';
       }
-    } catch {
+    } catch (err: any) {
       checks.redis = 'down';
+      errors.redis = err.message || String(err);
     }
 
     // ── 3. Meilisearch ───────────────────────────────────────────────────────
-    checks.search = searchEngine.isAvailable() ? 'up' : 'down';
+    try {
+      checks.search = searchEngine.isAvailable() ? 'up' : 'down';
+      if (checks.search === 'down') {
+        errors.search = 'Meilisearch engine reported isAvailable = false';
+      }
+    } catch (err: any) {
+      checks.search = 'down';
+      errors.search = err.message || String(err);
+    }
 
     // ── 4. Outbox Worker ─────────────────────────────────────────────────────
     checks.outbox = isOutboxWorkerRunning() ? 'up' : 'down';
@@ -73,6 +85,7 @@ export const HealthController = (): Router => {
       version: process.env.npm_package_version || '1.0.0',
       services: checks,
       checks, // duplicated to match status page expects checks directly
+      errors, // include detailed error descriptions
       memory: {
         heapUsedMB:      memoryStats.heapUsedMB,
         heapLimitMB:     memoryStats.heapLimitMB,
