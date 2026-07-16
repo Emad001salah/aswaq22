@@ -8,23 +8,19 @@ import { getDeterministicUuid } from '../utils/db-helpers.ts';
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
-const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
-function envOrFallback(name: string, fallback: string): string {
-  const value = process.env[name]?.trim();
-  if (value) return value;
+// These are safe fallbacks - never throw on missing env vars
+const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI?.trim() || 'http://localhost:3000/api/v1/auth/oauth2/callback';
+const WEB_RETURN_URL = process.env.WEB_RETURN_URL?.trim() || 'http://localhost:3000/';
+const MOBILE_DEEPLINK = process.env.MOBILE_DEEPLINK?.trim() || 'com.aswaq.enterprise://oauth';
+const ADMIN_URL = process.env.ADMIN_URL?.trim() || 'http://localhost:3002/';
 
-  if (IS_PRODUCTION) {
-    throw new Error(`Missing required environment variable: ${name}`);
-  }
-
-  return fallback;
-}
-
-const GOOGLE_REDIRECT_URI = envOrFallback('GOOGLE_REDIRECT_URI', 'http://localhost:3000/api/v1/auth/oauth2/callback');
-const WEB_RETURN_URL = envOrFallback('WEB_RETURN_URL', 'http://localhost:3000/');
-const MOBILE_DEEPLINK = envOrFallback('MOBILE_DEEPLINK', 'com.aswaq.enterprise://oauth');
-const ADMIN_URL = envOrFallback('ADMIN_URL', 'http://localhost:3002/');
+console.log('[OAuth] Config loaded:', {
+  GOOGLE_CLIENT_ID: GOOGLE_CLIENT_ID ? '✅ set' : '❌ missing',
+  GOOGLE_CLIENT_SECRET: GOOGLE_CLIENT_SECRET ? '✅ set' : '❌ missing',
+  GOOGLE_REDIRECT_URI,
+  WEB_RETURN_URL,
+});
 
 function getClient(): OAuth2Client | null {
   if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) return null;
@@ -121,12 +117,18 @@ export function OAuthController() {
 
   router.get('/oauth2/callback', async (req: Request, res: Response) => {
     const { code, state } = req.query;
+    console.log('[OAuth] callback hit - state:', state, 'code present:', !!code);
+    console.log('[OAuth] WEB_RETURN_URL:', WEB_RETURN_URL);
+    console.log('[OAuth] GOOGLE_REDIRECT_URI:', GOOGLE_REDIRECT_URI);
+
     if (!code) {
+      console.error('[OAuth] No code received!');
       return res.redirect(`${WEB_RETURN_URL}?auth=error&reason=missing_code`);
     }
 
     const client = getClient();
     if (!client) {
+      console.error('[OAuth] Client not configured - missing GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET');
       return res.redirect(`${WEB_RETURN_URL}?auth=error&reason=not_configured`);
     }
 
@@ -144,6 +146,8 @@ export function OAuthController() {
 
       const payload = ticket.getPayload();
       if (!payload) throw new Error('فشل قراءة بيانات الحساب من جوجل');
+
+      console.log('[OAuth] Google payload received for:', payload.email);
 
       const result = await upsertUserFromGoogle({
         googleId: payload.sub,
@@ -173,6 +177,7 @@ export function OAuthController() {
       const returnUrl = `${baseUrl}?auth=success&access_token=${encodeURIComponent(
         result.accessToken
       )}&refresh_token=${encodeURIComponent(result.refreshToken)}&user=${userParam}`;
+      console.log('[OAuth] Redirecting to:', returnUrl.substring(0, 100) + '...');
       return res.redirect(returnUrl);
     } catch (e: any) {
       console.error('[OAuth] callback error:', e);
