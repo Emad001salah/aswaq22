@@ -63,8 +63,9 @@ export const HealthController = (): Router => {
     checks.outbox = isOutboxWorkerRunning() ? 'up' : 'down';
 
     // ── Summary ──────────────────────────────────────────────────────────────
+    const dbHealthy = checks.database === 'up';
     const allHealthy = Object.values(checks).every((s) => s === 'up');
-    const httpStatus  = allHealthy ? 200 : 503;
+    const httpStatus  = dbHealthy ? 200 : 503; // Return 200 if critical service (DB) is up
     const latencyMs   = Date.now() - startTime;
     const memoryStats = getHeapStats();
 
@@ -76,11 +77,8 @@ export const HealthController = (): Router => {
       heapUsedPercent: memoryStats.heapUsedPercent,
     });
 
-    const dbUrl = process.env.DATABASE_URL || '';
-    const obfuscatedDbUrl = dbUrl.replace(/:([^:@]+)@/, ':***@');
-
     res.status(httpStatus).json({
-      status: allHealthy ? 'healthy' : 'degraded',
+      status: dbHealthy ? (allHealthy ? 'healthy' : 'degraded') : 'down',
       uptime: Math.floor(process.uptime()),
       uptimeHuman: formatUptime(process.uptime()),
       latencyMs,
@@ -88,14 +86,7 @@ export const HealthController = (): Router => {
       version: process.env.npm_package_version || '1.0.0',
       services: checks,
       checks, // duplicated to match status page expects checks directly
-      errors, // include detailed error descriptions
-      debug: {
-        DATABASE_URL_PREVIEW: obfuscatedDbUrl,
-        REDIS_HOST: process.env.REDIS_HOST || 'not set',
-        REDIS_PORT: process.env.REDIS_PORT || 'not set',
-        MEILI_HOST: process.env.MEILI_HOST || 'not set',
-        MEILISEARCH_HOST: process.env.MEILISEARCH_HOST || 'not set',
-      },
+      errors: dbHealthy ? undefined : errors, // only expose errors if DB is actually down
       memory: {
         heapUsedMB:      memoryStats.heapUsedMB,
         heapLimitMB:     memoryStats.heapLimitMB,
