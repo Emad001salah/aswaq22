@@ -76,6 +76,9 @@ export const HealthController = (): Router => {
       heapUsedPercent: memoryStats.heapUsedPercent,
     });
 
+    const dbUrl = process.env.DATABASE_URL || '';
+    const obfuscatedDbUrl = dbUrl.replace(/:([^:@]+)@/, ':***@');
+
     res.status(httpStatus).json({
       status: allHealthy ? 'healthy' : 'degraded',
       uptime: Math.floor(process.uptime()),
@@ -86,6 +89,13 @@ export const HealthController = (): Router => {
       services: checks,
       checks, // duplicated to match status page expects checks directly
       errors, // include detailed error descriptions
+      debug: {
+        DATABASE_URL_PREVIEW: obfuscatedDbUrl,
+        REDIS_HOST: process.env.REDIS_HOST || 'not set',
+        REDIS_PORT: process.env.REDIS_PORT || 'not set',
+        MEILI_HOST: process.env.MEILI_HOST || 'not set',
+        MEILISEARCH_HOST: process.env.MEILISEARCH_HOST || 'not set',
+      },
       memory: {
         heapUsedMB:      memoryStats.heapUsedMB,
         heapLimitMB:     memoryStats.heapLimitMB,
