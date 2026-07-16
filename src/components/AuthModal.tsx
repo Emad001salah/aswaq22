@@ -245,9 +245,9 @@ export default function AuthModal({ isOpen, onClose, onSuccess, isDark }: AuthMo
         setLoading(false);
       }
     } else {
-      // Use relative URL so the redirect goes through the current server
-      // (localhost:3000 in dev, aswaq22.com in production)
-      window.location.href = `/api/v1/auth/oauth2/google?state=web`;
+        // Use absolute URL based on API_ORIGIN (or fallback to current origin) for production redirects
+        const redirectBase = API_ORIGIN || window.location.origin;
+        window.location.href = `${redirectBase}/api/v1/auth/oauth2/google?state=web`;
     }
   };
 
