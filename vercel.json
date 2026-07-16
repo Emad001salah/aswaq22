@@ -4,6 +4,7 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "rewrites": [
+    { "source": "/api/(.*)", "destination": "https://api.aswaq22.com/api/$1" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
