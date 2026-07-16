@@ -210,7 +210,7 @@ export default function AdminPanel({
     return undefined;
   };
 
-  // ── Auth & CSRF Helper: always attach x-user-email and x-csrf-token ──
+  // ── Auth & CSRF Helper: always attach x-user-email, Authorization and x-csrf-token ──
   const adminFetch = useCallback(
     async (url: string, opts: RequestInit = {}) => {
       // 1. Get CSRF token from cookie
@@ -229,11 +229,14 @@ export default function AdminPanel({
         }
       }
 
+      const token = localStorage.getItem('aswaq_access_token') || localStorage.getItem('auth_token') || '';
+
       return fetch(url, {
         credentials: 'include',
         ...opts,
         headers: {
           'x-user-email': currentUser?.email || '',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
           ...(csrfToken ? { 'x-csrf-token': csrfToken } : {}),
           ...(opts.headers as Record<string, string> || {}),
         },
