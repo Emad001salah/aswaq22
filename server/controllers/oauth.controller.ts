@@ -169,7 +169,8 @@ export function OAuthController() {
       }
 
       // Default Web Client redirect
-      const returnUrl = `${WEB_RETURN_URL}?auth=success&access_token=${encodeURIComponent(
+      const baseUrl = WEB_RETURN_URL || `${req.protocol}://${req.get('host')}/`;
+      const returnUrl = `${baseUrl}?auth=success&access_token=${encodeURIComponent(
         result.accessToken
       )}&refresh_token=${encodeURIComponent(result.refreshToken)}&user=${userParam}`;
       return res.redirect(returnUrl);
