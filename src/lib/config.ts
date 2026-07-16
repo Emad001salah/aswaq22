@@ -4,7 +4,7 @@
  * production app always talks to the production backend over HTTPS.
  */
 
-const rawApiUrl = (import.meta.env.VITE_API_URL as string | undefined) || 'https://aswaq22.com';
+const rawApiUrl = (import.meta.env.VITE_API_URL as string | undefined) || 'https://api.aswaq22.com';
 
 /** API origin without any `/api` suffix or trailing slash, e.g. https://aswaq22.com */
 export const API_ORIGIN = rawApiUrl

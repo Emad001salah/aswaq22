@@ -48,7 +48,7 @@ export const loadGoogleMapsScript = (): Promise<any> => {
       };
     }
 
-    const apiKey = (import.meta as any).env.VITE_GOOGLE_MAPS_API_KEY || '';
+    const apiKey = (import.meta as any).env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSyCiNKstQCpNSrtsyj8GbjY-cPQcwRU5IcY';
     if (!apiKey) {
       console.warn('[GoogleMaps] API Key is missing. Maps will render in mock/development mode.');
       resolve(null);
