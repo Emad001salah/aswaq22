@@ -1,18 +1,12 @@
 {
   "version": 2,
+  "installCommand": "npm install --legacy-peer-deps",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "builds": [
     {
       "src": "server.ts",
-      "use": "@vercel/node",
-      "config": {
-        "includeFiles": ["server/**", "src/lib/prisma.ts", "prisma/**"]
-      }
-    },
-    {
-      "src": "dist/**",
-      "use": "@vercel/static"
+      "use": "@vercel/node"
     }
   ],
   "routes": [
@@ -21,7 +15,15 @@
       "dest": "/server.ts"
     },
     {
-      "src": "/(.*)",
+      "src": "/socket.io/(.*)",
+      "dest": "/server.ts"
+    },
+    {
+      "src": "^/assets/(.*)",
+      "dest": "/dist/assets/$1"
+    },
+    {
+      "src": "^/(.*\\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|map))",
       "dest": "/dist/$1"
     },
     {
