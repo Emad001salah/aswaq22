@@ -2,15 +2,15 @@ import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, initializeAuth, indexedDBLocalPersistence } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { Capacitor } from '@capacitor/core';
+import { FIREBASE_CONFIG } from '@/src/config/firebase.config';
 
-// Firebase config — env vars injected at build time by Vite, with hardcoded fallback
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'AIzaSyCiNKstQCpNSrtsyj8GbjY-cPQcwRU5IcY',
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'aswaq-48f3f.firebaseapp.com',
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'aswaq-48f3f',
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'aswaq-48f3f.firebasestorage.app',
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '688414669812',
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || '1:688414669812:web:e5096df993e3d1ac27d7a1',
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || FIREBASE_CONFIG.apiKey,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || FIREBASE_CONFIG.authDomain,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || FIREBASE_CONFIG.projectId,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || FIREBASE_CONFIG.storageBucket,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || FIREBASE_CONFIG.messagingSenderId,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || FIREBASE_CONFIG.appId,
 };
 
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
