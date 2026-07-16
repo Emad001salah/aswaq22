@@ -115,7 +115,7 @@ export function OAuthController() {
     return res.redirect(url);
   });
 
-  router.get('/oauth2/callback', async (req: Request, res: Response) => {
+  router.get(['/oauth2/callback', '/oauth2/google/callback'], async (req: Request, res: Response) => {
     const { code, state } = req.query;
     console.log('[OAuth] callback hit - state:', state, 'code present:', !!code);
     console.log('[OAuth] WEB_RETURN_URL:', WEB_RETURN_URL);
