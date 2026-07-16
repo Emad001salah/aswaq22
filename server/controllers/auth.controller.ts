@@ -17,19 +17,6 @@ export function AuthController() {
   const OTP_TTL_SECONDS = 5 * 60;
   const otpFallbackStore = new Map<string, { code: string; expiresAt: Date }>();
 
-  router.get('/google-debug', (req: Request, res: Response) => {
-    const id = process.env.GOOGLE_CLIENT_ID || '';
-    const secret = process.env.GOOGLE_CLIENT_SECRET || '';
-    const redirect = process.env.GOOGLE_REDIRECT_URI || '';
-    return res.json({
-      client_id: id,
-      client_id_len: id.length,
-      client_secret_masked: secret ? `${secret.substring(0, 8)}...${secret.substring(secret.length - 4)}` : 'missing',
-      client_secret_len: secret.length,
-      redirect_uri: redirect,
-    });
-  });
-
   const getOtpKey = (phone: string) => `otp:phone:${phone}`;
 
   router.post('/register', validationMiddleware(RegisterUserDto), async (req: Request, res: Response) => {
