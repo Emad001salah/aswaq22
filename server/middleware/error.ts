@@ -93,10 +93,8 @@ export function errorMiddleware(
     success: false,
     status: 500,
     error: 'Internal Server Error',
-    message:
-      process.env.NODE_ENV === 'production'
-        ? 'An unexpected error occurred. Please try again later.'
-        : err.message,
+    message: err.message,
+    stack: err.stack, // Expose stack trace for debugging in production temporarily
     correlationId,
   });
 }
