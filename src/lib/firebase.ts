@@ -2,22 +2,16 @@ import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, initializeAuth, indexedDBLocalPersistence } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { Capacitor } from '@capacitor/core';
+
+// Firebase config — env vars injected at build time by Vite, with hardcoded fallback
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'AIzaSyCiNKstQCpNSrtsyj8GbjY-cPQcwRU5IcY',
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'aswaq-48f3f.firebaseapp.com',
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'aswaq-48f3f',
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'aswaq-48f3f.firebasestorage.app',
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '688414669812',
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || '1:688414669812:web:e5096df993e3d1ac27d7a1',
 };
-
-const missingFirebaseVars = Object.entries(firebaseConfig)
-  .filter(([, value]) => !value)
-  .map(([key]) => key);
-
-if (import.meta.env.PROD && missingFirebaseVars.length > 0) {
-  throw new Error(`Missing Firebase env vars: ${missingFirebaseVars.join(', ')}`);
-}
 
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
