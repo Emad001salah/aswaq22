@@ -186,7 +186,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess, isDark }: AuthMo
     if (!recaptchaRef.current) {
       try {
         const verifier = new RecaptchaVerifier(auth, 'auth-modal-recaptcha', {
-          size: 'invisible',
+          size: 'normal',
           callback: () => {},
           'expired-callback': () => { recaptchaRef.current = null; }
         });
