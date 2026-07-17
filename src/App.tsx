@@ -3546,7 +3546,9 @@ useEffect(() => {
                                   <div className="text-right">
                                     <span className="text-xs font-extrabold text-white block group-hover:text-fuchsia-400 transition-colors">{post.authorName}</span>
                                     <div className={`flex items-center gap-2 ${isRtl ? 'flex-row' : 'flex-row-reverse'}`}>
-                                      <span className="text-[9px] text-fuchsia-400 font-mono font-bold">@{post.authorHandle}</span>
+                                      {(post.authorHandle === 'تاجر_موثق' || post.authorHandle === 'verified_merchant') && (
+                                        <span className="text-[9px] text-fuchsia-400 font-mono font-bold">@{post.authorHandle}</span>
+                                      )}
                                       {post.createdAt && (
                                         <span className="text-[8px] text-slate-500 font-bold whitespace-nowrap">
                                           ⏱️ {new Date(post.createdAt).toLocaleDateString(isRtl ? 'ar-YE' : 'en-US', {month: 'numeric', day: 'numeric'})} {new Date(post.createdAt).toLocaleTimeString(isRtl ? 'ar-YE' : 'en-US', {hour: '2-digit', minute: '2-digit'})}
@@ -3565,19 +3567,21 @@ useEffect(() => {
                                         <Trash2 size={14} />
                                       </button>
                                     )}
-                                    <button
-                                      onClick={() => {
-                                         toggleFollowSeller(post.authorId);
-                                         addToast(
-                                           followedSellers.includes(post.authorId) ? t('social.unfollowed') : t('social.followedSuccess'),
-                                           followedSellers.includes(post.authorId) ? t('social.unfollowedDetail', { name: post.authorName }) : t('social.followedDetail', { name: post.authorName }),
-                                           "success"
-                                         );
-                                      }}
-                                      className={`px-3 py-1 text-[9px] font-black rounded-lg transition-all border-none ${followedSellers.includes(post.authorId) ? "bg-slate-900 text-slate-400" : "bg-fuchsia-500/20 hover:bg-fuchsia-500/30 text-fuchsia-400"}`}
-                                    >
-                                      {followedSellers.includes(post.authorId) ? t('social.following') : t('social.followMerchant')}
-                                    </button>
+                                    {post.authorId !== currentUser?.id && (post.authorHandle === 'تاجر_موثق' || post.authorHandle === 'verified_merchant') && (
+                                      <button
+                                        onClick={() => {
+                                           toggleFollowSeller(post.authorId);
+                                           addToast(
+                                             followedSellers.includes(post.authorId) ? t('social.unfollowed') : t('social.followedSuccess'),
+                                             followedSellers.includes(post.authorId) ? t('social.unfollowedDetail', { name: post.authorName }) : t('social.followedDetail', { name: post.authorName }),
+                                             "success"
+                                           );
+                                        }}
+                                        className={`px-3 py-1 text-[9px] font-black rounded-lg transition-all border-none ${followedSellers.includes(post.authorId) ? "bg-slate-900 text-slate-400" : "bg-fuchsia-500/20 hover:bg-fuchsia-500/30 text-fuchsia-400"}`}
+                                      >
+                                        {followedSellers.includes(post.authorId) ? t('social.following') : t('social.followMerchant')}
+                                      </button>
+                                    )}
                                   </div>
                               </div>
 
