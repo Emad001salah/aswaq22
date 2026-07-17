@@ -877,7 +877,7 @@ export class App {
         const cacheKey = `admin:stats:${market || 'all'}`;
         
         try {
-          const { redis } = await import('../src/lib/redis.ts');
+          
           const cachedStats = await redis.get(cacheKey);
           if (cachedStats) {
             return res.json(JSON.parse(cachedStats));
@@ -942,7 +942,7 @@ export class App {
         };
 
         try {
-          const { redis } = await import('../src/lib/redis.ts');
+          
           await redis.set(cacheKey, JSON.stringify(statsResult), 300); // 5 min cache
         } catch (cacheErr) {
           logger.warn(`[AdminStats] Redis write failed: ${cacheErr}`);
@@ -1359,7 +1359,7 @@ export class App {
     const getPlatformSettings = async () => {
       const cacheKey = 'system:settings';
       try {
-        const { redis } = await import('../src/lib/redis.ts');
+        
         const cached = await redis.get(cacheKey);
         if (cached) {
           return JSON.parse(cached);
@@ -1375,7 +1375,7 @@ export class App {
         if (dbSettings) {
           const parsedSettings = JSON.parse(dbSettings.value);
           try {
-            const { redis } = await import('../src/lib/redis.ts');
+            
             await redis.set(cacheKey, dbSettings.value, 86400);
           } catch (cacheErr) {
             logger.warn(`[SettingsCache] Redis write failed: ${cacheErr}`);
@@ -1404,7 +1404,7 @@ export class App {
         create: { key: 'platform_settings', value: settingsStr }
       });
       try {
-        const { redis } = await import('../src/lib/redis.ts');
+        
         await redis.set('system:settings', settingsStr, 86400);
       } catch (cacheErr) {
         logger.warn(`[SettingsCache] Redis cache update failed: ${cacheErr}`);
@@ -1696,7 +1696,7 @@ export class App {
       this.httpServer.close(() => resolve());
     });
 
-    const { redis } = await import('../src/lib/redis.ts');
+    
     await redis.quit();
 
     if (process.env.NODE_ENV !== 'test') {
