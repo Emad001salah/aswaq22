@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { X, MapPin, Calendar, Star, ShieldCheck, Mail, Phone, MessageSquare, ExternalLink, Camera, Upload, Trash2, Award } from 'lucide-react';
+import { X, MapPin, Calendar, Star, ShieldCheck, Mail, Phone, MessageSquare, ExternalLink, Camera, Upload, Trash2, Award, Loader2 } from 'lucide-react';
 import { User, Ad, UserRole } from '../types.ts';
 import { CITIES } from '../data.ts';
 import { Avatar } from './Avatar.tsx';
@@ -51,6 +51,9 @@ export default function UserProfileModal({
   // Use the city from the user's first ad, or show a generic platform status
   const city = userAds.length > 0 && userAds[0].city ? (CITIES.find(c => c.id === userAds[0].city)?.nameAr || userAds[0].city) : 'عضو في المنصة';
 
+   const [uploadingAvatar, setUploadingAvatar] = React.useState(false);
+   const [uploadingCover, setUploadingCover] = React.useState(false);
+
   const handleSave = async () => {
     if (!onUpdateProfile) return;
     setIsSaving(true);
@@ -64,17 +67,40 @@ export default function UserProfileModal({
     }
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, type: 'avatar' | 'cover') => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'avatar' | 'cover') => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
+    if (!file) return;
+
+    if (type === 'avatar') setUploadingAvatar(true);
+    else setUploadingCover(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const token = localStorage.getItem('aswaq_access_token') || localStorage.getItem('auth_token');
+      const res = await fetch('/api/storage/upload', {
+        method: 'POST',
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: formData
+      });
+
+      if (res.ok) {
+        const data = await res.json();
         setEditForm(prev => ({
           ...prev,
-          [type === 'avatar' ? 'avatar' : 'coverPhoto']: reader.result as string
+          [type === 'avatar' ? 'avatar' : 'coverPhoto']: data.url
         }));
-      };
-      reader.readAsDataURL(file);
+      } else {
+        console.error('Upload failed');
+      }
+    } catch (err) {
+      console.error('Error uploading profile media:', err);
+    } finally {
+      if (type === 'avatar') setUploadingAvatar(false);
+      else setUploadingCover(false);
     }
   };
 
@@ -108,13 +134,20 @@ export default function UserProfileModal({
             {/* Cover Edit Button */}
             {isEditing && (
               <div className="absolute inset-0 bg-black/40 flex items-center justify-center transition-all z-10">
-                <button 
-                  onClick={() => coverInputRef.current?.click()}
-                  className="bg-white/20 backdrop-blur-xl border border-white/20 px-5 py-2.5 rounded-2xl flex items-center gap-3 text-white text-xs font-black hover:bg-white/30 transition-all shadow-2xl"
-                >
-                  <Camera className="w-4 h-4" />
-                  تغيير صورة الحائط
-                </button>
+                {uploadingCover ? (
+                  <div className="flex flex-col items-center gap-2 text-white">
+                    <Loader2 className="w-8 h-8 animate-spin text-emerald-400" />
+                    <span className="text-[10px] font-black">{isRtl ? 'جاري رفع صورة الحائط...' : 'Uploading Cover...'}</span>
+                  </div>
+                ) : (
+                  <button 
+                    onClick={() => coverInputRef.current?.click()}
+                    className="bg-white/20 backdrop-blur-xl border border-white/20 px-5 py-2.5 rounded-2xl flex items-center gap-3 text-white text-xs font-black hover:bg-white/30 transition-all shadow-2xl"
+                  >
+                    <Camera className="w-4 h-4" />
+                    تغيير صورة الحائط
+                  </button>
+                )}
                 <input 
                   type="file"
                   ref={coverInputRef}
@@ -148,11 +181,18 @@ export default function UserProfileModal({
                   {/* Avatar Edit Overlay */}
                   {isEditing && (
                     <button 
-                      onClick={() => fileInputRef.current?.click()}
+                      onClick={() => !uploadingAvatar && fileInputRef.current?.click()}
+                      disabled={uploadingAvatar}
                       className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white text-[10px] font-black gap-2 transition-opacity opacity-0 group-hover:opacity-100"
                     >
-                      <Upload className="w-6 h-6" />
-                      تغيير الصورة
+                      {uploadingAvatar ? (
+                        <Loader2 className="w-6 h-6 animate-spin text-emerald-400" />
+                      ) : (
+                        <>
+                          <Upload className="w-6 h-6" />
+                          تغيير الصورة
+                        </>
+                      )}
                     </button>
                   )}
                   <input 
@@ -318,10 +358,10 @@ export default function UserProfileModal({
                     <div className="flex gap-3 pt-4">
                       <button 
                         onClick={handleSave}
-                        disabled={isSaving}
+                        disabled={isSaving || uploadingAvatar || uploadingCover}
                         className="flex-1 py-4 rounded-2xl bg-emerald-600 text-white text-[11px] font-black hover:bg-emerald-500 active:scale-95 transition-all disabled:opacity-50 shadow-xl shadow-emerald-600/20"
                       >
-                        {isSaving ? 'جاري الحفظ...' : 'حفظ التغييرات'}
+                        {isSaving ? 'جاري الحفظ...' : (uploadingAvatar || uploadingCover) ? 'جاري رفع الملفات...' : 'حفظ التغييرات'}
                       </button>
                       <button 
                         onClick={() => {

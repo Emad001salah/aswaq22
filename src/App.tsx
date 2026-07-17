@@ -1759,9 +1759,72 @@ useEffect(() => {
     );
   };
 
+  const dataURLtoFile = (dataurl: string, filename: string): File => {
+    const arr = dataurl.split(',');
+    const mime = arr[0].match(/:(.*?);/)?.[1] || 'image/jpeg';
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new File([u8arr], filename, { type: mime });
+  };
+
   const handleUpdateProfile = async (updatedData: Partial<User>) => {
     if (!currentUser) return;
+    
+    const hasBase64 = 
+      (updatedData.avatar && updatedData.avatar.startsWith('data:image/')) || 
+      (updatedData.coverPhoto && updatedData.coverPhoto.startsWith('data:image/'));
+
     try {
+      let finalData = { ...updatedData };
+
+      if (hasBase64) {
+        addToast("جاري الرفع", "جاري تحسين ورفع الصور الشخصية والحائط سحابياً...", "info");
+        
+        // 1. Process avatar
+        if (updatedData.avatar && updatedData.avatar.startsWith('data:image/')) {
+          try {
+            const file = dataURLtoFile(updatedData.avatar, 'avatar.jpg');
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            const res = await fetch('/api/storage/upload', {
+              method: 'POST',
+              body: formData
+            });
+            if (res.ok) {
+              const resData = await res.json();
+              finalData.avatar = resData.url;
+            }
+          } catch (err) {
+            console.error('Failed to auto-upload avatar:', err);
+          }
+        }
+
+        // 2. Process coverPhoto
+        if (updatedData.coverPhoto && updatedData.coverPhoto.startsWith('data:image/')) {
+          try {
+            const file = dataURLtoFile(updatedData.coverPhoto, 'cover.jpg');
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            const res = await fetch('/api/storage/upload', {
+              method: 'POST',
+              body: formData
+            });
+            if (res.ok) {
+              const resData = await res.json();
+              finalData.coverPhoto = resData.url;
+            }
+          } catch (err) {
+            console.error('Failed to auto-upload cover:', err);
+          }
+        }
+      }
+
       const token = localStorage.getItem('aswaq_access_token') || localStorage.getItem('auth_token');
       
       const getCookie = (name: string): string | undefined => {
@@ -1779,7 +1842,7 @@ useEffect(() => {
           ...(token ? { "Authorization": `Bearer ${token}` } : {}),
           ...(csrfToken ? { "x-csrf-token": csrfToken } : {})
         },
-        body: JSON.stringify({ ...currentUser, ...updatedData }),
+        body: JSON.stringify({ ...currentUser, ...finalData }),
       });
       if (response.ok) {
         const updatedUser = await response.json();
@@ -1790,6 +1853,10 @@ useEffect(() => {
         setCurrentUser(formattedUser);
         localStorage.setItem('aswaq_current_user', JSON.stringify(formattedUser));
         addToast("تم التحديث", "تم تحديث بيانات ملفك الشخصي بنجاح", "success");
+      } else {
+        const responseText = await response.text();
+        console.error("Profile update failed server response:", responseText);
+        addToast("خطأ", "فشل تحديث الملف الشخصي في خادم أسواق", "notification");
       }
     } catch (e) {
       console.error("Profile update failed", e);

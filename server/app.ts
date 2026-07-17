@@ -874,6 +874,18 @@ export class App {
           ? adminUser.managedCountry 
           : reqMarket;
 
+        const cacheKey = `admin:stats:${market || 'all'}`;
+        
+        try {
+          const { redis } = await import('../src/lib/redis.ts');
+          const cachedStats = await redis.get(cacheKey);
+          if (cachedStats) {
+            return res.json(JSON.parse(cachedStats));
+          }
+        } catch (cacheErr) {
+          logger.warn(`[AdminStats] Redis read failed: ${cacheErr}`);
+        }
+
         let cityIds: string[] = [];
         if (market && market !== 'all') {
           const selectedMarket = MARKETS[market];
@@ -920,14 +932,23 @@ export class App {
           return acc;
         }, {});
 
-        res.json({
+        const statsResult = {
           totalAds,
           activeAds,
           totalUsers,
           verifiedUsers,
           totalChats,
           categoryStats,
-        });
+        };
+
+        try {
+          const { redis } = await import('../src/lib/redis.ts');
+          await redis.set(cacheKey, JSON.stringify(statsResult), 300); // 5 min cache
+        } catch (cacheErr) {
+          logger.warn(`[AdminStats] Redis write failed: ${cacheErr}`);
+        }
+
+        res.json(statsResult);
       } catch (err) {
         next(err);
       }
@@ -1336,12 +1357,30 @@ export class App {
     });
 
     const getPlatformSettings = async () => {
+      const cacheKey = 'system:settings';
+      try {
+        const { redis } = await import('../src/lib/redis.ts');
+        const cached = await redis.get(cacheKey);
+        if (cached) {
+          return JSON.parse(cached);
+        }
+      } catch (cacheErr) {
+        logger.warn(`[SettingsCache] Redis read failed: ${cacheErr}`);
+      }
+
       try {
         const dbSettings = await prisma.systemSetting.findUnique({
           where: { key: 'platform_settings' }
         });
         if (dbSettings) {
-          return JSON.parse(dbSettings.value);
+          const parsedSettings = JSON.parse(dbSettings.value);
+          try {
+            const { redis } = await import('../src/lib/redis.ts');
+            await redis.set(cacheKey, dbSettings.value, 86400);
+          } catch (cacheErr) {
+            logger.warn(`[SettingsCache] Redis write failed: ${cacheErr}`);
+          }
+          return parsedSettings;
         }
       } catch (e) {
         console.error('Failed to read settings from DB:', e);
@@ -1358,11 +1397,18 @@ export class App {
     };
 
     const savePlatformSettings = async (settings: any) => {
+      const settingsStr = JSON.stringify(settings);
       await prisma.systemSetting.upsert({
         where: { key: 'platform_settings' },
-        update: { value: JSON.stringify(settings) },
-        create: { key: 'platform_settings', value: JSON.stringify(settings) }
+        update: { value: settingsStr },
+        create: { key: 'platform_settings', value: settingsStr }
       });
+      try {
+        const { redis } = await import('../src/lib/redis.ts');
+        await redis.set('system:settings', settingsStr, 86400);
+      } catch (cacheErr) {
+        logger.warn(`[SettingsCache] Redis cache update failed: ${cacheErr}`);
+      }
     };
 
     this.app.get('/api/admin/settings', async (req, res) => {
