@@ -503,14 +503,22 @@ useEffect(() => {
     };
   }, []);
 
-  const [platformSettings, setPlatformSettings] = useState({
-    commission: 0,
-    featuredPrice: 5,
-    appName: 'أسواق',
-    logoLetter: 'أ',
-    maintenanceMode: false,
-    pushNotifications: true,
-    logoUrl: ''
+  const [platformSettings, setPlatformSettings] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('aswaq_platform_settings');
+        if (cached) return JSON.parse(cached);
+      } catch (e) {}
+    }
+    return {
+      commission: 0,
+      featuredPrice: 5,
+      appName: 'أسواق',
+      logoLetter: 'أ',
+      maintenanceMode: false,
+      pushNotifications: true,
+      logoUrl: ''
+    };
   });
   const [filteredAds, setFilteredAds] = useState<Ad[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1466,6 +1474,7 @@ useEffect(() => {
       if (response.ok) {
         const data = await response.json();
         setPlatformSettings(data);
+        localStorage.setItem('aswaq_platform_settings', JSON.stringify(data));
       }
     } catch (e) {
       console.error("Failed to load settings", e);
