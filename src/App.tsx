@@ -1481,16 +1481,19 @@ useEffect(() => {
     fetchPlatformSettings();
   }, []);
 
-  // 1.1. Dynamic Favicon update when logoUrl changes
+  // 1.1. Dynamic Favicon update when logoUrl changes (forces browser update by removing old links and using timestamp)
   useEffect(() => {
     if (platformSettings?.logoUrl) {
-      let link: HTMLLinkElement | null = document.querySelector("link[rel*='icon']");
-      if (!link) {
-        link = document.createElement('link');
-        link.rel = 'icon';
-        document.getElementsByTagName('head')[0].appendChild(link);
-      }
-      link.href = platformSettings.logoUrl;
+      // Remove any existing icons
+      const existingIcons = document.querySelectorAll("link[rel*='icon']");
+      existingIcons.forEach(el => el.parentNode?.removeChild(el));
+
+      // Append new fresh icon link with cache-busting timestamp
+      const link = document.createElement('link');
+      link.type = 'image/png';
+      link.rel = 'shortcut icon';
+      link.href = `${platformSettings.logoUrl}?v=${Date.now()}`;
+      document.getElementsByTagName('head')[0].appendChild(link);
     }
   }, [platformSettings?.logoUrl]);
 
@@ -3711,9 +3714,9 @@ useEffect(() => {
                     </p>
                   </div>
                   <div className="bg-gradient-to-br from-zinc-900 to-black p-8 rounded-[2.5rem] border border-zinc-800 text-center flex flex-col items-center justify-center space-y-4">
-                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center overflow-hidden relative z-10 shadow-2xl">
+                    <div className="w-24 h-24 rounded-3xl flex items-center justify-center overflow-hidden relative z-10 shadow-2xl bg-zinc-900/50 border border-zinc-800 p-1.5">
                       {platformSettings?.logoUrl ? (
-                        <img src={platformSettings.logoUrl} alt="Logo" className="w-full h-full object-cover" />
+                        <img src={platformSettings.logoUrl} alt="Logo" className="w-full h-full object-contain" />
                       ) : (
                         <div className="w-full h-full bg-yellow-500 flex items-center justify-center shadow-yellow-500/20">
                           <span className="text-black font-black text-3xl">
