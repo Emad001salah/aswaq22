@@ -113,7 +113,7 @@ export default function Navbar({
   const isRtl = i18n.language === 'ar';
 
   return (
-    <nav className={`sticky top-0 z-[2000] pt-safe border-b transition-all duration-300 ${isDark ? 'glass-dark border-slate-800/85' : 'glass-light border-slate-200'} ${isRtl ? 'dir-rtl text-right' : 'dir-ltr text-left'}`}>
+    <nav className={`sticky top-0 ${mobileMenuOpen ? 'z-[4000]' : 'z-[2000]'} pt-safe border-b transition-all duration-300 ${isDark ? 'glass-dark border-slate-800/85' : 'glass-light border-slate-200'} ${isRtl ? 'dir-rtl text-right' : 'dir-ltr text-left'}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
           
