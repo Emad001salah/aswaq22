@@ -137,7 +137,7 @@ export default function UserProfileModal({
                 {uploadingCover ? (
                   <div className="flex flex-col items-center gap-2 text-white">
                     <Loader2 className="w-8 h-8 animate-spin text-emerald-400" />
-                    <span className="text-[10px] font-black">{isRtl ? 'جاري رفع صورة الحائط...' : 'Uploading Cover...'}</span>
+                    <span className="text-[10px] font-black">جاري رفع صورة الحائط...</span>
                   </div>
                 ) : (
                   <button 
