@@ -114,7 +114,11 @@ const AdMap = forwardRef<AdMapHandle, AdMapProps>(function AdMap(props, ref) {
         }
       },
       () => alert(isRtl ? 'تعذر الحصول على الموقع' : 'Could not get location'),
-      { enableHighAccuracy: true, timeout: 8000 }
+      { 
+        enableHighAccuracy: true, 
+        timeout: 15000,
+        maximumAge: 0 
+      }
     );
   };
 

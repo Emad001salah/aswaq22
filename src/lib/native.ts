@@ -92,7 +92,8 @@ export const getDeviceLocation = async () => {
       
       const position = await Geolocation.getCurrentPosition({
         enableHighAccuracy: true,
-        timeout: 10000
+        timeout: 15000,
+        maximumAge: 0
       });
       return {
         lat: position.coords.latitude,
@@ -113,7 +114,11 @@ export const getDeviceLocation = async () => {
     navigator.geolocation.getCurrentPosition(
       (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
       (err) => reject(err),
-      { enableHighAccuracy: true, timeout: 10000 }
+      { 
+        enableHighAccuracy: true, 
+        timeout: 15000,
+        maximumAge: 0 
+      }
     );
   });
 };
