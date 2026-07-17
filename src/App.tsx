@@ -1481,6 +1481,19 @@ useEffect(() => {
     fetchPlatformSettings();
   }, []);
 
+  // 1.1. Dynamic Favicon update when logoUrl changes
+  useEffect(() => {
+    if (platformSettings?.logoUrl) {
+      let link: HTMLLinkElement | null = document.querySelector("link[rel*='icon']");
+      if (!link) {
+        link = document.createElement('link');
+        link.rel = 'icon';
+        document.getElementsByTagName('head')[0].appendChild(link);
+      }
+      link.href = platformSettings.logoUrl;
+    }
+  }, [platformSettings?.logoUrl]);
+
   const fetchPromoVideos = async () => {
     try {
       const response = await fetch("/api/promo");
@@ -3698,10 +3711,16 @@ useEffect(() => {
                     </p>
                   </div>
                   <div className="bg-gradient-to-br from-zinc-900 to-black p-8 rounded-[2.5rem] border border-zinc-800 text-center flex flex-col items-center justify-center space-y-4">
-                    <div className="w-16 h-16 bg-yellow-500 rounded-2xl flex items-center justify-center shadow-2xl shadow-yellow-500/20">
-                      <span className="text-black font-black text-3xl">
-                        {isRtl ? currentMarket.labelAr[0] : currentMarket.labelEn[0]}
-                      </span>
+                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center overflow-hidden relative z-10 shadow-2xl">
+                      {platformSettings?.logoUrl ? (
+                        <img src={platformSettings.logoUrl} alt="Logo" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full bg-yellow-500 flex items-center justify-center shadow-yellow-500/20">
+                          <span className="text-black font-black text-3xl">
+                            {platformSettings?.logoLetter || (isRtl ? currentMarket.labelAr[0] : currentMarket.labelEn[0])}
+                          </span>
+                        </div>
+                      )}
                     </div>
                     <div>
                       <h4 className="text-xl font-black mb-1 tracking-tighter text-white">
