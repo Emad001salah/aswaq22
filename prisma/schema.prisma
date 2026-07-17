@@ -657,7 +657,7 @@ model AuditLog {
 }
 
 model AdSlot {
-  id          String   @id @default(uuid())
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   title       String
   description String?
   price       Decimal   @db.Decimal(10,2)
@@ -671,9 +671,9 @@ model AdSlot {
 }
 
 model AdPlacement {
-  id          String   @id @default(uuid())
-  adSlotId    String
-  advertiserId String   // references User (المعلن)
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  adSlotId    String   @db.Uuid
+  advertiserId String   @db.Uuid // references User (المعلن)
   startDate   DateTime
   endDate     DateTime
   linkUrl     String?
@@ -684,4 +684,14 @@ model AdPlacement {
   advertiser User @relation("UserAdvertisements", fields: [advertiserId], references: [id])
 
   @@map("ad_placements")
+}
+
+model SystemSetting {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  key       String   @unique
+  value     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("system_settings")
 }

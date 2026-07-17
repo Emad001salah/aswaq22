@@ -1467,17 +1467,18 @@ export class App {
     });
 
     // ── Admin Settings ────────────────────────────────────────────────────────
-    this.app.get('/api/admin/settings', async (req, res) => {
+    const getPlatformSettings = async () => {
       try {
-        const filePath = path.join(process.cwd(), 'uploads', 'platform_settings.json');
-        if (fs.existsSync(filePath)) {
-          const raw = fs.readFileSync(filePath, 'utf8');
-          return res.json(JSON.parse(raw));
+        const dbSettings = await prisma.systemSetting.findUnique({
+          where: { key: 'platform_settings' }
+        });
+        if (dbSettings) {
+          return JSON.parse(dbSettings.value);
         }
-      } catch (err) {
-        console.error('Failed to read settings file:', err);
+      } catch (e) {
+        console.error('Failed to read settings from DB:', e);
       }
-      res.json({
+      return {
         commission: 0,
         featuredPrice: 5,
         appName: 'أسواق',
@@ -1485,28 +1486,31 @@ export class App {
         maintenanceMode: false,
         pushNotifications: true,
         logoUrl: '',
+      };
+    };
+
+    const savePlatformSettings = async (settings: any) => {
+      await prisma.systemSetting.upsert({
+        where: { key: 'platform_settings' },
+        update: { value: JSON.stringify(settings) },
+        create: { key: 'platform_settings', value: JSON.stringify(settings) }
       });
+    };
+
+    this.app.get('/api/admin/settings', async (req, res) => {
+      try {
+        const settings = await getPlatformSettings();
+        res.json(settings);
+      } catch (err: any) {
+        res.status(500).json({ error: 'Failed loading settings', message: err.message });
+      }
     });
 
     this.app.patch('/api/admin/settings', async (req, res) => {
       try {
-        const filePath = path.join(process.cwd(), 'uploads', 'platform_settings.json');
-        let currentSettings = {
-          commission: 0,
-          featuredPrice: 5,
-          appName: 'أسواق',
-          logoLetter: 'أ',
-          maintenanceMode: false,
-          pushNotifications: true,
-          logoUrl: '',
-        };
-        if (fs.existsSync(filePath)) {
-          try {
-            currentSettings = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-          } catch (e) {}
-        }
+        const currentSettings = await getPlatformSettings();
         const updatedSettings = { ...currentSettings, ...req.body };
-        fs.writeFileSync(filePath, JSON.stringify(updatedSettings, null, 2), 'utf8');
+        await savePlatformSettings(updatedSettings);
         res.json({ success: true, ...updatedSettings });
       } catch (err: any) {
         res.status(500).json({ error: 'Save failed', message: err.message });
@@ -1515,42 +1519,31 @@ export class App {
 
     this.app.put('/api/admin/settings', async (req, res) => {
       try {
-        const filePath = path.join(process.cwd(), 'uploads', 'platform_settings.json');
-        fs.writeFileSync(filePath, JSON.stringify(req.body, null, 2), 'utf8');
+        await savePlatformSettings(req.body);
         res.json({ success: true, ...req.body });
       } catch (err: any) {
         res.status(500).json({ error: 'Save failed', message: err.message });
       }
     });
 
-    // POST /api/admin/settings/logo - Upload platform logo image
+    // POST /api/admin/settings/logo - Upload platform logo image and store in DB as Base64 data URL
     this.app.post('/api/admin/settings/logo', ...adminAccessGuards, upload.single('logo'), async (req, res) => {
       logger.info({ message: `settings/logo upload request received, file present: ${!!req.file}` });
       if (!req.file) {
         return res.status(400).json({ success: false, message: 'لم يتم رفع أي ملف' });
       }
       try {
-        const ext = req.file.originalname.split('.').pop() || 'png';
-        const fileName = `logo_${Date.now()}.${ext}`;
-        const uploadsDir = path.join(process.cwd(), 'uploads');
-        if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
-        const filePath = path.join(uploadsDir, fileName);
-        fs.writeFileSync(filePath, req.file.buffer);
-        const logoUrl = `/uploads/${fileName}`;
+        const base64Data = req.file.buffer.toString('base64');
+        const logoUrl = `data:${req.file.mimetype};base64,${base64Data}`;
 
-        // Update settings file with new logo URL
-        const settingsPath = path.join(process.cwd(), 'uploads', 'platform_settings.json');
-        let currentSettings: any = {};
-        if (fs.existsSync(settingsPath)) {
-          try { currentSettings = JSON.parse(fs.readFileSync(settingsPath, 'utf8')); } catch (e) {}
-        }
+        const currentSettings = await getPlatformSettings();
         currentSettings.logoUrl = logoUrl;
-        fs.writeFileSync(settingsPath, JSON.stringify(currentSettings, null, 2), 'utf8');
+        await savePlatformSettings(currentSettings);
 
-        logger.info({ message: `settings/logo uploaded successfully: ${logoUrl}` });
+        logger.info({ message: `settings/logo uploaded and saved to DB successfully (Base64)` });
         res.json({ success: true, logoUrl });
       } catch (err: any) {
-        logger.error({ message: 'Failed uploading logo', error: err.message });
+        logger.error({ message: 'Failed uploading logo to DB', error: err.message });
         res.status(500).json({ error: 'Failed uploading logo', message: err.message });
       }
     });
