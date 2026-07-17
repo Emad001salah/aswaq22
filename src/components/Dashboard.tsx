@@ -352,19 +352,27 @@ export default function Dashboard({
   const validateStep = (step: number) => {
     if (step === 1) {
       if (!title.trim()) {
-        addToast(isRtl ? "تنبيه" : "Notice", isRtl ? "يرجى إدخال عنوان الإعلان أولاً!" : "Please enter an ad title first!", "error");
+        if (addToast) {
+          addToast(isRtl ? "تنبيه" : "Notice", isRtl ? "يرجى إدخال عنوان الإعلان أولاً!" : "Please enter an ad title first!", "error");
+        }
         return false;
       }
       if (!description.trim()) {
-        addToast(isRtl ? "تنبيه" : "Notice", isRtl ? "يرجى إدخال وصف تفصيلي للإعلان!" : "Please enter an ad description first!", "error");
+        if (addToast) {
+          addToast(isRtl ? "تنبيه" : "Notice", isRtl ? "يرجى إدخال وصف تفصيلي للإعلان!" : "Please enter an ad description first!", "error");
+        }
         return false;
       }
       if (!price || isNaN(Number(price)) || Number(price) <= 0) {
-        addToast(isRtl ? "تنبيه" : "Notice", isRtl ? "يرجى إدخال سعر صحيح أكبر من الصفر!" : "Please enter a valid price greater than zero!", "error");
+        if (addToast) {
+          addToast(isRtl ? "تنبيه" : "Notice", isRtl ? "يرجى إدخال سعر صحيح أكبر من الصفر!" : "Please enter a valid price greater than zero!", "error");
+        }
         return false;
       }
       if (!category) {
-        addToast(isRtl ? "تنبيه" : "Notice", isRtl ? "يرجى اختيار القسم أو الفئة المناسبة!" : "Please select an ad category first!", "error");
+        if (addToast) {
+          addToast(isRtl ? "تنبيه" : "Notice", isRtl ? "يرجى اختيار القسم أو الفئة المناسبة!" : "Please select an ad category first!", "error");
+        }
         return false;
       }
     }
