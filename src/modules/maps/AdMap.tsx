@@ -215,23 +215,76 @@ const AdMap = forwardRef<AdMapHandle, AdMapProps>(function AdMap(props, ref) {
       polylineRef.current = null;
     }
 
-    // 1. Render Ad Markers
+    // 1. Render Ad Markers with Custom Clustering
     const activeAds = ads.filter(ad => ad.status?.toLowerCase() === 'active');
+    const clusters: Array<{
+      centerLat: number;
+      centerLng: number;
+      ads: Ad[];
+    }> = [];
+
+    const CLUSTER_DISTANCE = 0.015; // roughly 1.5km threshold
+
     activeAds.forEach(ad => {
       const lat = Number(ad.latitude) || (ad.city && marketCityCoords[ad.city]?.lat) || 0;
       const lng = Number(ad.longitude) || (ad.city && marketCityCoords[ad.city]?.lng) || 0;
-      if (!lat) return;
+      if (!lat || !lng) return;
 
-      const icon = L.divIcon({
-        className: '',
-        html: `<div style="background:#10b981; color:white; font-size:10px; font-weight:900; padding:4px 8px; border-radius:12px; border:2px solid white; box-shadow:0 2px 5px rgba(0,0,0,0.3); white-space:nowrap;">${ad.price.toLocaleString()} ${getCurrencyAr(ad.currency)}</div>`,
-        iconSize: null,
-        iconAnchor: [30, 15] // approximate center
-      });
+      // Find an existing cluster close enough
+      let foundCluster = false;
+      for (const cluster of clusters) {
+        const dLat = Math.abs(cluster.centerLat - lat);
+        const dLng = Math.abs(cluster.centerLng - lng);
+        if (dLat < CLUSTER_DISTANCE && dLng < CLUSTER_DISTANCE) {
+          cluster.ads.push(ad);
+          // Recalculate cluster center as average coordinates
+          cluster.centerLat = cluster.ads.reduce((sum, a) => sum + (Number(a.latitude) || (a.city && marketCityCoords[a.city]?.lat) || 0), 0) / cluster.ads.length;
+          cluster.centerLng = cluster.ads.reduce((sum, a) => sum + (Number(a.longitude) || (a.city && marketCityCoords[a.city]?.lng) || 0), 0) / cluster.ads.length;
+          foundCluster = true;
+          break;
+        }
+      }
 
-      const marker = L.marker([lat, lng], { icon }).addTo(map);
-      marker.on('click', () => onSelectAd(ad));
-      markersRef.current.push(marker);
+      if (!foundCluster) {
+        clusters.push({
+          centerLat: lat,
+          centerLng: lng,
+          ads: [ad]
+        });
+      }
+    });
+
+    // Draw clusters/markers on map
+    clusters.forEach(cluster => {
+      if (cluster.ads.length === 1) {
+        // Single ad marker - show price tag
+        const ad = cluster.ads[0];
+        const icon = L.divIcon({
+          className: '',
+          html: `<div style="background:#10b981; color:white; font-size:10px; font-weight:900; padding:4px 8px; border-radius:12px; border:2px solid white; box-shadow:0 2px 5px rgba(0,0,0,0.3); white-space:nowrap;">${ad.price.toLocaleString()} ${getCurrencyAr(ad.currency)}</div>`,
+          iconSize: null,
+          iconAnchor: [30, 15]
+        });
+        const marker = L.marker([cluster.centerLat, cluster.centerLng], { icon }).addTo(map);
+        marker.on('click', () => onSelectAd(ad));
+        markersRef.current.push(marker);
+      } else {
+        // Multi-ad cluster - show circular badge with total count
+        const count = cluster.ads.length;
+        const icon = L.divIcon({
+          className: '',
+          html: `<div style="width:36px; height:36px; background:#10b981; border:3px solid white; border-radius:50%; box-shadow:0 3px 10px rgba(16,185,129,0.5); color:white; font-size:11px; font-weight:900; display:flex; align-items:center; justify-content:center; cursor:pointer;" class="flex items-center justify-center font-black animate-pulse-subtle">${count}</div>`,
+          iconSize: [36, 36],
+          iconAnchor: [18, 18]
+        });
+        const marker = L.marker([cluster.centerLat, cluster.centerLng], { icon }).addTo(map);
+        marker.on('click', () => {
+          // Zoom in to expand cluster
+          const currentZoom = map.getZoom();
+          map.setView([cluster.centerLat, cluster.centerLng], Math.min(currentZoom + 2, 18), { animate: true });
+        });
+        markersRef.current.push(marker);
+      }
     });
 
     // 2. Render user current location

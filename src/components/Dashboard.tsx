@@ -347,6 +347,29 @@ export default function Dashboard({
   const [creationSuccess, setCreationSuccess] = useState(false);
   const [analyzingImage, setAnalyzingImage] = useState(false);
   const [classifying, setClassifying] = useState(false);
+  const [adStep, setAdStep] = useState(1);
+
+  const validateStep = (step: number) => {
+    if (step === 1) {
+      if (!title.trim()) {
+        addToast(isRtl ? "تنبيه" : "Notice", isRtl ? "يرجى إدخال عنوان الإعلان أولاً!" : "Please enter an ad title first!", "error");
+        return false;
+      }
+      if (!description.trim()) {
+        addToast(isRtl ? "تنبيه" : "Notice", isRtl ? "يرجى إدخال وصف تفصيلي للإعلان!" : "Please enter an ad description first!", "error");
+        return false;
+      }
+      if (!price || isNaN(Number(price)) || Number(price) <= 0) {
+        addToast(isRtl ? "تنبيه" : "Notice", isRtl ? "يرجى إدخال سعر صحيح أكبر من الصفر!" : "Please enter a valid price greater than zero!", "error");
+        return false;
+      }
+      if (!category) {
+        addToast(isRtl ? "تنبيه" : "Notice", isRtl ? "يرجى اختيار القسم أو الفئة المناسبة!" : "Please select an ad category first!", "error");
+        return false;
+      }
+    }
+    return true;
+  };
 
   // Synchronize jobType when category changes
   useEffect(() => {
@@ -1422,9 +1445,48 @@ export default function Dashboard({
                 )}
               </h3>
 
-              <form onSubmit={handleCreateAdSubmit} className="space-y-4">
-                {/* Title */}
-                <div className="space-y-1.5">
+              {/* Stepper progress indicator */}
+                  <div className="flex items-center justify-between mb-8 px-2 select-none">
+                    {[
+                      { step: 1, label: isRtl ? "التفاصيل الأساسية" : "Basic Details" },
+                      { step: 2, label: isRtl ? "الصور والوسائط" : "Media Files" },
+                      { step: 3, label: isRtl ? "الموقع والاتصال" : "Location & Contact" }
+                    ].map((s, idx) => (
+                      <React.Fragment key={s.step}>
+                        {idx > 0 && (
+                          <div className={`flex-grow h-1 mx-2 rounded-full transition-all duration-300 ${adStep >= s.step ? 'bg-emerald-500' : 'bg-slate-800'}`} />
+                        )}
+                        <div className="flex flex-col items-center gap-1.5 cursor-pointer" onClick={() => {
+                          // Allow user to go backward freely or go forward only if validated
+                          if (s.step < adStep) {
+                            setAdStep(s.step);
+                          } else if (s.step > adStep) {
+                            if (adStep === 1 && validateStep(1)) {
+                              if (s.step === 3) {
+                                // Skip to step 3 is only allowed if we also validate step 2 (optional validation)
+                                setAdStep(3);
+                              } else {
+                                setAdStep(2);
+                              }
+                            } else if (adStep === 2) {
+                              setAdStep(s.step);
+                            }
+                          }
+                        }}>
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs transition-all duration-300 ${adStep === s.step ? 'bg-emerald-500 text-slate-950 ring-4 ring-emerald-500/20' : adStep > s.step ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-slate-950 text-slate-500 border border-slate-850'}`}>
+                            {s.step}
+                          </div>
+                          <span className={`text-[9px] font-black tracking-tighter transition-colors duration-300 ${adStep === s.step ? 'text-emerald-400' : 'text-slate-500'}`}>{s.label}</span>
+                        </div>
+                      </React.Fragment>
+                    ))}
+                  </div>
+
+                  <form onSubmit={handleCreateAdSubmit} className="space-y-6">
+                    {adStep === 1 && (
+                      <div className="space-y-4 animate-in fade-in slide-in-from-bottom duration-300">
+                        {/* Title */}
+                        <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-500 dark:text-slate-400">
                     {t('dashboard.adTitle')}
                   </label>
@@ -1535,49 +1597,8 @@ export default function Dashboard({
                   </div>
                 </div>
 
-                {/* City, District, Category, Subcategory Selector Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-400">
-                      مدينة العرض
-                    </label>
-                    <select
-                      className="w-full h-11 bg-slate-950 border border-slate-800 rounded-xl px-4 text-slate-300 outline-none focus:border-emerald-500 text-xs text-right font-medium"
-                      value={city}
-                      onChange={(e) => {
-                        setCity(e.target.value);
-                        setDistrict("");
-                      }}
-                      id="ad-input-city"
-                    >
-                      {((currentMarket && currentMarket.cities) || CITIES).map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.nameAr}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-400">
-                      المنطقة (المديرية)
-                    </label>
-                    <select
-                      className="w-full h-11 bg-slate-950 border border-slate-800 rounded-xl px-4 text-slate-300 outline-none focus:border-emerald-500 text-xs text-right font-medium"
-                      value={district}
-                      onChange={(e) => setDistrict(e.target.value)}
-                      id="ad-input-district"
-                    >
-                      <option value="">كل المناطق</option>
-                      {DISTRICTS.filter((d: any) => d.cityId === city).map(
-                        (d: any) => (
-                          <option key={d.id} value={d.id}>
-                            {d.nameAr}
-                          </option>
-                        ),
-                      )}
-                    </select>
-                  </div>
+                {/* Category and Subcategory Selector Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
@@ -2098,7 +2119,24 @@ export default function Dashboard({
                   </div>
                 </div>
 
-                {/* Media Upload Section */}
+                {/* Step 1 navigation buttons */}
+                <div className="flex justify-end pt-6 border-t border-slate-800/40">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (validateStep(1)) setAdStep(2);
+                          }}
+                          className="px-6 py-2.5 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-450 hover:to-emerald-550 text-slate-950 font-black rounded-xl text-xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 shadow-md shadow-emerald-500/10"
+                        >
+                          <span>الخطوة التالية (الصور والوسائط) ➡️</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                    {adStep === 2 && (
+                      <div className="space-y-6 animate-in fade-in slide-in-from-bottom duration-300">
+                        {/* Media Upload Section */}
                 <div className={`p-6 sm:p-8 rounded-3xl border transition-colors ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-sm'}`}>
                   <h3 className={`text-lg font-black flex items-center gap-2 mb-6 ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
                     <Camera className="text-emerald-500 w-5 h-5" />
@@ -2290,13 +2328,79 @@ export default function Dashboard({
                             input.value = "";
                           }
                         }}
-                        className="px-3 py-1 bg-slate-800 text-white rounded-lg text-[10px] font-bold hover:bg-slate-700 cursor-pointer"
                       >إضافة</button>
                     </div>
                   </div>
 
-                {/* Toggle Phone Visibility */}
-                <div className="flex items-center justify-between bg-slate-950 border border-slate-800 p-4 rounded-xl mt-6">
+                  {/* Step 2 navigation buttons */}
+                  <div className="flex justify-between items-center pt-6 border-t border-slate-800/40">
+                          <button
+                            type="button"
+                            onClick={() => setAdStep(1)}
+                            className="px-6 py-2.5 bg-slate-800 hover:bg-slate-750 text-slate-300 font-bold rounded-xl text-xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 border border-slate-700"
+                          >
+                            <span>⬅️ السابق</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setAdStep(3)}
+                            className="px-6 py-2.5 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-450 hover:to-emerald-550 text-slate-950 font-black rounded-xl text-xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 shadow-md shadow-emerald-500/10"
+                          >
+                            <span>الخطوة التالية (الموقع والاتصال) ➡️</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                {adStep === 3 && (
+                  <div className="space-y-6 animate-in fade-in slide-in-from-bottom duration-300">
+                    {/* Geolocation selector: City & District Grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-950/40 border border-slate-850 p-4 rounded-2xl">
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-400">
+                          مدينة العرض
+                        </label>
+                        <select
+                          className="w-full h-11 bg-slate-950 border border-slate-800 rounded-xl px-4 text-slate-300 outline-none focus:border-emerald-500 text-xs text-right font-medium"
+                          value={city}
+                          onChange={(e) => {
+                            setCity(e.target.value);
+                            setDistrict("");
+                          }}
+                          id="ad-input-city"
+                        >
+                          {((currentMarket && currentMarket.cities) || CITIES).map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.nameAr}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-400">
+                          المنطقة (المديرية)
+                        </label>
+                        <select
+                          className="w-full h-11 bg-slate-950 border border-slate-800 rounded-xl px-4 text-slate-300 outline-none focus:border-emerald-500 text-xs text-right font-medium"
+                          value={district}
+                          onChange={(e) => setDistrict(e.target.value)}
+                          id="ad-input-district"
+                        >
+                          <option value="">كل المناطق</option>
+                          {DISTRICTS.filter((d: any) => d.cityId === city).map(
+                            (d: any) => (
+                              <option key={d.id} value={d.id}>
+                                {d.nameAr}
+                              </option>
+                            ),
+                          )}
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Toggle Phone Visibility */}
+                    <div className="flex items-center justify-between bg-slate-950 border border-slate-800 p-4 rounded-xl mt-6">
                   <span className="text-xs font-bold text-slate-300">
                     إظهار رقم الهاتف للتواصل المباشر (واتساب واتصال)
                   </span>
@@ -2440,47 +2544,61 @@ export default function Dashboard({
                   </div>
                 )}
 
-                {/* Submit bar */}
-                <button
-                  type="submit"
-                  disabled={creating}
-                  className="w-full mt-6 flex items-center justify-center gap-2 bg-gradient-to-l from-emerald-500 to-cyan-500 text-slate-950 font-black h-12 rounded-xl text-sm transition-transform active:scale-98 cursor-pointer disabled:opacity-50"
-                  id="ad-create-submit"
-                >
-                  {creating ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      {editingAdId
-                        ? "جاري تحديث وحفظ الإعلان..."
-                        : `جاري نشر وإدراج الإعلان في أسواق ${currentMarket.labelAr}...`}
-                    </>
-                  ) : (
-                    <>
-                      {editingAdId ? (
-                        <>
-                          <Check className="w-4 h-4" />
-                          تحديث وحفظ الإعلان
-                        </>
-                      ) : (
-                        <>
-                          <Plus className="w-4 h-4" />
-                          انشر الإعلان الآن مجاناً
-                        </>
-                      )}
-                    </>
+                    </div>
                   )}
-                </button>
 
-                {creationSuccess && (
-                  <div className="p-3 text-center bg-emerald-950 border border-emerald-500/50 rounded-xl text-emerald-400 text-xs font-bold animate-in fade-in slide-in-from-top-2 duration-300">
-                    {editingAdId
-                      ? "🎉 تم تحديث وحفظ إعلانك بنجاح وجارٍ إرجاعك!"
-                      : "🎉 تم إدراج ونشر إعلانك وحفظه في ملفك الشخصي بنجاح!"}
-                  </div>
-                )}
-              </form>
+                  {/* Submit bar / Step 3 Actions */}
+                  {adStep === 3 && (
+                    <div className="flex gap-4 mt-8 pt-6 border-t border-slate-800/40">
+                      <button
+                        type="button"
+                        onClick={() => setAdStep(2)}
+                        className="px-6 py-2.5 bg-slate-800 hover:bg-slate-750 text-slate-300 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-95 border border-slate-700 w-1/3"
+                      >
+                        ⬅️ السابق
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={creating}
+                        className="flex-grow flex items-center justify-center gap-2 bg-gradient-to-l from-emerald-500 to-cyan-500 text-slate-950 font-black h-12 rounded-xl text-sm transition-transform active:scale-98 cursor-pointer disabled:opacity-50"
+                        id="ad-create-submit"
+                      >
+                        {creating ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            {editingAdId
+                              ? "جاري تحديث وحفظ الإعلان..."
+                              : `جاري نشر وإدراج الإعلان في أسواق ${currentMarket.labelAr}...`}
+                          </>
+                        ) : (
+                          <>
+                            {editingAdId ? (
+                              <>
+                                <Check className="w-4 h-4" />
+                                تحديث وحفظ الإعلان
+                              </>
+                            ) : (
+                              <>
+                                <Plus className="w-4 h-4" />
+                                انشر الإعلان الآن مجاناً
+                              </>
+                            )}
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
+
+                  {creationSuccess && (
+                    <div className="p-3 text-center bg-emerald-950 border border-emerald-500/50 rounded-xl text-emerald-400 text-xs font-bold animate-in fade-in slide-in-from-top-2 duration-300">
+                      {editingAdId
+                        ? "🎉 تم تحديث وحفظ إعلانك بنجاح وجارٍ إرجاعك!"
+                        : "🎉 تم إدراج ونشر إعلانك وحفظه في ملفك الشخصي بنجاح!"}
+                    </div>
+                  )}
+                </form>
+              </div>
             </div>
-          </div>
 
           {/* Guidelines Sidebar */}
           <div className="space-y-6">

@@ -2468,8 +2468,144 @@ useEffect(() => {
       </div>
       )}
 
-      {/* Main Layout views router */}
-      <div className="flex-grow">
+      <div className="flex min-h-screen">
+        {/* 9.5 Stunning Desktop Sidebar Layout — hidden on mobile screens */}
+        {!showWelcomeFlow && (
+          <div className="hidden md:flex flex-col w-64 bg-[#090d16] border-l border-slate-800/85 text-slate-300 shrink-0 select-none sticky top-[72px] h-[calc(100vh-72px)] z-[1000] p-4 flex-col justify-between custom-scrollbar overflow-y-auto">
+            <div className="space-y-6">
+              {/* Market info header inside sidebar */}
+              <div className="p-4 bg-slate-900/40 border border-slate-800/60 rounded-2xl flex items-center justify-between gap-3">
+                <div className="text-right">
+                  <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{t('nav.market', { defaultValue: 'السوق الحالي' })}</div>
+                  <div className="text-xs font-black text-slate-200 mt-0.5">{currentMarket.labelAr}</div>
+                </div>
+                <div className="w-8 h-8 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400 font-black text-sm">
+                  {currentMarket.flag}
+                </div>
+              </div>
+
+              {/* Navigation lists */}
+              <nav className="space-y-1">
+                {[
+                  {
+                    id: "marketplace",
+                    label: t('nav.home'),
+                    icon: Home,
+                    active: platformMode === "marketplace" && currentTab === "home" && viewMode !== "map",
+                    onClick: () => {
+                      setPlatformMode("marketplace");
+                      handleTabChange("home");
+                      setActiveTab("all");
+                      setViewMode("split");
+                    }
+                  },
+                  {
+                    id: "reels",
+                    label: t('nav.reels'),
+                    icon: Film,
+                    color: "text-rose-400",
+                    active: platformMode === "reels",
+                    onClick: () => setPlatformMode("reels")
+                  },
+                  {
+                    id: "map",
+                    label: t('nav.map'),
+                    icon: Map,
+                    color: "text-blue-400",
+                    active: currentTab === "home" && viewMode === "map",
+                    onClick: () => {
+                      if (mapRef.current) {
+                        mapRef.current.triggerLocation();
+                      }
+                      handleTabChange("home");
+                      setViewMode("map");
+                    }
+                  },
+                  {
+                    id: "messages",
+                    label: t('nav.messages'),
+                    icon: MessageSquare,
+                    badge: unreadMessages.length,
+                    active: currentTab === "messages",
+                    onClick: () => handleTabChange("messages")
+                  }
+                ].map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={item.onClick}
+                      className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl text-xs font-bold transition-all duration-300 group cursor-pointer ${
+                        item.active 
+                          ? "bg-slate-800/80 text-emerald-400 border border-slate-700/50 shadow-md"
+                          : "text-slate-400 hover:text-slate-200 hover:bg-slate-900/60 border border-transparent"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Icon className={`w-4 h-4 transition-transform duration-300 group-hover:scale-110 ${item.active ? 'text-emerald-400' : 'text-slate-500 group-hover:text-slate-400'}`} />
+                        <span>{item.label}</span>
+                      </div>
+                      {item.badge ? (
+                        <span className="bg-rose-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full">
+                          {item.badge}
+                        </span>
+                      ) : null}
+                    </button>
+                  );
+                })}
+              </nav>
+
+              {/* Admin Panel button if role permits */}
+              {(currentUser?.role === 'admin' || currentUser?.role === 'super_admin') && (
+                <div className="pt-2">
+                  <button
+                    onClick={() => setShowAdminModal(true)}
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-black bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/20 transition-all cursor-pointer"
+                  >
+                    <ShieldCheck className="w-4 h-4" />
+                    <span>لوحة تحكم الإدارة</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Add Ad Floating Sidebar button */}
+              <div className="pt-4">
+                <button
+                  onClick={() => handleTabChange("create-ad")}
+                  className="w-full flex items-center justify-center gap-2 bg-gradient-to-l from-emerald-500 to-cyan-500 hover:from-emerald-450 hover:to-cyan-450 text-slate-950 font-black py-3 px-4 rounded-2xl text-xs transition-transform active:scale-98 shadow-lg shadow-emerald-500/10 cursor-pointer"
+                >
+                  <Plus className="w-4 h-4 stroke-[3]" />
+                  <span>{isRtl ? 'أنشئ إعلاناً جديداً' : 'Post New Ad'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Sidebar Footer info */}
+            <div className="space-y-4 pt-6 border-t border-slate-800/80 text-right">
+              {currentUser ? (
+                <div className="flex items-center gap-3 p-2 bg-slate-900/30 rounded-2xl border border-slate-900/50">
+                  <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-500/20 to-cyan-500/20 flex items-center justify-center text-slate-200 font-bold border border-slate-800">
+                    {currentUser.name ? currentUser.name[0].toUpperCase() : 'U'}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-black text-slate-200 truncate">{currentUser.name || 'مستخدم أسواق'}</div>
+                    <div className="text-[9px] text-slate-500 truncate">{currentUser.phone}</div>
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="text-[9px] text-slate-600 font-bold text-center leading-relaxed select-none">
+                منصة أسواق © {new Date().getFullYear()} <br />
+                جميع الحقوق محفوظة للأمان المباشر
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Content column */}
+        <div className="flex-grow min-w-0">
+          {/* Main Layout views router */}
+          <div className="flex-grow">
         {(currentTab === "home" || !currentUser) && currentTab !== "create-ad" ? (
           <div className="pb-32">
             {/* Main Content Router based on Platform Mode */}
@@ -4252,6 +4388,9 @@ useEffect(() => {
           </motion.div>
         </div>
       )}
+
+        </div>
+      </div>
 
       {/* 10. Stunning Mobile Sticky Bottom Navigation */}
       {!showWelcomeFlow && (
