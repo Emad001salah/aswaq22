@@ -25,7 +25,8 @@ import {
   Sun,
   Moon,
   Globe,
-  ChevronDown
+  ChevronDown,
+  Map
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -247,6 +248,16 @@ export default function Navbar({
             >
               <Plus className="w-4 h-4 xl:w-5 xl:h-5 stroke-[2.5]" />
               <span className="hidden md:inline">{t('navbar.addAd')}</span>
+            </button>
+
+            {/* Map View button for Desktop */}
+            <button 
+              onClick={() => onOpenDashboard('map')}
+              className="p-1.5 lg:p-2.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-emerald-600 transition-all relative cursor-pointer"
+              title={t('navbar.map', { defaultValue: 'الخريطة التفاعلية' })}
+              id="nav-btn-map-desktop"
+            >
+              <Map className="w-4 h-4 lg:w-5 lg:h-5" />
             </button>
 
             {currentUser ? (
