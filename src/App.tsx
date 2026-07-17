@@ -277,6 +277,7 @@ useEffect(() => {
             const data = await res.json();
             const user = data.user ?? data;
             console.log('[App] Session restored from JWT:', user.name);
+            localStorage.setItem('aswaq_current_user', JSON.stringify(user));
             setCurrentUser(user);
             return;
           }
@@ -306,6 +307,7 @@ useEffect(() => {
                     const retryData = await retryRes.json();
                     const retryUser = retryData.user ?? retryData;
                     console.log('[App] Session restored via refresh token:', retryUser.name);
+                    localStorage.setItem('aswaq_current_user', JSON.stringify(retryUser));
                     setCurrentUser(retryUser);
                     return;
                   }
