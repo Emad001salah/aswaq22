@@ -737,7 +737,11 @@ useEffect(() => {
   const [showHelpCenter, setShowHelpCenter] = useState(false);
   const [selectedSpotlightId, setSelectedSpotlightId] = useState<string | undefined>(undefined);
   const [showWelcomeFlow, setShowWelcomeFlow] = useState(false);
-  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [welcomeFlowInitialStep, setWelcomeFlowInitialStep] = useState<'splash' | 'features' | 'auth'>('splash');
+  const triggerLoginFlow = (initialStep: 'splash' | 'features' | 'auth' = 'auth') => {
+    setWelcomeFlowInitialStep(initialStep);
+    setShowWelcomeFlow(true);
+  };
   const [showIdentityModal, setShowIdentityModal] = useState(false);
   const [targetUpgradeRole, setTargetUpgradeRole] = useState<'merchant' | 'driver' | 'subscriber'>('merchant');
   const [pendingAd, setPendingAd] = useState<Ad | null>(null);
@@ -847,7 +851,7 @@ useEffect(() => {
 
   const handleLoginSuccess = (user: User) => {
     setCurrentUser(user);
-    setShowAuthModal(false);
+    setShowWelcomeFlow(false);
     addToast(
       isRtl ? `مرحباً بك، ${user.name} 👋` : `Welcome, ${user.name} 👋`,
       isRtl ? "تم تسجيل دخولك بنجاح إلى منصة أسواق." : "You have successfully logged in to Aswaq.",
@@ -2404,7 +2408,7 @@ useEffect(() => {
           );
         }}
         onLoginClick={() => {
-          setShowAuthModal(true);
+          triggerLoginFlow('auth');
         }}
         onNotificationClick={handleNotificationRead}
         favoritesCount={favorites.length}
@@ -3245,7 +3249,7 @@ useEffect(() => {
                               <p className="text-xs text-slate-500">يمكنك التصفح بحرية، لكن للنشر والتفاعل تحتاج إلى حساب</p>
                             </div>
                             <button
-                              onClick={() => setShowAuthModal(true)}
+                              onClick={() => triggerLoginFlow('auth')}
                               className="px-6 py-2.5 rounded-2xl bg-fuchsia-500 text-white text-sm font-black hover:bg-fuchsia-400 transition-all shadow-lg shadow-fuchsia-500/20"
                             >
                               تسجيل الدخول / إنشاء حساب
@@ -3388,8 +3392,8 @@ useEffect(() => {
 
                           <button
                             onClick={() => {
-                              if (!currentUser) {
-                                setShowAuthModal(true);
+                              if (!currentUser || currentUser.id === 'guest_user') {
+                                triggerLoginFlow('auth');
                                 return;
                               }
                               if (!newPostText.trim() && selectedMedia.length === 0) return;
@@ -3949,6 +3953,7 @@ useEffect(() => {
             onRegister={handleFlowRegister}
             currentMarket={currentMarket}
             platformSettings={platformSettings}
+            initialStep={welcomeFlowInitialStep}
           />
         )}
       </AnimatePresence>
@@ -4374,7 +4379,7 @@ useEffect(() => {
             currentUser={currentUser}
             onLoginRequest={() => {
               setShowDiscovery(false);
-              setShowAuthModal(true);
+              triggerLoginFlow('auth');
             }}
             onAdUpdated={(updatedAd) => {
               setAds((prev) => prev.map((a) => (a.id === updatedAd.id ? updatedAd : a)));
@@ -4385,14 +4390,7 @@ useEffect(() => {
       </AnimatePresence>
       {/* Global Post Deletion Confirmation Dialog */}
       <AnimatePresence>
-        {showAuthModal && (
-          <AuthModal 
-            isOpen={showAuthModal} 
-            onClose={() => setShowAuthModal(false)} 
-            onSuccess={handleLoginSuccess}
-            isDark={isDark}
-          />
-        )}
+
         {showIdentityModal && (
           <IdentityVerificationModal
             isOpen={showIdentityModal}

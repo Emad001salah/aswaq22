@@ -57,6 +57,7 @@ interface WelcomeFlowProps {
   onRegister: (user: any) => void;
   currentMarket: Market;
   platformSettings?: any;
+  initialStep?: 'splash' | 'features' | 'auth';
 }
 
 /* ────────────────────────────────────────────────────────────────── */
@@ -900,8 +901,8 @@ const SuccessBanner = ({ msg }: { msg: string }) => (
 /*  Main WelcomeFlow component                                        */
 /* ────────────────────────────────────────────────────────────────── */
 
-export default function WelcomeFlow({ onClose, onLogin, onRegister, currentMarket, platformSettings }: WelcomeFlowProps) {
-  const [step, setStep] = useState<FlowStep>('splash');
+export default function WelcomeFlow({ onClose, onLogin, onRegister, currentMarket, platformSettings, initialStep = 'splash' }: WelcomeFlowProps) {
+  const [step, setStep] = useState<FlowStep>(initialStep);
 
   const handleLoginSuccess = (user: any) => {
     onLogin(user);
