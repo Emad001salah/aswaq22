@@ -249,7 +249,25 @@ export class App {
       limits: { fileSize: 100 * 1024 * 1024 } // 100MB
     });
 
-    const adminAccessGuards = [authMiddleware, rolesGuard(['ADMIN', 'SUPER_ADMIN'])];
+    const populateAdminUser = async (req: any, res: any, next: any) => {
+      try {
+        if (!req.user?.id) {
+          return res.status(401).json({ error: 'Unauthorized' });
+        }
+        const user = await prisma.user.findUnique({
+          where: { id: req.user.id }
+        });
+        if (!user) {
+          return res.status(401).json({ error: 'Unauthorized' });
+        }
+        req.adminUser = user;
+        next();
+      } catch (err) {
+        next(err);
+      }
+    };
+
+    const adminAccessGuards = [authMiddleware, rolesGuard(['ADMIN', 'SUPER_ADMIN']), populateAdminUser];
 
     this.app.use('/api/v1/health', HealthController());
     this.app.use('/api/v1/auth',   AuthController());
