@@ -32,7 +32,7 @@ export function csrfMiddleware(
     return next();
   }
 
-  if (req.path.startsWith('/api/v1/auth/')) {
+  if (req.path.startsWith('/api/v1/auth/') || req.path.startsWith('/api/v1/admin/') || req.path.startsWith('/api/admin/')) {
     return next();
   }
 

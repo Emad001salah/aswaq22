@@ -72,7 +72,8 @@ export const redis = {
   async get(key: string): Promise<string | null> {
     if (!isRedisAvailable || !redisClient) return null;
     try {
-      return await redisClient.get(key);
+      const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 500));
+      return await Promise.race([redisClient.get(key), timeoutPromise]);
     } catch (e) {
       return null;
     }
@@ -81,10 +82,11 @@ export const redis = {
   async set(key: string, value: string, ttlSeconds?: number): Promise<string | null> {
     if (!isRedisAvailable || !redisClient) return null;
     try {
-      if (ttlSeconds) {
-        return await redisClient.set(key, value, 'EX', ttlSeconds);
-      }
-      return await redisClient.set(key, value);
+      const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 500));
+      const setPromise = ttlSeconds 
+        ? redisClient.set(key, value, 'EX', ttlSeconds) 
+        : redisClient.set(key, value);
+      return await Promise.race([setPromise, timeoutPromise]);
     } catch (e) {
       return null;
     }
@@ -93,23 +95,27 @@ export const redis = {
   async del(key: string): Promise<number> {
     if (!isRedisAvailable || !redisClient) return 0;
     try {
-      return await redisClient.del(key);
+      const timeoutPromise = new Promise<number>((resolve) => setTimeout(() => resolve(0), 500));
+      return await Promise.race([redisClient.del(key), timeoutPromise]);
     } catch (e) {
       return 0;
     }
   },
 
   async isRateLimited(ip: string, limit: number, windowSeconds: number): Promise<boolean> {
-    if (!isRedisAvailable || !redisClient) return false; // Fail open if Redis is down
+    if (!isRedisAvailable || !redisClient) return false;
     try {
       const key = `ratelimit:${ip}`;
-      const requests = await redisClient.incr(key);
+      const timeoutPromise = new Promise<number>((resolve) => setTimeout(() => resolve(0), 500));
+      const incrPromise = redisClient.incr(key);
+      const requests = await Promise.race([incrPromise, timeoutPromise]);
+      if (requests === 0) return false;
       if (requests === 1) {
         await redisClient.expire(key, windowSeconds);
       }
       return requests > limit;
     } catch (e) {
-      return false; // Fail open
+      return false;
     }
   }
 };
