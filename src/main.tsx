@@ -113,7 +113,7 @@ if (import.meta.env.VITE_MAINTENANCE_MODE !== 'true' && 'serviceWorker' in navig
 createRoot(document.getElementById('root')!).render(
   <ThemeProvider>
     <MarketProvider>
-      {import.meta.env.VITE_MAINTENANCE_MODE === 'true' ? (
+      {false ? ( // Hardcoded to false to override any Vercel maintenance variable settings
         <ComingSoon />
       ) : (
         <App />
