@@ -337,8 +337,8 @@ export class App {
       }
     });
 
-    // POST /api/categories - Create Category
-    this.app.post('/api/categories', async (req, res, next) => {
+    // POST /api/categories - Create Category — SECURED: Admin only
+    this.app.post('/api/categories', ...adminAccessGuards, async (req, res, next) => {
       const { id, nameAr, nameEn, icon } = req.body;
       if (!id || !nameAr || !nameEn || !icon) {
         return res.status(400).json({ error: 'Missing required category fields' });
@@ -353,8 +353,8 @@ export class App {
       }
     });
 
-    // PUT /api/categories/:id - Update Category
-    this.app.put('/api/categories/:id', async (req, res, next) => {
+    // PUT /api/categories/:id - Update Category — SECURED: Admin only
+    this.app.put('/api/categories/:id', ...adminAccessGuards, async (req, res, next) => {
       const { id } = req.params;
       const { nameAr, nameEn, icon } = req.body;
       try {
@@ -368,8 +368,8 @@ export class App {
       }
     });
 
-    // DELETE /api/categories/:id - Delete Category
-    this.app.delete('/api/categories/:id', async (req, res, next) => {
+    // DELETE /api/categories/:id - Delete Category — SECURED: Admin only
+    this.app.delete('/api/categories/:id', ...adminAccessGuards, async (req, res, next) => {
       const { id } = req.params;
       try {
         await prisma.category.delete({
@@ -381,8 +381,8 @@ export class App {
       }
     });
 
-    // POST /api/categories/:id/subcategories - Add Subcategory
-    this.app.post('/api/categories/:id/subcategories', async (req, res, next) => {
+    // POST /api/categories/:id/subcategories - Add Subcategory — SECURED: Admin only
+    this.app.post('/api/categories/:id/subcategories', ...adminAccessGuards, async (req, res, next) => {
       const { id: categoryId } = req.params;
       const { nameAr, nameEn } = req.body;
       if (!nameAr || !nameEn) {
@@ -402,8 +402,8 @@ export class App {
       }
     });
 
-    // DELETE /api/categories/:catId/subcategories/:subId - Delete Subcategory
-    this.app.delete('/api/categories/:catId/subcategories/:subId', async (req, res, next) => {
+    // DELETE /api/categories/:catId/subcategories/:subId - Delete Subcategory — SECURED: Admin only
+    this.app.delete('/api/categories/:catId/subcategories/:subId', ...adminAccessGuards, async (req, res, next) => {
       const { subId } = req.params;
       try {
         await prisma.subCategory.delete({
@@ -428,8 +428,8 @@ export class App {
       }
     });
 
-    // POST /api/promo - Create live stream or reel (for all logged-in or guest users)
-    this.app.post('/api/promo', async (req, res, next) => {
+    // POST /api/promo - Create reel/live stream — SECURED: auth required
+    this.app.post('/api/promo', authMiddleware, async (req: any, res, next) => {
       try {
         const {
           title,
@@ -438,49 +438,32 @@ export class App {
           city,
           category,
           isLive,
-          userId,
           userName,
           userAvatar,
         } = req.body;
 
-        if (!title) {
+        // Use authenticated user's ID from JWT — ignore client-supplied userId
+        const authenticatedUserId = req.user?.id;
+        if (!authenticatedUserId) {
+          return res.status(401).json({ error: 'يجب تسجيل الدخول لنشر مقطع.' });
+        }
+
+        if (!title || typeof title !== 'string' || title.trim().length === 0) {
           return res.status(400).json({ error: 'العنوان مطلوب' });
         }
-        if (!videoUrl) {
+        if (!videoUrl || typeof videoUrl !== 'string' || videoUrl.trim().length === 0) {
           return res.status(400).json({ error: 'رابط الفيديو أو مصدر البث مطلوب' });
         }
-
-        // Try to find user in DB; if guest, use a fallback guest user
-        let dbUserId: string | null = null;
-        if (userId && userId !== 'guest_user') {
-          const found = await prisma.user.findUnique({ where: { id: userId } });
-          if (found) dbUserId = found.id;
-        }
-
-        // If no real user, try to get/create a system guest
-        if (!dbUserId) {
-          let guestUser = await prisma.user.findFirst({ where: { phone: '+0000000000' } });
-          if (!guestUser) {
-            guestUser = await prisma.user.create({
-              data: {
-                name: userName || 'زائر',
-                phone: '+0000000000',
-                email: 'guest@aswaq.app',
-                password: 'guest-account',
-                avatar: userAvatar || '',
-                isVerified: 'none',
-              }
-            });
-          }
-          dbUserId = guestUser.id;
+        // SECURITY: Limit title length
+        if (title.trim().length > 200) {
+          return res.status(400).json({ error: 'العنوان طويل جداً (الحد 200 حرف)' });
         }
 
         const newReel = await prisma.reel.create({
           data: {
             title: title.trim(),
             videoUrl: videoUrl.trim(),
-            userId: dbUserId,
-            // Store extra metadata in description or thumbnailUrl if schema supports it
+            userId: authenticatedUserId,
           },
           include: {
             user: { select: { name: true, avatar: true } }
@@ -493,22 +476,21 @@ export class App {
           description: description || '',
           city: city || 'كافة المناطق',
           category: category || 'عام',
-          userName: userName || newReel.user?.name || 'زائر',
-          userAvatar: userAvatar || newReel.user?.avatar || '',
+          userName: newReel.user?.name || userName || 'مستخدم',
+          userAvatar: newReel.user?.avatar || userAvatar || '',
         });
       } catch (err) {
         next(err);
       }
     });
 
-    // PATCH /api/promo/:id - Update live stream/promo reel status and archive URL
-    this.app.patch('/api/promo/:id', async (req, res, next) => {
+    // PATCH /api/promo/:id - Update reel — SECURED: only owner or admin
+    this.app.patch('/api/promo/:id', authMiddleware, async (req: any, res, next) => {
       try {
         const { id } = req.params;
         const { videoUrl, title } = req.body;
-        logger.info({ message: `PATCH /api/promo request: id=${id}, videoUrl=${videoUrl}, title=${title}, body=${JSON.stringify(req.body)}` });
+        logger.info({ message: `PATCH /api/promo request: id=${id}` });
 
-        // Check if id is a valid UUID
         const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
         if (!uuidRegex.test(id)) {
           return res.status(400).json({ error: 'Invalid promo id format' });
@@ -517,25 +499,25 @@ export class App {
         if (typeof title !== 'string' || title.trim().length === 0) {
           return res.status(400).json({ error: 'Title must be a non-empty string' });
         }
-
         if (typeof videoUrl !== 'string' || videoUrl.trim().length === 0) {
           return res.status(400).json({ error: 'Video URL must be a non-empty string' });
         }
 
-        const updateData: any = {
-          title: title.trim(),
-          videoUrl: videoUrl.trim(),
-        };
-        
-        logger.info({ message: `PATCH /api/promo: Updating database for ${id} with data: ${JSON.stringify(updateData)}` });
+        // SECURITY: Verify reel ownership before update
+        const existingReel = await prisma.reel.findUnique({ where: { id } });
+        if (!existingReel) {
+          return res.status(404).json({ error: 'الريل غير موجود' });
+        }
+        const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes((req.user?.role || '').toUpperCase());
+        if (existingReel.userId !== req.user?.id && !isAdmin) {
+          return res.status(403).json({ error: 'لا يمكنك تعديل ريل لا تملكه.' });
+        }
 
         const updatedReel = await prisma.reel.update({
           where: { id },
-          data: updateData,
+          data: { title: title.trim(), videoUrl: videoUrl.trim() },
           include: { user: { select: { name: true, avatar: true } } }
         });
-
-        logger.info({ message: `PATCH /api/promo: Database update successful! updatedReel=${JSON.stringify(updatedReel)}` });
 
         res.json({
           ...updatedReel,
@@ -549,13 +531,23 @@ export class App {
       }
     });
 
-    // DELETE /api/promo/:id - Delete a user's promo reel
-    this.app.delete('/api/promo/:id', async (req, res, next) => {
+    // DELETE /api/promo/:id - Delete reel — SECURED: only owner or admin
+    this.app.delete('/api/promo/:id', authMiddleware, async (req: any, res, next) => {
       try {
         const { id } = req.params;
         const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
         if (!uuidRegex.test(id)) {
-          return res.json({ success: true, message: 'Mock reel deleted' });
+          return res.status(400).json({ error: 'Invalid reel id format' });
+        }
+
+        // SECURITY: Verify ownership before delete
+        const existingReel = await prisma.reel.findUnique({ where: { id } });
+        if (!existingReel) {
+          return res.json({ success: true }); // Already gone
+        }
+        const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes((req.user?.role || '').toUpperCase());
+        if (existingReel.userId !== req.user?.id && !isAdmin) {
+          return res.status(403).json({ error: 'لا يمكنك حذف ريل لا تملكه.' });
         }
 
         await prisma.reel.delete({ where: { id } });
@@ -902,7 +894,15 @@ export class App {
         return res.status(400).json({ error: 'Option index is required' });
       }
 
+      // SECURITY: Rate-limit votes by IP — 1 vote per poll per IP per 24h
+      const voterIp = req.ip || req.socket.remoteAddress || 'unknown';
+      const voteKey = `poll_vote:${id}:${voterIp}`;
       try {
+        const alreadyVoted = await redis.get(voteKey);
+        if (alreadyVoted) {
+          return res.status(429).json({ error: 'لقد صوّتت بالفعل على هذا الاستطلاع.' });
+        }
+
         const poll = await prisma.poll.findUnique({ where: { id } });
         if (!poll) {
           return res.status(404).json({ error: 'Poll not found' });
@@ -917,6 +917,9 @@ export class App {
           where: { id },
           data: { votes: newVotes }
         });
+
+        // Record vote — expires after 24 hours (fail open if Redis is down)
+        await redis.set(voteKey, '1', 86400);
 
         res.json({ success: true, votes: updated.votes });
       } catch (err: any) {
@@ -967,13 +970,23 @@ export class App {
         }
 
         const { name, email, password, role, managedCountry, permissions } = req.body;
-        // Basic create logic (password hashing would happen here or in Prisma middleware)
-        // For brevity and since it's an admin dashboard creation, we assume plain/hashed via frontend
+
+        if (!name || !email || !password) {
+          return res.status(400).json({ error: 'الاسم والبريد الإلكتروني وكلمة المرور مطلوبة.' });
+        }
+        if (password.length < 10) {
+          return res.status(400).json({ error: 'كلمة المرور يجب أن تكون 10 أحرف على الأقل.' });
+        }
+
+        // SECURITY: Always hash password before storing
+        const { default: bcrypt } = await import('bcryptjs');
+        const passwordHash = await bcrypt.hash(password, 12);
+
         const newUser = await prisma.user.create({
           data: {
             name,
             email,
-            password, // Note: Should be hashed properly!
+            password: passwordHash,
             role: role || 'ADMIN',
             managedCountry: managedCountry || null,
             permissions: permissions || [],
@@ -981,7 +994,9 @@ export class App {
           }
         });
 
-        res.status(201).json(newUser);
+        // Don't return the password hash
+        const { password: _pw, ...safeUser } = newUser as any;
+        res.status(201).json(safeUser);
       } catch (err) {
         next(err);
       }

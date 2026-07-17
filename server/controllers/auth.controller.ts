@@ -71,7 +71,25 @@ export function AuthController() {
     }
   });
 
+  // ⛔ /bypass — مغلق تماماً في الإنتاج، متاح فقط في بيئة development
   router.post('/bypass', async (req: Request, res: Response) => {
+    // SECURITY: Block completely in production
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(403).json({
+        error: 'Forbidden',
+        message: 'هذه النقطة غير متاحة في بيئة الإنتاج.'
+      });
+    }
+
+    // SECURITY: Require a dev-only secret key even in development
+    const devSecret = req.headers['x-dev-bypass-secret'];
+    if (!devSecret || devSecret !== process.env.DEV_BYPASS_SECRET) {
+      return res.status(403).json({
+        error: 'Forbidden',
+        message: 'مطلوب مفتاح سري للوصول لهذه النقطة.'
+      });
+    }
+
     const { email } = req.body;
     if (!email) {
       return res.status(400).json({ error: 'Email is required' });
@@ -84,13 +102,13 @@ export function AuthController() {
         const randomPassword = crypto.randomUUID();
         const salt = await bcrypt.genSalt(10);
         const passwordHash = await bcrypt.hash(randomPassword, salt);
-        const dbRole = email.includes('eee3327') || email.includes('admin') ? 'ADMIN' : 'USER';
+        // SECURITY: Never grant ADMIN based on email content
         user = await prisma.user.create({
           data: {
             email,
             name: email.split('@')[0],
             password: passwordHash,
-            role: dbRole,
+            role: 'USER', // Always USER — no automatic role escalation
           }
         });
       }
@@ -98,7 +116,7 @@ export function AuthController() {
       const tokens = await authService.generateTokens(user.id, user.email, user.role);
       return res.json({
         success: true,
-        message: 'تم تسجيل الدخول السريع بنجاح.',
+        message: 'تم تسجيل الدخول السريع بنجاح. (وضع التطوير فقط)',
         accessToken: tokens.accessToken,
         refreshToken: tokens.refreshToken,
         user: {
@@ -116,6 +134,7 @@ export function AuthController() {
       return res.status(500).json({ error: 'Bypass Login Error', message: e.message });
     }
   });
+
 
   router.post('/login', async (req: Request, res: Response) => {
     const { email, password, id, name, avatar, phone } = req.body;
