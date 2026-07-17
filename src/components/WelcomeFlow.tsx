@@ -407,11 +407,13 @@ const AuthStep = ({
   onLoginSuccess,
   onRegisterSuccess,
   onClose,
+  platformSettings,
 }: {
   onBack: () => void;
   onLoginSuccess: (user: any) => void;
   onRegisterSuccess: (user: any) => void;
   onClose: () => void;
+  platformSettings?: any;
 }) => {
   const [mode, setMode] = useState<AuthMode>('login');
   const [authMethod, setAuthMethod] = useState<'email' | 'phone'>('email');
@@ -609,8 +611,12 @@ const AuthStep = ({
 
         {/* Header */}
         <div className="text-center space-y-1">
-          <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 border border-emerald-500/20 flex items-center justify-center mx-auto mb-3">
-            <ShieldCheck className="w-6 h-6 text-emerald-400" />
+          <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 border border-emerald-500/20 flex items-center justify-center mx-auto mb-3 overflow-hidden">
+            {platformSettings?.logoUrl ? (
+              <img src={platformSettings.logoUrl} alt="Logo" className="w-full h-full object-contain p-1" />
+            ) : (
+              <ShieldCheck className="w-6 h-6 text-emerald-400" />
+            )}
           </div>
           <h2 className="text-2xl font-black text-white">
             {mode === 'login' ? 'مرحباً بعودتك 👋' : 'انضم إلى أسواق 🚀'}
@@ -939,37 +945,51 @@ export default function WelcomeFlow({ onClose, onLogin, onRegister, currentMarke
       </div>
 
       {/* Top bar */}
-      <div className="relative z-10 flex items-center justify-between px-6 py-5">
-        {/* Logo */}
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/25 overflow-hidden">
-            {platformSettings?.logoUrl ? (
-              <img src={platformSettings.logoUrl} alt="Logo" className="w-full h-full object-contain p-1" />
-            ) : (
-              <span className="text-slate-950 font-black text-lg" style={{ fontFamily: 'Georgia, serif' }}>
-                {platformSettings?.logoLetter || 'أ'}
-              </span>
-            )}
-          </div>
-          <div>
-            <span className="text-white font-black text-sm">{platformSettings?.appName || 'أسواق'}</span>
-            <div className="text-[9px] text-zinc-600 font-bold uppercase tracking-widest leading-none">
-              {currentMarket.labelEn}
+      {step !== 'auth' && (
+        <div className="relative z-10 flex items-center justify-between px-6 py-5">
+          {/* Logo */}
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/25 overflow-hidden">
+              {platformSettings?.logoUrl ? (
+                <img src={platformSettings.logoUrl} alt="Logo" className="w-full h-full object-contain p-1" />
+              ) : (
+                <span className="text-slate-950 font-black text-lg" style={{ fontFamily: 'Georgia, serif' }}>
+                  {platformSettings?.logoLetter || 'أ'}
+                </span>
+              )}
+            </div>
+            <div>
+              <span className="text-white font-black text-sm">{platformSettings?.appName || 'أسواق'}</span>
+              <div className="text-[9px] text-zinc-600 font-bold uppercase tracking-widest leading-none">
+                {currentMarket.labelEn}
+              </div>
             </div>
           </div>
+
+          {/* Progress */}
+          {step !== 'splash' && <ProgressDots steps={3} current={stepIndex[step]} />}
+
+          {/* Close */}
+          <button
+            onClick={onClose}
+            className="w-9 h-9 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-500 hover:text-white hover:border-zinc-700 transition-all"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
+      )}
 
-        {/* Progress */}
-        {step !== 'splash' && <ProgressDots steps={3} current={stepIndex[step]} />}
-
-        {/* Close */}
-        <button
-          onClick={onClose}
-          className="w-9 h-9 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-500 hover:text-white hover:border-zinc-700 transition-all"
-        >
-          <X className="w-4 h-4" />
-        </button>
-      </div>
+      {/* Floating close button for auth step */}
+      {step === 'auth' && (
+        <div className="absolute top-5 left-6 z-[20000]">
+          <button
+            onClick={onClose}
+            className="w-9 h-9 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-500 hover:text-white hover:border-zinc-700 transition-all"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* Content */}
       <main className="relative z-10 flex-1 flex items-center justify-center px-6 py-4 overflow-y-auto">
@@ -994,6 +1014,7 @@ export default function WelcomeFlow({ onClose, onLogin, onRegister, currentMarke
               onLoginSuccess={handleLoginSuccess}
               onRegisterSuccess={handleRegisterSuccess}
               onClose={onClose}
+              platformSettings={platformSettings}
             />
           )}
         </AnimatePresence>
