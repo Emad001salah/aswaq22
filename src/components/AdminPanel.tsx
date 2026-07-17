@@ -194,6 +194,7 @@ export default function AdminPanel({
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [newPollQuestion, setNewPollQuestion] = useState('');
   const [newPollOptions, setNewPollOptions] = useState(['', '']);
+  const [newPollCountryCode, setNewPollCountryCode] = useState('ALL');
   const [addingPoll, setAddingPoll] = useState(false);
   const [showAddEmployee, setShowAddEmployee] = useState(false);
   const [newEmployee, setNewEmployee] = useState({ name: '', email: '', password: '', role: 'ADMIN', managedCountry: '' });
@@ -483,12 +484,17 @@ export default function AdminPanel({
       const res = await adminFetch('/api/admin/polls', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: newPollQuestion, options: validOptions }),
+        body: JSON.stringify({ 
+          question: newPollQuestion, 
+          options: validOptions,
+          countryCode: newPollCountryCode
+        }),
       });
       if (res.ok) {
         fetchPolls();
         setNewPollQuestion('');
         setNewPollOptions(['', '']);
+        setNewPollCountryCode('ALL');
         addToast?.('تم', 'تم إنشاء الاستطلاع بنجاح', 'success');
       } else {
         addToast?.('خطأ', `فشل الإنشاء (${res.status})`, 'error');
@@ -1258,13 +1264,36 @@ export default function AdminPanel({
                     <h3 className="text-sm font-black text-white mb-4 flex items-center gap-2">
                       <Plus className="w-4 h-4 text-emerald-400" /> إنشاء استطلاع جديد
                     </h3>
-                    <input
-                      type="text"
-                      placeholder="السؤال..."
-                      value={newPollQuestion}
-                      onChange={e => setNewPollQuestion(e.target.value)}
-                      className="w-full bg-slate-700 text-white text-sm px-4 py-2.5 rounded-xl border border-slate-600 outline-none focus:border-emerald-500 mb-3"
-                    />
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+                      <div className="md:col-span-2">
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1.5 block">السؤال</label>
+                        <input
+                          type="text"
+                          placeholder="السؤال..."
+                          value={newPollQuestion}
+                          onChange={e => setNewPollQuestion(e.target.value)}
+                          className="w-full bg-slate-700 text-white text-sm px-4 py-2.5 rounded-xl border border-slate-600 outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1.5 block">توجيه الاستطلاع (البلد)</label>
+                        <select
+                          value={newPollCountryCode}
+                          onChange={e => setNewPollCountryCode(e.target.value)}
+                          className="w-full bg-slate-700 text-white text-sm px-4 py-2.5 rounded-xl border border-slate-600 outline-none focus:border-emerald-500"
+                        >
+                          <option value="ALL">🌍 عام لجميع البلدان</option>
+                          <option value="YE">🇾🇪 اليمن</option>
+                          <option value="JO">🇯🇴 الأردن</option>
+                          <option value="SA">🇸🇦 السعودية</option>
+                          <option value="AE">🇦🇪 الإمارات</option>
+                          <option value="EG">🇪🇬 مصر</option>
+                          <option value="PS">🇵🇸 فلسطين</option>
+                        </select>
+                      </div>
+                    </div>
+
                     <div className="space-y-2 mb-3">
                       {newPollOptions.map((opt, i) => (
                         <div key={i} className="flex gap-2">
@@ -1315,7 +1344,18 @@ export default function AdminPanel({
                       return (
                         <div key={poll.id} className="p-5 rounded-2xl bg-slate-800/30 border border-white/5">
                           <div className="flex items-start justify-between mb-3">
-                            <h4 className="text-sm font-black text-white">{poll.question}</h4>
+                            <div className="flex flex-col gap-1.5">
+                              <h4 className="text-sm font-black text-white">{poll.question}</h4>
+                              <span className="text-[10px] font-extrabold text-fuchsia-400 bg-fuchsia-500/10 px-2.5 py-0.5 rounded-full border border-fuchsia-500/20 self-start">
+                                {poll.countryCode === 'ALL' ? '🌍 عام لجميع البلدان' :
+                                 poll.countryCode === 'YE' ? '🇾🇪 استطلاع موجه لليمن' :
+                                 poll.countryCode === 'JO' ? '🇯🇴 استطلاع موجه للأردن' :
+                                 poll.countryCode === 'SA' ? '🇸🇦 استطلاع موجه للسعودية' :
+                                 poll.countryCode === 'AE' ? '🇦🇪 استطلاع موجه للإمارات' :
+                                 poll.countryCode === 'EG' ? '🇪🇬 استطلاع موجه لمصر' :
+                                 poll.countryCode === 'PS' ? '🇵🇸 استطلاع موجه لفلسطين' : `استطلاع موجه لـ ${poll.countryCode}`}
+                              </span>
+                            </div>
                             <div className="flex gap-2">
                               <button
                                 onClick={() => fetch(`/api/admin/polls/${poll.id}/reset`, { method: 'POST', credentials: 'include' }).then(() => fetchPolls())}
