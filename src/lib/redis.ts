@@ -3,21 +3,32 @@ import Redis from 'ioredis';
 let redisClient: Redis | null = null;
 let isRedisAvailable = false;
 
+const redisUrl = process.env.REDIS_URL;
 const redisHost = process.env.REDIS_HOST || 'localhost';
 const redisPort = parseInt(process.env.REDIS_PORT || '6379');
 const redisPassword = process.env.REDIS_PASSWORD || undefined;
 
 try {
-  console.log(`[Redis] Connecting to ${redisHost}:${redisPort}...`);
-  redisClient = new Redis({
-    host: redisHost,
-    port: redisPort,
-    password: redisPassword,
-    lazyConnect: true,        // Don't block event loop on start
-    maxRetriesPerRequest: 1,  // Fail fast if unreachable
-    enableOfflineQueue: false, // Don't queue commands when down
-    retryStrategy: () => null, // Disable auto-retry — we run in DB-only mode
-  });
+  if (redisUrl) {
+    console.log(`[Redis] Connecting via REDIS_URL...`);
+    redisClient = new Redis(redisUrl, {
+      lazyConnect: true,
+      maxRetriesPerRequest: 1,
+      enableOfflineQueue: false,
+      retryStrategy: () => null,
+    });
+  } else {
+    console.log(`[Redis] Connecting to ${redisHost}:${redisPort}...`);
+    redisClient = new Redis({
+      host: redisHost,
+      port: redisPort,
+      password: redisPassword,
+      lazyConnect: true,
+      maxRetriesPerRequest: 1,
+      enableOfflineQueue: false,
+      retryStrategy: () => null,
+    });
+  }
 
   let _warnedOnce = false;
   redisClient.on('connect', () => {
