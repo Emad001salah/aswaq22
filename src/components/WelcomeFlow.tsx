@@ -945,7 +945,7 @@ export default function WelcomeFlow({ onClose, onLogin, onRegister, currentMarke
       </div>
 
       {/* Top bar */}
-      {step !== 'auth' && (
+      {step === 'features' && (
         <div className="relative z-10 flex items-center justify-between px-6 py-5">
           {/* Logo */}
           <div className="flex items-center gap-3">
@@ -979,8 +979,8 @@ export default function WelcomeFlow({ onClose, onLogin, onRegister, currentMarke
         </div>
       )}
 
-      {/* Floating close button for auth step */}
-      {step === 'auth' && (
+      {/* Floating close button for splash & auth steps */}
+      {(step === 'splash' || step === 'auth') && (
         <div className="absolute top-5 left-6 z-[20000]">
           <button
             onClick={onClose}
