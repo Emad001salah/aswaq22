@@ -56,6 +56,7 @@ interface WelcomeFlowProps {
   onLogin: (user: any) => void;
   onRegister: (user: any) => void;
   currentMarket: Market;
+  platformSettings?: any;
 }
 
 /* ────────────────────────────────────────────────────────────────── */
@@ -209,14 +210,36 @@ const SplashStep = ({
   market,
   onNext,
   onClose,
+  platformSettings,
 }: {
   market: Market;
   onNext: () => void;
   onClose: () => void;
+  platformSettings?: any;
 }) => {
   const { i18n } = useTranslation();
   const isRtl = i18n.language === 'ar';
   const marketName = isRtl ? market.labelAr : market.labelEn;
+
+  const [stats, setStats] = useState({ totalUsers: 0, totalAds: 0, rating: 4.9 });
+  useEffect(() => {
+    fetch('/api/public-stats')
+      .then(res => res.json())
+      .then(data => {
+        setStats({
+          totalUsers: data.totalUsers || 0,
+          totalAds: data.totalAds || 0,
+          rating: data.rating || 4.9
+        });
+      })
+      .catch(() => {});
+  }, []);
+
+  const formatStatValue = (val: number, isRating = false) => {
+    if (isRating) return `${val}★`;
+    if (val > 999) return `+${Math.floor(val / 1000)}K`;
+    return `${val}`;
+  };
 
   return (
     <motion.div key="splash" variants={fadeSlide} initial="hidden" animate="visible" exit="exit" className="flex flex-col items-center text-center gap-10 max-w-md w-full">
@@ -226,11 +249,15 @@ const SplashStep = ({
         <motion.div
           animate={{ y: [0, -12, 0] }}
           transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
-          className="relative w-36 h-36 rounded-[2.8rem] bg-gradient-to-br from-emerald-400 via-emerald-500 to-teal-600 shadow-2xl shadow-emerald-500/30 flex items-center justify-center"
+          className="relative w-36 h-36 rounded-[2.8rem] bg-gradient-to-br from-emerald-400 via-emerald-500 to-teal-600 shadow-2xl shadow-emerald-500/30 flex items-center justify-center overflow-hidden"
         >
-          <span className="text-6xl font-black text-slate-950 select-none" style={{ fontFamily: 'Georgia, serif' }}>
-            أ
-          </span>
+          {platformSettings?.logoUrl ? (
+            <img src={platformSettings.logoUrl} alt="Logo" className="w-full h-full object-contain p-4" />
+          ) : (
+            <span className="text-6xl font-black text-slate-950 select-none" style={{ fontFamily: 'Georgia, serif' }}>
+              {platformSettings?.logoLetter || 'أ'}
+            </span>
+          )}
           {/* Animated ring */}
           <motion.div
             animate={{ scale: [1, 1.15, 1], opacity: [0.4, 0, 0.4] }}
@@ -245,7 +272,7 @@ const SplashStep = ({
         <h1 className="text-4xl md:text-5xl font-black text-white leading-tight tracking-tighter">
           مرحباً في{' '}
           <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-400">
-            أسواق
+            {platformSettings?.appName || 'أسواق'}
           </span>
         </h1>
         <p className="text-zinc-400 text-lg leading-relaxed max-w-xs mx-auto">
@@ -256,9 +283,9 @@ const SplashStep = ({
       {/* Stats bar */}
       <div className="w-full grid grid-cols-3 gap-3">
         {[
-          { value: '+50K', label: 'مستخدم نشط' },
-          { value: '+200K', label: 'إعلان منشور' },
-          { value: '4.9★', label: 'تقييم المتجر' },
+          { value: formatStatValue(stats.totalUsers), label: 'مستخدم نشط' },
+          { value: formatStatValue(stats.totalAds), label: 'إعلان منشور' },
+          { value: formatStatValue(stats.rating, true), label: 'تقييم المتجر' },
         ].map((s) => (
           <div key={s.label} className="bg-zinc-900/60 border border-zinc-800 rounded-2xl py-3 px-2 text-center">
             <div className="text-lg font-black text-white">{s.value}</div>
@@ -873,7 +900,7 @@ const SuccessBanner = ({ msg }: { msg: string }) => (
 /*  Main WelcomeFlow component                                        */
 /* ────────────────────────────────────────────────────────────────── */
 
-export default function WelcomeFlow({ onClose, onLogin, onRegister, currentMarket }: WelcomeFlowProps) {
+export default function WelcomeFlow({ onClose, onLogin, onRegister, currentMarket, platformSettings }: WelcomeFlowProps) {
   const [step, setStep] = useState<FlowStep>('splash');
 
   const handleLoginSuccess = (user: any) => {
@@ -893,7 +920,7 @@ export default function WelcomeFlow({ onClose, onLogin, onRegister, currentMarke
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[100] bg-slate-950 flex flex-col overflow-hidden dir-rtl"
+      className="fixed inset-0 z-[10000] bg-slate-950 flex flex-col overflow-hidden dir-rtl"
     >
       {/* Background decoration */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -914,11 +941,17 @@ export default function WelcomeFlow({ onClose, onLogin, onRegister, currentMarke
       <div className="relative z-10 flex items-center justify-between px-6 py-5">
         {/* Logo */}
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/25">
-            <span className="text-slate-950 font-black text-lg" style={{ fontFamily: 'Georgia, serif' }}>أ</span>
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/25 overflow-hidden">
+            {platformSettings?.logoUrl ? (
+              <img src={platformSettings.logoUrl} alt="Logo" className="w-full h-full object-contain p-1" />
+            ) : (
+              <span className="text-slate-950 font-black text-lg" style={{ fontFamily: 'Georgia, serif' }}>
+                {platformSettings?.logoLetter || 'أ'}
+              </span>
+            )}
           </div>
           <div>
-            <span className="text-white font-black text-sm">أسواق</span>
+            <span className="text-white font-black text-sm">{platformSettings?.appName || 'أسواق'}</span>
             <div className="text-[9px] text-zinc-600 font-bold uppercase tracking-widest leading-none">
               {currentMarket.labelEn}
             </div>
@@ -945,6 +978,7 @@ export default function WelcomeFlow({ onClose, onLogin, onRegister, currentMarke
               market={currentMarket}
               onNext={() => setStep('features')}
               onClose={onClose}
+              platformSettings={platformSettings}
             />
           )}
           {step === 'features' && (

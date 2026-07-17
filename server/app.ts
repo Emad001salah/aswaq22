@@ -1485,6 +1485,20 @@ export class App {
     });
 
     // ── Admin Settings ────────────────────────────────────────────────────────
+    this.app.get('/api/public-stats', async (req, res) => {
+      try {
+        const totalAds = await prisma.ad.count();
+        const totalUsers = await prisma.user.count({ where: { deletedAt: null } });
+        res.json({
+          totalAds,
+          totalUsers,
+          rating: 4.9
+        });
+      } catch (err: any) {
+        res.status(500).json({ error: 'Failed loading public stats', message: err.message });
+      }
+    });
+
     const getPlatformSettings = async () => {
       try {
         const dbSettings = await prisma.systemSetting.findUnique({
