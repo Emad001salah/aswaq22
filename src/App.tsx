@@ -2313,7 +2313,7 @@ useEffect(() => {
     email: 'guest@aswaq.app',
     phone: '',
     role: UserRole.USER,
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80',
+    avatar: null,
     verified: false,
     rating: 0,
     active: true,
