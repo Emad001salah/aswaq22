@@ -41,7 +41,8 @@ import {
   FlipHorizontal,
   StopCircle,
   Zap,
-  ShoppingCart
+  ShoppingCart,
+  Upload
 } from 'lucide-react';
 import { Ad, User } from '../types.ts';
 import { INITIAL_USERS, CATEGORIES } from '../data.ts';
@@ -916,6 +917,12 @@ export default function SpotlightFeed({
   const [showLiveUploadModal, setShowLiveUploadModal] = useState(false);
   const [floatingHearts, setFloatingHearts] = useState<{ id: number; left: number; color: string; scale: number }[]>([]);
 
+  // --- Live Stream Custom Audio Upload States ---
+  const [audioSourceType, setAudioSourceType] = useState<'none' | 'file' | 'link'>('none');
+  const [uploadedAudioUrl, setUploadedAudioUrl] = useState<string>('');
+  const [audioUploading, setAudioUploading] = useState<boolean>(false);
+  const [audioOriginalName, setAudioOriginalName] = useState<string>('');
+
   // Shoppable Instant Checkout drawer states
   const [showShoppablePanel, setShowShoppablePanel] = useState<boolean>(false);
   const [shoppableBuyerName, setShoppableBuyerName] = useState<string>('');
@@ -1363,13 +1370,14 @@ export default function SpotlightFeed({
   }, [displayAds.length, activeIndex]);
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    const scrollTop = e.currentTarget.scrollTop;
-    const height = e.currentTarget.clientHeight;
+    const el = e.currentTarget;
+    const scrollTop = el.scrollTop;
+    const height = el.clientHeight;
     if (height <= 0) return;
     
     isScrollingRef.current = true;
     
-    // Debounce index changes to make slide transitioning robust
+    // Only update index after scroll settles (snap complete)
     const newIndex = Math.round(scrollTop / height);
     if (newIndex !== activeIndex && newIndex >= 0 && newIndex < displayAds.length) {
       lastUpdatedByScrollRef.current = true;
@@ -1381,7 +1389,13 @@ export default function SpotlightFeed({
     }
     scrollTimeoutRef.current = setTimeout(() => {
       isScrollingRef.current = false;
-    }, 150);
+      // Re-snap to exact position after scroll ends to fix partial scroll on iOS
+      const finalIndex = Math.round(el.scrollTop / el.clientHeight);
+      if (finalIndex !== activeIndex && finalIndex >= 0 && finalIndex < displayAds.length) {
+        lastUpdatedByScrollRef.current = true;
+        setActiveIndex(finalIndex);
+      }
+    }, 100);
   };
 
   // Ensure container scrolls to the correct ad when activeIndex is changed programmatically
@@ -1930,7 +1944,8 @@ export default function SpotlightFeed({
       <div 
         ref={containerRef}
         onScroll={handleScroll}
-        className="h-full overflow-y-scroll snap-y snap-mandatory scrollbar-none overscroll-contain"
+        className="h-full overflow-y-scroll snap-y snap-mandatory scrollbar-none overscroll-y-contain"
+        style={{ touchAction: 'pan-y', WebkitOverflowScrolling: 'touch' }}
       >
         {displayAds.length === 0 ? (
           <div className="absolute inset-0 z-0 flex flex-col items-center justify-center bg-slate-950 px-6 text-center text-white">
@@ -1995,7 +2010,8 @@ export default function SpotlightFeed({
             <div 
               key={ad.id} 
               onDoubleClick={(e) => handleDoubleTap(e, ad.id)}
-              className="h-full w-full snap-start snap-always shrink-0 relative flex flex-col items-center justify-center overflow-hidden"
+              className="h-full min-h-full w-full snap-start snap-always shrink-0 relative flex flex-col items-center justify-center overflow-hidden"
+              style={{ touchAction: 'pan-y' }}
             >
               {/* Heart Pop Animation */}
               <AnimatePresence>
@@ -2132,7 +2148,7 @@ export default function SpotlightFeed({
                 </div>
               )}
 
-              <div className={`absolute bottom-24 sm:bottom-28 z-[200] flex flex-col gap-4 sm:gap-5 items-center pointer-events-auto ${isRtl ? 'left-2 sm:left-4' : 'right-2 sm:right-4'}`}>
+              <div className={`absolute bottom-24 sm:bottom-28 z-[200] flex flex-col gap-4 sm:gap-5 items-center pointer-events-auto ${isRtl ? 'left-2 sm:left-3' : 'right-2 sm:right-3'}`}>
                 
                 {/* 1. Avatar Profile */}
                 <div className="flex flex-col items-center gap-1 relative mb-2">
@@ -2419,12 +2435,12 @@ export default function SpotlightFeed({
                 </div>
               </div>
               
-              {/* Visual Indicator of Scroll Progress */}
-              <div className={`absolute top-1/2 -translate-y-1/2 flex flex-col gap-1.5 sm:gap-2 ${isRtl ? 'left-2.5 sm:left-6' : 'right-2.5 sm:right-6'}`}>
+              {/* Visual Indicator of Scroll Progress — positioned safely on left/right edge to avoid button overlap */}
+              <div className={`absolute top-1/2 -translate-y-1/2 flex flex-col gap-1 sm:gap-1.5 ${isRtl ? 'right-1 sm:right-1.5' : 'left-1 sm:left-1.5'} pointer-events-none z-[150]`}>
                  {displayAds.slice(0, 8).map((_, idx) => (
                    <div 
                     key={idx}
-                    className={`w-1 sm:w-1.5 rounded-full transition-all duration-300 ${idx === activeIndex % 8 ? 'h-6 sm:h-8 bg-emerald-500' : 'h-1 sm:h-1.5 bg-white/20'}`}
+                    className={`w-1 rounded-full transition-all duration-300 ${idx === activeIndex % 8 ? 'h-5 sm:h-6 bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.6)]' : 'h-1 sm:h-1.5 bg-white/20'}`}
                    />
                  ))}
               </div>
@@ -2754,7 +2770,13 @@ export default function SpotlightFeed({
               {/* Close Button */}
               <button
                 type="button"
-                onClick={() => setShowLiveUploadModal(false)}
+                onClick={() => {
+                  setShowLiveUploadModal(false);
+                  setAudioSourceType('none');
+                  setUploadedAudioUrl('');
+                  setAudioUploading(false);
+                  setAudioOriginalName('');
+                }}
                 className="absolute top-4 left-4 p-2 rounded-full bg-slate-950/60 border border-white/10 hover:border-pink-500/30 text-slate-400 hover:text-white cursor-pointer"
               >
                 <X className="w-5 h-5" />
@@ -2778,12 +2800,24 @@ export default function SpotlightFeed({
                 onSubmit={async (e) => {
                   e.preventDefault();
                   try {
+                    if (audioUploading) {
+                      showToast(isRtl ? 'يرجى الانتظار حتى يكتمل رفع الملف الصوتي!' : 'Please wait for the audio file to finish uploading!');
+                      return;
+                    }
+
                     const formData = new FormData(e.currentTarget);
                     
                     const title = (formData.get('liveTitle') || '').toString().trim();
                     const description = (formData.get('liveDesc') || '').toString().trim();
                     const rawVideoUrl = (formData.get('liveUrl') || '').toString().trim();
-                    const audioUrl = (formData.get('audioUrl') || 'none').toString().trim();
+                    
+                    let audioUrl = 'none';
+                    if (audioSourceType === 'file') {
+                      audioUrl = uploadedAudioUrl || 'none';
+                    } else if (audioSourceType === 'link') {
+                      audioUrl = (formData.get('audioUrlLink') || '').toString().trim() || 'none';
+                    }
+
                     const city = (formData.get('liveCity') || 'all').toString();
                     const liveCategory = (formData.get('liveCat') || '').toString();
                     
@@ -2859,6 +2893,11 @@ export default function SpotlightFeed({
                       setTimeout(() => {
                         setActiveIndex(0);
                         setShowLiveUploadModal(false);
+                        // Reset audio states
+                        setAudioSourceType('none');
+                        setUploadedAudioUrl('');
+                        setAudioUploading(false);
+                        setAudioOriginalName('');
                         // Force container to top to show the new ad
                         if (containerRef.current) {
                           containerRef.current.scrollTo({ top: 0, behavior: 'auto' });
@@ -2889,21 +2928,126 @@ export default function SpotlightFeed({
                   </select>
                 </div>
 
-                {/* 1.5 Audio Selector */}
-                <div className="flex flex-col gap-1">
-                  <label className="text-[10px] font-black text-slate-400">
-                    🎵 {isRtl ? 'إضافة مقطع صوتي / موسيقى خلفية:' : 'Add Audio Track / Background Music:'}
+                {/* 1.5 Audio Selection Control */}
+                <div className="flex flex-col gap-2 bg-slate-950/60 border border-white/5 p-3 rounded-2xl">
+                  <label className="text-[10px] font-black text-slate-400 flex items-center gap-1.5">
+                    <span>🎵 {isRtl ? 'إضافة مقطع صوتي مخصص للمقطع:' : 'Add Custom Audio Track to Video:'}</span>
                   </label>
-                  <select
-                    name="audioUrl"
-                    className="bg-slate-950 border border-white/5 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-pink-500/65 font-bold cursor-pointer"
-                  >
-                    {AUDIO_TRACKS.map(track => (
-                      <option key={track.id} value={track.id}>
-                        {isRtl ? track.nameAr : track.nameEn}
-                      </option>
-                    ))}
-                  </select>
+                  
+                  {/* Mode Buttons */}
+                  <div className="grid grid-cols-3 gap-1.5 p-1 bg-slate-950 rounded-xl border border-white/5">
+                    <button
+                      type="button"
+                      onClick={() => setAudioSourceType('none')}
+                      className={`py-1.5 text-[10px] font-black rounded-lg transition-all cursor-pointer ${
+                        audioSourceType === 'none'
+                          ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md'
+                          : 'text-slate-400 hover:text-white hover:bg-white/5'
+                      }`}
+                    >
+                      {isRtl ? 'صوت أصلي' : 'Original Sound'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAudioSourceType('file')}
+                      className={`py-1.5 text-[10px] font-black rounded-lg transition-all cursor-pointer ${
+                        audioSourceType === 'file'
+                          ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md'
+                          : 'text-slate-400 hover:text-white hover:bg-white/5'
+                      }`}
+                    >
+                      {isRtl ? 'رفع ملف صوت' : 'Upload File'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAudioSourceType('link')}
+                      className={`py-1.5 text-[10px] font-black rounded-lg transition-all cursor-pointer ${
+                        audioSourceType === 'link'
+                          ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md'
+                          : 'text-slate-400 hover:text-white hover:bg-white/5'
+                      }`}
+                    >
+                      {isRtl ? 'رابط خارجي' : 'External Link'}
+                    </button>
+                  </div>
+
+                  {/* Mode Content: File Upload */}
+                  {audioSourceType === 'file' && (
+                    <div className="flex flex-col gap-2 mt-1">
+                      <div className="flex items-center gap-3 bg-slate-900 border border-white/5 rounded-xl p-2.5">
+                        <label className="bg-white/10 hover:bg-white/15 border border-white/10 hover:border-white/20 text-white font-extrabold text-[10px] px-3 py-1.5 rounded-lg cursor-pointer transition-all flex items-center gap-1">
+                          <Upload className="w-3.5 h-3.5 text-pink-400" />
+                          <span>{isRtl ? 'اختر ملف الصوت' : 'Choose Audio'}</span>
+                          <input
+                            type="file"
+                            accept="audio/*"
+                            className="hidden"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              
+                              setAudioOriginalName(file.name);
+                              setAudioUploading(true);
+                              
+                              try {
+                                const uploadData = new FormData();
+                                uploadData.append('file', file);
+                                
+                                const res = await fetch('/api/storage/upload', {
+                                  method: 'POST',
+                                  body: uploadData,
+                                });
+                                
+                                if (res.ok) {
+                                  const data = await res.json();
+                                  setUploadedAudioUrl(data.url);
+                                  showToast(isRtl ? 'تم رفع الملف الصوتي مبروك! 🎉' : 'Audio file uploaded successfully! 🎉');
+                                } else {
+                                  showToast(isRtl ? 'فشل رفع الملف الصوتي' : 'Failed to upload audio file');
+                                }
+                              } catch (err) {
+                                console.error('Audio upload error:', err);
+                                showToast(isRtl ? 'حدث خطأ أثناء الرفع' : 'Error uploading file');
+                              } finally {
+                                setAudioUploading(false);
+                              }
+                            }}
+                          />
+                        </label>
+
+                        {/* Upload Status / Preview */}
+                        <div className="flex-1 min-w-0 text-left">
+                          {audioUploading ? (
+                            <div className="flex items-center gap-1.5 text-[10px] text-pink-400 font-extrabold justify-end">
+                              <span className="w-3 h-3 rounded-full border border-pink-400 border-t-transparent animate-spin" />
+                              <span>{isRtl ? 'يتم الرفع الآن...' : 'Uploading...'}</span>
+                            </div>
+                          ) : uploadedAudioUrl ? (
+                            <div className="flex items-center gap-1.5 text-[10px] text-emerald-400 font-extrabold justify-end">
+                              <span className="text-emerald-500 font-black">✓</span>
+                              <span className="truncate max-w-[150px]">{audioOriginalName || (isRtl ? 'ملف صوتي مرفوع' : 'Audio file')}</span>
+                            </div>
+                          ) : (
+                            <span className="text-[10px] text-slate-500 font-extrabold block text-right">
+                              {isRtl ? 'امتدادات مقبولة: MP3, WAV, M4A' : 'Supported formats: MP3, WAV, M4A'}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Mode Content: External Link */}
+                  {audioSourceType === 'link' && (
+                    <div className="flex flex-col gap-1 mt-1">
+                      <input
+                        type="url"
+                        name="audioUrlLink"
+                        placeholder={isRtl ? 'أدخل رابط المقطع الصوتي المباشر (مثل: https://example.com/sound.mp3)' : 'Enter audio direct link (e.g., https://example.com/sound.mp3)'}
+                        className="bg-slate-900 border border-white/5 rounded-xl px-3 py-2 text-[11px] text-white placeholder-slate-600 outline-none focus:border-pink-500/65 font-bold"
+                      />
+                    </div>
+                  )}
                 </div>
 
                 {/* 2. Title */}

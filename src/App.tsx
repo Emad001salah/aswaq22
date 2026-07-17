@@ -2336,8 +2336,8 @@ useEffect(() => {
         </div>
       )}
 
-      {/* Iframe Warning Banner */}
-      {isInIframe && (
+      {/* Iframe Warning Banner — hidden when WelcomeFlow is open */}
+      {isInIframe && !showWelcomeFlow && (
         <div className="bg-gradient-to-l from-amber-500 to-amber-600 font-bold text-center text-slate-950 py-3.5 text-[11px] sm:text-xs px-4 flex flex-col sm:flex-row items-center justify-center gap-2 select-none dir-rtl shrink-0 border-b border-amber-400/30">
           <span>⚠️ تنبيه المعاينة: لتسجيل الدخول بجوجل بنجاح، يرجى فتح التطبيق في نافذة مستقلة خارج إطار المعاينة.</span>
           <button
@@ -2349,8 +2349,8 @@ useEffect(() => {
         </div>
       )}
 
-      {/* Dynamic role feedback alerts if logged in as Admin */}
-      {(currentUser?.role === "admin" || currentUser?.role === "super_admin") && (
+      {/* Dynamic role feedback alerts if logged in as Admin — hidden when WelcomeFlow is open */}
+      {(currentUser?.role === "admin" || currentUser?.role === "super_admin") && !showWelcomeFlow && (
         <div className="bg-gradient-to-l from-amber-600 to-amber-700 font-bold text-center text-slate-950 py-2.5 text-xs px-4 flex items-center justify-center gap-2 select-none dir-rtl shrink-0">
           <ShieldAlert className="w-4 h-4 animate-bounce" />
           <span>
@@ -2359,8 +2359,8 @@ useEffect(() => {
         </div>
       )}
 
-      {/* Top Navigation Global elements */}
-      <Navbar
+      {/* Top Navigation Global elements — hidden when WelcomeFlow is open */}
+      {!showWelcomeFlow && <Navbar
         currentUser={currentUser}
         unreadMessagesCount={unreadMessages.length}
         unreadNotificationsCount={unreadNotificationsCount}
@@ -2422,7 +2422,7 @@ useEffect(() => {
         platformMode={platformMode}
         onPlatformModeChange={setPlatformMode}
         platformSettings={platformSettings}
-      />
+      />}
       <ToastContainer
         toasts={toasts}
         onClose={(id) => setToasts((prev) => prev.filter((t) => t.id !== id))}
@@ -2430,7 +2430,8 @@ useEffect(() => {
 
       <PwaInstallPrompt isDark={theme === 'dark'} isRtl={isRtl} />
 
-      {/* Unified Intelligent Context Banner */}
+      {/* Unified Intelligent Context Banner — hidden when WelcomeFlow is open */}
+      {!showWelcomeFlow && (
       <div className="bg-gradient-to-r from-emerald-600/5 via-cyan-600/5 to-fuchsia-600/5 border-b border-slate-200 dark:border-slate-800 py-2 px-4 shadow-sm select-none">
         <div className="max-w-7xl mx-auto flex items-center justify-between text-[10px] font-black tracking-widest text-slate-500 uppercase dir-rtl">
           <div className="flex items-center gap-4">
@@ -2454,6 +2455,7 @@ useEffect(() => {
           </p>
         </div>
       </div>
+      )}
 
       {/* Main Layout views router */}
       <div className="flex-grow">
