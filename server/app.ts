@@ -1666,6 +1666,36 @@ export class App {
         });
       });
 
+      const autoArchiveStream = async (streamId: string) => {
+        try {
+          const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+          if (!uuidRegex.test(streamId)) {
+            logger.info({ message: `Socket/Prisma: Skipped auto-archiving non-UUID stream ID: ${streamId}` });
+            return;
+          }
+
+          const reel = await prisma.reel.findUnique({ where: { id: streamId } });
+          if (reel) {
+            const parts = reel.videoUrl.split('||');
+            const mainUrl = parts[0];
+            if (mainUrl === 'webcam' || mainUrl === 'camera') {
+              const archiveVideoUrl = "https://player.vimeo.com/external/434045526.sd.mp4?s=c19c968f44ff531ae7e77b105021e141aabccb8c&profile_id=165&oauth2_token_id=57447761";
+              parts[0] = archiveVideoUrl;
+              parts[1] = 'none'; // clear background music to fallback to archive video sound
+              const updatedUrl = parts.join('||');
+
+              await prisma.reel.update({
+                where: { id: streamId },
+                data: { videoUrl: updatedUrl }
+              });
+              logger.info({ message: `Socket/Prisma: Auto-archived live stream ${streamId} to static video because broadcaster disconnected/left.` });
+            }
+          }
+        } catch (dbErr: any) {
+          logger.error({ message: `Socket/Prisma Error: Auto-archiving stream ${streamId} failed`, error: dbErr });
+        }
+      };
+
       socket.on('leave-stream', (data: { streamId: string; role: 'broadcaster' | 'viewer' }) => {
         const { streamId, role } = data;
         socket.leave(`stream_${streamId}`);
@@ -1677,6 +1707,7 @@ export class App {
           if (stream.broadcasterId === socket.id) {
             this.io.to(`stream_${streamId}`).emit('stream-ended');
             this.activeStreams.delete(streamId);
+            autoArchiveStream(streamId);
           }
         } else {
           stream.viewers.delete(socket.id);
@@ -1695,6 +1726,7 @@ export class App {
           if (stream.broadcasterId === socket.id) {
             this.io.to(`stream_${streamId}`).emit('stream-ended');
             this.activeStreams.delete(streamId);
+            autoArchiveStream(streamId);
           } else if (stream.viewers.has(socket.id)) {
             stream.viewers.delete(socket.id);
             if (stream.broadcasterId) {

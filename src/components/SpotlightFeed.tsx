@@ -69,6 +69,56 @@ const getYoutubeEmbedUrlForBg = (url?: string, isMuted = true): string | null =>
   return null;
 };
 
+export const parseVideoUrl = (rawUrl?: string) => {
+  if (!rawUrl) return { videoUrl: '', audioUrl: '', description: '', city: '', category: '' };
+  const parts = rawUrl.split('||');
+  return {
+    videoUrl: parts[0] || '',
+    audioUrl: parts[1] && parts[1] !== 'none' ? parts[1] : '',
+    description: parts[2] || '',
+    city: parts[3] || '',
+    category: parts[4] || ''
+  };
+};
+
+const AUDIO_TRACKS = [
+  { id: 'none', nameAr: 'بدون موسيقى (صوت الفيديو الأصلي)', nameEn: 'No music (Original video sound)' },
+  { id: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3', nameAr: '🎵 نغمة تجارية حماسية (Upbeat Commercial)', nameEn: '🎵 Upbeat Commercial' },
+  { id: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3', nameAr: '🎵 إيقاع هادئ ومريح (Calm Ambient)', nameEn: '🎵 Calm Ambient' },
+  { id: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3', nameAr: '🎵 نغمة عصرية سريعة (Modern Beats)', nameEn: '🎵 Modern Beats' },
+  { id: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3', nameAr: '🎵 إيقاع شرقي جاز (Eastern Jazz)', nameEn: '🎵 Eastern Jazz' }
+];
+
+function AudioPlayer({ src, isPlaying, isMuted }: { src: string; isPlaying: boolean; isMuted: boolean }) {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    if (!audioRef.current) {
+      audioRef.current = new Audio(src);
+      audioRef.current.loop = true;
+    }
+    const audio = audioRef.current;
+    audio.muted = isMuted;
+
+    if (isPlaying) {
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(err => {
+          console.log("Audio play blocked by browser policies or interrupted:", err);
+        });
+      }
+    } else {
+      audio.pause();
+    }
+
+    return () => {
+      audio.pause();
+    };
+  }, [src, isPlaying, isMuted]);
+
+  return null;
+}
+
 function WebcamStreamPlayer({ 
   isMuted, 
   isRtl, 
@@ -671,52 +721,52 @@ function WebcamStreamPlayer({
                 // End broadcast immediately
                 socket.emit('leave-stream', { streamId: ad.id, role: 'broadcaster' });
                 
-                const isWebcam = ad.videoUrl === 'webcam' || ad.videoUrl === 'camera';
-                // Simulate saving the recording by pointing to a persistent video URL (archived version)
-                const archiveVideoUrl = isWebcam 
-                  ? "https://player.vimeo.com/external/434045526.sd.mp4?s=c19c968f44ff531ae7e77b105021e141aabccb8c&profile_id=165&oauth2_token_id=57447761"
-                  : ad.videoUrl;
+            const isWebcam = ad.videoUrl === 'webcam' || ad.videoUrl === 'camera';
+            // Simulate saving the recording by pointing to a persistent video URL (archived version)
+            const archiveVideoUrl = isWebcam 
+              ? "https://player.vimeo.com/external/434045526.sd.mp4?s=c19c968f44ff531ae7e77b105021e141aabccb8c&profile_id=165&oauth2_token_id=57447761"
+              : ad.videoUrl;
 
-                // Update status in backend
-                fetch(`/api/promo/${ad.id}`, {
-                  method: 'PATCH',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ 
-                    isLive: false, 
-                    status: 'offline',
-                    videoUrl: archiveVideoUrl,
-                    isPromo: true,
-                    thumbnailUrl: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=400&q=80"
-                  })
-                })
-                .then(async (res) => {
-                  if (!res.ok) {
-                    const err = await res.json().catch(() => ({}));
-                    console.error("Failed to update status on server:", err);
-                  }
-                  
-                  if (localStreamRef.current) {
-                    localStreamRef.current.getTracks().forEach(track => track.stop());
-                  }
+            // Keep the existing description, city, category, audioUrl
+            const parsedUrl = `${archiveVideoUrl}||none||${ad.description || ''}||${ad.city || ''}||${ad.category || ''}`;
 
-                  setStatusText(isRtl ? '🛑 جاري إنهاء البث وحفظ النسخة...' : '🛑 Ending broadcast and saving...');
-                  setIsOffline(true);
-                  
-                  setTimeout(() => {
-                    if (onStreamEnded) {
-                      onStreamEnded(ad.id, archiveVideoUrl);
-                    }
-                  }, 1000);
-                })
-                .catch(err => {
-                  console.error('Failed to update promo status', err);
-                  if (localStreamRef.current) {
-                    localStreamRef.current.getTracks().forEach(track => track.stop());
-                  }
-                  if (onStreamEnded) {
-                    onStreamEnded(ad.id, archiveVideoUrl);
-                  }
-                });
+            // Update status in backend
+            fetch(`/api/promo/${ad.id}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ 
+                title: ad.title || '',
+                videoUrl: parsedUrl
+              })
+            })
+            .then(async (res) => {
+              if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                console.error("Failed to update status on server:", err);
+              }
+              
+              if (localStreamRef.current) {
+                localStreamRef.current.getTracks().forEach(track => track.stop());
+              }
+
+              setStatusText(isRtl ? '🛑 جاري إنهاء البث وحفظ النسخة...' : '🛑 Ending broadcast and saving...');
+              setIsOffline(true);
+              
+              setTimeout(() => {
+                if (onStreamEnded) {
+                  onStreamEnded(ad.id, archiveVideoUrl);
+                }
+              }, 1000);
+            })
+            .catch(err => {
+              console.error('Failed to update promo status', err);
+              if (localStreamRef.current) {
+                localStreamRef.current.getTracks().forEach(track => track.stop());
+              }
+              if (onStreamEnded) {
+                onStreamEnded(ad.id, archiveVideoUrl);
+              }
+            });
               }}
               className="w-14 h-14 rounded-full flex items-center justify-center transition-all duration-300 group overflow-hidden relative border-4 z-[9999] active:scale-95 shadow-2xl bg-rose-600 text-white border-white scale-110 shadow-[0_0_50px_rgba(225,29,72,0.6)]"
             >
@@ -1163,32 +1213,36 @@ export default function SpotlightFeed({
       })
       .then(data => {
         if (Array.isArray(data)) {
-          const formatted = data.map(pv => ({
-            id: pv.id || `promo_db_${Date.now()}`,
-            isPromo: true,
-            promoType: "db",
-            title: pv.title,
-            category: pv.category || (isRtl ? "فيديو ترويجي" : "Promo Video"),
-            city: pv.city || (isRtl ? "كافة المناطق" : "All Regions"),
-            price: pv.price || 0,
-            currency: pv.currency || (countryCode === 'YE' ? 'YER' : 'JOD'),
-            description: pv.description || (isRtl ? "مطلب أو بث ترويجي مميز تم نشره من قبل المستخدم" : "Featured promo uploaded by user"),
-            createdAt: pv.createdAt || new Date().toISOString(),
-            views: pv.views || 0,
-            likes: pv.likes || 0,
-            userId: pv.userId,
-            userName: pv.user?.name || (isRtl ? "زائر" : "Guest"),
-            userAvatar: pv.user?.avatar || "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&w=150&q=80",
-            userVerified: pv.userVerified !== undefined ? pv.userVerified : true,
-            images: [pv.thumbnailUrl || "https://picsum.photos/seed/promo/800/400"],
-            videoUrl: pv.videoUrl,
-            isLive: pv.videoUrl === 'webcam' || pv.videoUrl === 'camera' || !!pv.isLive,
-            features: pv.features || [
-              isRtl ? "موثق وبث حي تفاعلي" : "Verified interactive live stream",
-              isRtl ? "تواصل مباشر وبدون عمولات" : "Direct communication, zero commission"
-            ],
-            ctaText: pv.ctaText || (isRtl ? "استكشف العرض" : "Explore Offer")
-          }));
+          const formatted = data.map(pv => {
+            const parsed = parseVideoUrl(pv.videoUrl);
+            return {
+              id: pv.id || `promo_db_${Date.now()}`,
+              isPromo: true,
+              promoType: "db",
+              title: pv.title,
+              category: parsed.category || pv.category || (isRtl ? "فيديو ترويجي" : "Promo Video"),
+              city: parsed.city || pv.city || (isRtl ? "كافة المناطق" : "All Regions"),
+              price: pv.price || 0,
+              currency: pv.currency || (countryCode === 'YE' ? 'YER' : 'JOD'),
+              description: parsed.description || pv.description || (isRtl ? "مطلب أو بث ترويجي مميز تم نشره من قبل المستخدم" : "Featured promo uploaded by user"),
+              createdAt: pv.createdAt || new Date().toISOString(),
+              views: pv.views || 0,
+              likes: pv.likes || 0,
+              userId: pv.userId,
+              userName: pv.user?.name || (isRtl ? "زائر" : "Guest"),
+              userAvatar: pv.user?.avatar || "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&w=150&q=80",
+              userVerified: pv.userVerified !== undefined ? pv.userVerified : true,
+              images: [pv.thumbnailUrl || "https://picsum.photos/seed/promo/800/400"],
+              videoUrl: parsed.videoUrl,
+              audioUrl: parsed.audioUrl,
+              isLive: parsed.videoUrl === 'webcam' || parsed.videoUrl === 'camera' || !!pv.isLive,
+              features: pv.features || [
+                isRtl ? "موثق وبث حي تفاعلي" : "Verified interactive live stream",
+                isRtl ? "تواصل مباشر وبدون عمولات" : "Direct communication, zero commission"
+              ],
+              ctaText: pv.ctaText || (isRtl ? "استكشف العرض" : "Explore Offer")
+            };
+          });
           setDbPromoVideos(formatted);
         }
       })
@@ -1971,7 +2025,7 @@ export default function SpotlightFeed({
                 />
 
         {/* 2. Interactive Video Overlay (Only active for the current slide if no custom image is set or visible) */}
-                {isPreloading && (!(customBgs[ad.id] && currentUser?.id === ad.userId)) && ad.videoUrl && (
+                {(((ad.videoUrl === 'webcam' || ad.videoUrl === 'camera') ? isCurrent : isPreloading)) && (!(customBgs[ad.id] && currentUser?.id === ad.userId)) && ad.videoUrl && (
                   ad.videoUrl === 'webcam' || ad.videoUrl === 'camera' ? (
                     <div className="absolute inset-0 z-[60]">
                       <WebcamStreamPlayer 
@@ -1980,11 +2034,12 @@ export default function SpotlightFeed({
                         ad={ad} 
                         currentUser={currentUser} 
                         onStreamEnded={(adId, archiveUrl) => {
+                          const overrideUrl = `${archiveUrl}||none||${ad.description || ''}||${ad.city || ''}||${ad.category || ''}`;
                           setLocalAdOverrides(prev => ({
                             ...prev,
                             [adId]: {
                               isLive: false,
-                              videoUrl: archiveUrl
+                              videoUrl: overrideUrl
                             }
                           }));
                           showToast(isRtl ? "تم إنهاء البث بنجاح وتحويله إلى فيديو مسجل! 🎥" : "Live stream completed and converted to playback! 🎥");
@@ -2001,14 +2056,23 @@ export default function SpotlightFeed({
                       />
                     </div>
                   ) : (
-                    <video 
-                      src={ad.videoUrl} 
-                      autoPlay={isCurrent}
-                      loop 
-                      muted={isMuted}
-                      playsInline
-                      className="absolute inset-0 w-full h-full object-cover brightness-100 z-[1]"
-                    />
+                    <div className="absolute inset-0 w-full h-full z-[1]">
+                      <video 
+                        src={ad.videoUrl} 
+                        autoPlay={isCurrent}
+                        loop 
+                        muted={ad.audioUrl ? true : isMuted}
+                        playsInline
+                        className="absolute inset-0 w-full h-full object-cover brightness-100"
+                      />
+                      {ad.audioUrl && (
+                        <AudioPlayer 
+                          src={ad.audioUrl} 
+                          isPlaying={isCurrent} 
+                          isMuted={isMuted} 
+                        />
+                      )}
+                    </div>
                   )
                 )}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/45 to-black/30 z-[2]" />
@@ -2718,7 +2782,8 @@ export default function SpotlightFeed({
                     
                     const title = (formData.get('liveTitle') || '').toString().trim();
                     const description = (formData.get('liveDesc') || '').toString().trim();
-                    const videoUrl = (formData.get('liveUrl') || '').toString().trim();
+                    const rawVideoUrl = (formData.get('liveUrl') || '').toString().trim();
+                    const audioUrl = (formData.get('audioUrl') || 'none').toString().trim();
                     const city = (formData.get('liveCity') || 'all').toString();
                     const liveCategory = (formData.get('liveCat') || '').toString();
                     
@@ -2729,10 +2794,13 @@ export default function SpotlightFeed({
                       showToast(isRtl ? 'يرجى إدخال عنوان الإعلان أو البث!' : 'Please enter a stream/reel title!');
                       return;
                     }
-                    if (!videoUrl) {
+                    if (!rawVideoUrl) {
                       showToast(isRtl ? 'يرجى إدخال رابط الفيديو أو اختيار أحد الروابط الجاهزة!' : 'Please enter a video URL or select a preset!');
                       return;
                     }
+
+                    // Serialize videoUrl
+                    const videoUrl = `${rawVideoUrl}||${audioUrl}||${description}||${city === 'all' ? (isRtl ? "كافة المناطق" : "All Regions") : city}||${liveCategory}`;
 
                     const response = await fetch('/api/promo', {
                       method: 'POST',
@@ -2753,7 +2821,8 @@ export default function SpotlightFeed({
 
                     if (response.ok) {
                       const newPromo = await response.json();
-                      const isWebcam = newPromo.videoUrl === 'webcam' || newPromo.videoUrl === 'camera';
+                      const parsed = parseVideoUrl(newPromo.videoUrl);
+                      const isWebcam = parsed.videoUrl === 'webcam' || parsed.videoUrl === 'camera';
                       const defaultImg = isWebcam 
                         ? "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80"
                         : "https://picsum.photos/seed/promo/800/400";
@@ -2765,12 +2834,16 @@ export default function SpotlightFeed({
                         promoType: "db",
                         views: 0,
                         likes: 0,
-                        category: newPromo.category || (isRtl ? "فيديو ترويجي" : "Promo Video"),
-                        city: newPromo.city || (isRtl ? "كافة المناطق" : "All Regions"),
+                        title: newPromo.title,
+                        category: parsed.category || (isRtl ? "فيديو ترويجي" : "Promo Video"),
+                        city: parsed.city || (isRtl ? "كافة المناطق" : "All Regions"),
+                        description: parsed.description || (isRtl ? "مطلب أو بث ترويجي مميز تم نشره من قبل المستخدم" : "Featured promo uploaded by user"),
                         userId: newPromo.userId || currentUser?.id || "guest_user",
                         userAvatar: newPromo.userAvatar || "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&w=150&q=80",
                         userVerified: true,
-                        isLive: !!newPromo.isLive,
+                        videoUrl: parsed.videoUrl,
+                        audioUrl: parsed.audioUrl,
+                        isLive: parsed.videoUrl === 'webcam' || parsed.videoUrl === 'camera' || !!newPromo.isLive,
                         images: [newPromo.thumbnailUrl || defaultImg]
                       };
                       setDbPromoVideos(prev => [formatted, ...prev]);
@@ -2813,6 +2886,23 @@ export default function SpotlightFeed({
                   >
                     <option value="live">{isRtl ? '🔴 بث مباشر تفاعلي بالتعليقات وحركة القلوب (أداة جذب الآن)' : '🔴 Interactive Live stream with chat comments & hearts (Engagement device)'}</option>
                     <option value="reel">{isRtl ? '🎥 ريلز ترويجي احترافي مميز (مقطع ترويجي ترفيهي)' : '🎥 Professional Promotional Showcase Reel'}</option>
+                  </select>
+                </div>
+
+                {/* 1.5 Audio Selector */}
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] font-black text-slate-400">
+                    🎵 {isRtl ? 'إضافة مقطع صوتي / موسيقى خلفية:' : 'Add Audio Track / Background Music:'}
+                  </label>
+                  <select
+                    name="audioUrl"
+                    className="bg-slate-950 border border-white/5 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-pink-500/65 font-bold cursor-pointer"
+                  >
+                    {AUDIO_TRACKS.map(track => (
+                      <option key={track.id} value={track.id}>
+                        {isRtl ? track.nameAr : track.nameEn}
+                      </option>
+                    ))}
                   </select>
                 </div>
 

@@ -1,6 +1,7 @@
 import {createRoot} from 'react-dom/client';
 import './i18n.ts';
 import App from './App.tsx';
+import ComingSoon from './components/ComingSoon.tsx';
 import './index.css';
 import { ThemeProvider } from './context/ThemeContext.tsx';
 import { MarketProvider } from './context/MarketContext.tsx';
@@ -97,7 +98,7 @@ window.fetch = async function (input: RequestInfo | URL, init?: RequestInit): Pr
 };
 
 // Register PWA Service Worker
-if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
+if (import.meta.env.VITE_MAINTENANCE_MODE !== 'true' && 'serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')
       .then((registration) => {
@@ -112,7 +113,11 @@ if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
 createRoot(document.getElementById('root')!).render(
   <ThemeProvider>
     <MarketProvider>
-      <App />
+      {import.meta.env.VITE_MAINTENANCE_MODE === 'true' ? (
+        <ComingSoon />
+      ) : (
+        <App />
+      )}
     </MarketProvider>
   </ThemeProvider>,
 );
