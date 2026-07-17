@@ -1980,6 +1980,18 @@ export default function SpotlightFeed({
             const isCurrent = i === activeIndex;
             const isPreloading = Math.abs(i - activeIndex) <= 1;
 
+            if (!isPreloading) {
+              return (
+                <div 
+                  key={ad.id} 
+                  className="h-full min-h-full w-full snap-start snap-always shrink-0 bg-neutral-950 flex items-center justify-center relative overflow-hidden"
+                  style={{ touchAction: 'pan-y' }}
+                >
+                  <div className="w-8 h-8 rounded-full border-4 border-slate-900 border-t-emerald-500 animate-spin" />
+                </div>
+              );
+            }
+
             const relativeDateString = (dateStr: string) => {
               const elapsed = Date.now() - new Date(dateStr).getTime();
               const minutes = Math.floor(elapsed / 60000);

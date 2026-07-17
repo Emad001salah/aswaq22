@@ -66,16 +66,21 @@ import Navbar from "./components/Navbar.tsx";
 import Hero from "./components/Hero.tsx";
 import AdCard from "./components/AdCard.tsx";
 import AdModal from "./components/AdModal.tsx";
-import Dashboard from "./components/Dashboard.tsx";
-import AdminPanel from "./components/AdminPanel.tsx";
 import HelpCenter from "./components/HelpCenter.tsx";
 import AiSearchModal from "./components/AiSearchModal.tsx";
-import AdMap, { AdMapHandle } from "./modules/maps/AdMap.tsx";
-import SpotlightFeed from "./components/SpotlightFeed.tsx";
+import type { AdMapHandle } from "./modules/maps/AdMap.tsx";
 import ExchangeRatesWidget from "./components/ExchangeRatesWidget.tsx";
 import PriceInsightsWidget from "./components/PriceInsightsWidget.tsx";
-import JobPortal from "./components/JobPortal.tsx";
 import UserProfileModal from "./components/UserProfileModal.tsx";
+
+// Lazy-loaded components for optimal bundle performance (loads chunks dynamically when required)
+const Dashboard = React.lazy(() => import("./components/Dashboard.tsx"));
+const AdminPanel = React.lazy(() => import("./components/AdminPanel.tsx"));
+const AdMap = React.lazy(() => import("./modules/maps/AdMap.tsx"));
+const SpotlightFeed = React.lazy(() => import("./components/SpotlightFeed.tsx"));
+const JobPortal = React.lazy(() => import("./components/JobPortal.tsx"));
+const DeliveryDashboard = React.lazy(() => import("./modules/shipping/DeliveryDashboard.tsx"));
+
 import { Toaster } from "react-hot-toast";
 import ToastContainer, { ToastMessage } from "./components/Toast.tsx";
 import socket, { joinRoom } from "./lib/socket.ts";
@@ -85,7 +90,6 @@ import LocationMapPicker from "./modules/maps/LocationMapPicker.tsx";
 import AuthModal from "./components/AuthModal.tsx";
 import IdentityVerificationModal from "./components/IdentityVerificationModal.tsx";
 import { OtpVerification } from "./components/OtpVerification.tsx";
-import DeliveryDashboard from "./modules/shipping/DeliveryDashboard.tsx";
 import { setupPushNotifications } from "./lib/native";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "./lib/firebase";
@@ -135,6 +139,13 @@ const getDistanceInKm = (
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
 };
+
+const LazyFallback = () => (
+  <div className="flex flex-col items-center justify-center min-h-[350px] w-full py-16 space-y-4">
+    <div className="w-10 h-10 rounded-full border-4 border-emerald-500/20 border-t-emerald-500 animate-spin" />
+    <span className="text-xs font-bold text-slate-500">جاري تحميل المحتوى بشكل آمن...</span>
+  </div>
+);
 
 const formatPrice = (price: any) => {
   if (price === undefined || price === null || isNaN(Number(price))) return '0';
@@ -3051,13 +3062,15 @@ useEffect(() => {
                   {/* Job Portal integration or standard view */}
                   {selectedCategory === "jobs" ? (
                     <div className="mt-8">
-                       <JobPortal
-                         currentUser={currentUser || GUEST_USER}
-                         isDark={isDark}
-                         ads={ads}
-                         onSelectAd={setSelectedAd}
-                         addToast={addToast}
-                       />
+                       <React.Suspense fallback={<LazyFallback />}>
+                         <JobPortal
+                           currentUser={currentUser || GUEST_USER}
+                           isDark={isDark}
+                           ads={ads}
+                           onSelectAd={setSelectedAd}
+                           addToast={addToast}
+                         />
+                      </React.Suspense>
                     </div>
                   ) : (
                     <>
@@ -3098,15 +3111,17 @@ useEffect(() => {
 
 
               {platformMode === "delivery" && (
-                <DeliveryDashboard
-                  currentUser={currentUser}
-                  currentMarket={currentMarket}
-                  isRtl={isRtl}
-                  addToast={addToast}
-                  ads={ads}
-                  setAds={setAds}
-                  setFilteredAds={setFilteredAds}
-                />
+                <React.Suspense fallback={<LazyFallback />}>
+                  <DeliveryDashboard
+                    currentUser={currentUser}
+                    currentMarket={currentMarket}
+                    isRtl={isRtl}
+                    addToast={addToast}
+                    ads={ads}
+                    setAds={setAds}
+                    setFilteredAds={setFilteredAds}
+                  />
+                </React.Suspense>
               )}
 
               {platformMode === "social" && (
@@ -3754,31 +3769,33 @@ useEffect(() => {
             </div>
           </div>
         ) : (
-          <Dashboard
-            currentUser={currentUser || GUEST_USER}
-            currentMarket={currentMarket}
-            ads={ads}
-            onAdCreated={(newAd) => {
-              setAds(prev => [newAd, ...prev]);
-              handleTabChange('home');
-            }}
-            onAdDeleted={handleAdDeleted}
-            onAdStatusChange={handleAdStatusChange}
-            onAdUpdated={(updatedAd) => {
-              setAds((prev) => prev.map((a) => (a.id === updatedAd.id ? updatedAd : a)));
-              setFilteredAds((prev) => prev.map((a) => (a.id === updatedAd.id ? updatedAd : a)));
-              if (selectedAd?.id === updatedAd.id) {
-                setSelectedAd(updatedAd);
-              }
-            }}
-            initialTab={currentTab}
-            onTabChange={handleTabChange}
-            onSelectAd={handleSelectAd}
-            isDark={isDark}
-            unreadMessagesCount={unreadMessages.length}
-            categories={categories}
-            addToast={addToast}
-          />
+          <React.Suspense fallback={<LazyFallback />}>
+            <Dashboard
+              currentUser={currentUser || GUEST_USER}
+              currentMarket={currentMarket}
+              ads={ads}
+              onAdCreated={(newAd) => {
+                setAds(prev => [newAd, ...prev]);
+                handleTabChange('home');
+              }}
+              onAdDeleted={handleAdDeleted}
+              onAdStatusChange={handleAdStatusChange}
+              onAdUpdated={(updatedAd) => {
+                setAds((prev) => prev.map((a) => (a.id === updatedAd.id ? updatedAd : a)));
+                setFilteredAds((prev) => prev.map((a) => (a.id === updatedAd.id ? updatedAd : a)));
+                if (selectedAd?.id === updatedAd.id) {
+                  setSelectedAd(updatedAd);
+                }
+              }}
+              initialTab={currentTab}
+              onTabChange={handleTabChange}
+              onSelectAd={handleSelectAd}
+              isDark={isDark}
+              unreadMessagesCount={unreadMessages.length}
+              categories={categories}
+              addToast={addToast}
+            />
+          </React.Suspense>
         )}
       </div>
 
@@ -3858,27 +3875,29 @@ useEffect(() => {
 
       {/* 1. Global System Admin Panel Modal */}
       {showAdminModal && (currentUser?.role === 'admin' || currentUser?.role === 'super_admin' || currentUser?.role === 'ADMIN' || currentUser?.role === 'SUPER_ADMIN') && (
-        <AdminPanel
-          onClose={() => setShowAdminModal(false)}
-          ads={ads}
-          currentUser={currentUser}
-          onAdDeleted={handleAdDeleted}
-          onAdStatusChange={handleAdStatusChange}
-          onViewAd={(ad) => {
-            if (ad.isLive || (ad as any).isPromo) {
-              setSelectedSpotlightId(ad.id);
-              setShowDiscovery(true);
-              setShowAdminModal(false);
-            } else {
-              setSelectedAd(ad);
-            }
-          }}
-          onViewUser={(user) => {
-            setSelectedUserPreview(user);
-          }}
-          onSettingsSaved={fetchPlatformSettings}
-          addToast={addToast}
-        />
+        <React.Suspense fallback={<LazyFallback />}>
+          <AdminPanel
+            onClose={() => setShowAdminModal(false)}
+            ads={ads}
+            currentUser={currentUser}
+            onAdDeleted={handleAdDeleted}
+            onAdStatusChange={handleAdStatusChange}
+            onViewAd={(ad) => {
+              if (ad.isLive || (ad as any).isPromo) {
+                setSelectedSpotlightId(ad.id);
+                setShowDiscovery(true);
+                setShowAdminModal(false);
+              } else {
+                setSelectedAd(ad);
+              }
+            }}
+            onViewUser={(user) => {
+              setSelectedUserPreview(user);
+            }}
+            onSettingsSaved={fetchPlatformSettings}
+            addToast={addToast}
+          />
+        </React.Suspense>
       )}
 
       {/* 2. Ad Detail Modal Overlay */}
@@ -4051,19 +4070,21 @@ useEffect(() => {
 
             {/* Map Container */}
             <div className="flex-grow relative bg-slate-950 overflow-hidden">
-               <AdMap 
-                  ads={[]}
-                  selectedCity={trackingOrder.from}
-                  onSelectAd={() => {}}
-                  center={currentMarket.center}
-                  cityCoordinates={currentMarket.cityCoordinates}
-                  marketCityIds={[]}
-                  deliveryPreview={{
-                    pickup: trackingOrder.pickupCoords,
-                    delivery: trackingOrder.deliveryCoords
-                  }}
-                  countryCode={currentMarket.countryCode}
-               />
+              <React.Suspense fallback={<LazyFallback />}>
+                <AdMap 
+                   ads={[]}
+                   selectedCity={trackingOrder.from}
+                   onSelectAd={() => {}}
+                   center={currentMarket.center}
+                   cityCoordinates={currentMarket.cityCoordinates}
+                   marketCityIds={[]}
+                   deliveryPreview={{
+                     pickup: trackingOrder.pickupCoords,
+                     delivery: trackingOrder.deliveryCoords
+                   }}
+                   countryCode={currentMarket.countryCode}
+                />
+              </React.Suspense>
                
                {/* Map Overlay Info */}
                <div className="absolute top-6 right-6 left-6 z-10 flex flex-col sm:flex-row gap-3 pointer-events-none">
@@ -4350,44 +4371,46 @@ useEffect(() => {
       )}
       <AnimatePresence>
         {(showDiscovery || platformMode === 'reels') && (
-          <SpotlightFeed 
-            ads={(() => {
-              const countryAds = ads.filter(ad => getCountryFromCity(ad.city) === currentMarket.countryCode);
-              if (selectedSpotlightId && !countryAds.some(a => a.id === selectedSpotlightId)) {
-                const targetAd = ads.find(a => a.id === selectedSpotlightId);
-                if (targetAd) return [targetAd, ...countryAds];
-              }
-              return countryAds;
-            })()}
-            initialAdId={selectedSpotlightId}
-            onSelectAd={(ad) => {
-              setSelectedAd(ad);
-              setShowDiscovery(false);
-              setSelectedSpotlightId(undefined);
-              setPlatformMode('marketplace');
-            }} 
-            onSelectUser={(user) => {
-              setSelectedUserPreview(user);
-              setShowDiscovery(false);
-              setSelectedSpotlightId(undefined);
-              setPlatformMode('marketplace');
-            }}
-            onClose={() => {
-              setShowDiscovery(false);
-              setSelectedSpotlightId(undefined);
-              setPlatformMode('marketplace');
-            }}
-            countryCode={currentMarket.countryCode}
-            currentUser={currentUser}
-            onLoginRequest={() => {
-              setShowDiscovery(false);
-              triggerLoginFlow('splash');
-            }}
-            onAdUpdated={(updatedAd) => {
-              setAds((prev) => prev.map((a) => (a.id === updatedAd.id ? updatedAd : a)));
-              setFilteredAds((prev) => prev.map((a) => (a.id === updatedAd.id ? updatedAd : a)));
-            }}
-          />
+          <React.Suspense fallback={<LazyFallback />}>
+            <SpotlightFeed 
+              ads={(() => {
+                const countryAds = ads.filter(ad => getCountryFromCity(ad.city) === currentMarket.countryCode);
+                if (selectedSpotlightId && !countryAds.some(a => a.id === selectedSpotlightId)) {
+                  const targetAd = ads.find(a => a.id === selectedSpotlightId);
+                  if (targetAd) return [targetAd, ...countryAds];
+                }
+                return countryAds;
+              })()}
+              initialAdId={selectedSpotlightId}
+              onSelectAd={(ad) => {
+                setSelectedAd(ad);
+                setShowDiscovery(false);
+                setSelectedSpotlightId(undefined);
+                setPlatformMode('marketplace');
+              }} 
+              onSelectUser={(user) => {
+                setSelectedUserPreview(user);
+                setShowDiscovery(false);
+                setSelectedSpotlightId(undefined);
+                setPlatformMode('marketplace');
+              }}
+              onClose={() => {
+                setShowDiscovery(false);
+                setSelectedSpotlightId(undefined);
+                setPlatformMode('marketplace');
+              }}
+              countryCode={currentMarket.countryCode}
+              currentUser={currentUser}
+              onLoginRequest={() => {
+                setShowDiscovery(false);
+                triggerLoginFlow('splash');
+              }}
+              onAdUpdated={(updatedAd) => {
+                setAds((prev) => prev.map((a) => (a.id === updatedAd.id ? updatedAd : a)));
+                setFilteredAds((prev) => prev.map((a) => (a.id === updatedAd.id ? updatedAd : a)));
+              }}
+            />
+          </React.Suspense>
         )}
       </AnimatePresence>
       {/* Global Post Deletion Confirmation Dialog */}

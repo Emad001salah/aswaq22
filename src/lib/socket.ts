@@ -5,10 +5,11 @@ import { API_ORIGIN } from './config';
 let socket: any;
 
 if (typeof window !== 'undefined') {
+  const options = { path: '/socket.io', autoConnect: false };
   if (Capacitor.isNativePlatform()) {
-    socket = io(API_ORIGIN, { path: '/socket.io' });
+    socket = io(API_ORIGIN, options);
   } else {
-    socket = io();
+    socket = io(options);
   }
 } else {
   // Safe mock socket object for Node SSR environment
@@ -16,11 +17,31 @@ if (typeof window !== 'undefined') {
     on: () => {},
     off: () => {},
     emit: () => {},
+    connect: () => {},
+    disconnect: () => {},
   };
 }
 
+export const connectSocket = () => {
+  if (socket && typeof window !== 'undefined' && !socket.connected) {
+    console.log('[Socket] Connecting manually...');
+    socket.connect();
+  }
+};
+
+export const disconnectSocket = () => {
+  if (socket && typeof window !== 'undefined' && socket.connected) {
+    console.log('[Socket] Disconnecting manually...');
+    socket.disconnect();
+  }
+};
+
 export const joinRoom = (roomId: string) => {
   if (socket && typeof window !== 'undefined') {
+    // Ensure we are connected before joining
+    if (!socket.connected) {
+      socket.connect();
+    }
     console.log(`[Socket] Joining room: ${roomId}`);
     socket.emit('join-room', roomId);
     socket.emit('joinRoom', roomId);

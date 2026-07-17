@@ -48,6 +48,8 @@ import { OAuthController }   from './controllers/oauth.controller.ts';
 import { HealthController }  from './controllers/health.controller.ts';
 import { BetaController }    from './controllers/beta.controller.ts';
 import { ShippingController } from './controllers/shipping.controller.ts';
+import { PollsController } from './controllers/polls.controller.ts';
+import { CategoriesController } from './controllers/categories.controller.ts';
 
 // Workers
 import { startOutboxWorker } from './workers/outbox.worker.ts';
@@ -277,6 +279,12 @@ export class App {
     this.app.use('/api/v1/storage', StorageController());
     this.app.use('/api/v1',         BetaController());
     this.app.use('/api/v1',         ShippingController(this.io));
+    this.app.use('/api/v1/polls',   PollsController());
+    this.app.use('/api/v1/categories', CategoriesController(adminAccessGuards));
+
+    // Mount categories on legacy endpoint as well
+    this.app.use('/api/categories', CategoriesController(adminAccessGuards));
+    this.app.use('/api/polls', PollsController());
 
     // Legacy routes (backward compat – redirect to v1)
     this.app.use('/api/ads',     AdsController());
@@ -284,136 +292,7 @@ export class App {
     this.app.use('/api/storage', StorageController());
     this.app.use('/api/ai',      AiController({ ads: [] }));
 
-    // Categories
-    /**
-     * @openapi
-     * /categories:
-     *   get:
-     *     summary: Get all categories with subcategories
-     *     tags: [Categories]
-     *     responses:
-     *       200:
-     *         description: Categories retrieved successfully
-     *         content:
-     *           application/json:
-     *             schema:
-     *               type: object
-     *               properties:
-     *                 success:
-     *                   type: boolean
-     *                 data:
-     *                   type: array
-     *                   items:
-     *                     type: object
-     *                     properties:
-     *                       id:
-     *                         type: string
-     *                       nameAr:
-     *                         type: string
-     *                       nameEn:
-     *                         type: string
-     *                       icon:
-     *                         type: string
-     *                       subCategories:
-     *                         type: array
-     *                         items:
-     *                           type: object
-     *                           properties:
-     *                             id:
-     *                               type: string
-     *                             nameAr:
-     *                               type: string
-     *                             nameEn:
-     *                               type: string
-     */
-    this.app.get(['/api/categories', '/api/v1/categories'], async (req, res, next) => {
-      try {
-        const categories = await prisma.category.findMany({
-          include: { subCategories: true },
-        });
-        res.json({ success: true, data: categories });
-      } catch (err) {
-        next(err);
-      }
-    });
 
-    // POST /api/categories - Create Category — SECURED: Admin only
-    this.app.post('/api/categories', ...adminAccessGuards, async (req, res, next) => {
-      const { id, nameAr, nameEn, icon } = req.body;
-      if (!id || !nameAr || !nameEn || !icon) {
-        return res.status(400).json({ error: 'Missing required category fields' });
-      }
-      try {
-        const category = await prisma.category.create({
-          data: { id, nameAr, nameEn, icon },
-        });
-        res.status(201).json(category);
-      } catch (err) {
-        next(err);
-      }
-    });
-
-    // PUT /api/categories/:id - Update Category — SECURED: Admin only
-    this.app.put('/api/categories/:id', ...adminAccessGuards, async (req, res, next) => {
-      const { id } = req.params;
-      const { nameAr, nameEn, icon } = req.body;
-      try {
-        const category = await prisma.category.update({
-          where: { id },
-          data: { nameAr, nameEn, icon },
-        });
-        res.json(category);
-      } catch (err) {
-        next(err);
-      }
-    });
-
-    // DELETE /api/categories/:id - Delete Category — SECURED: Admin only
-    this.app.delete('/api/categories/:id', ...adminAccessGuards, async (req, res, next) => {
-      const { id } = req.params;
-      try {
-        await prisma.category.delete({
-          where: { id },
-        });
-        res.json({ success: true });
-      } catch (err) {
-        next(err);
-      }
-    });
-
-    // POST /api/categories/:id/subcategories - Add Subcategory — SECURED: Admin only
-    this.app.post('/api/categories/:id/subcategories', ...adminAccessGuards, async (req, res, next) => {
-      const { id: categoryId } = req.params;
-      const { nameAr, nameEn } = req.body;
-      if (!nameAr || !nameEn) {
-        return res.status(400).json({ error: 'Missing required subcategory fields' });
-      }
-      try {
-        const subCategory = await prisma.subCategory.create({
-          data: {
-            categoryId,
-            nameAr,
-            nameEn,
-          },
-        });
-        res.status(201).json(subCategory);
-      } catch (err) {
-        next(err);
-      }
-    });
-
-    // DELETE /api/categories/:catId/subcategories/:subId - Delete Subcategory — SECURED: Admin only
-    this.app.delete('/api/categories/:catId/subcategories/:subId', ...adminAccessGuards, async (req, res, next) => {
-      const { subId } = req.params;
-      try {
-        await prisma.subCategory.delete({
-          where: { id: subId },
-        });
-        res.json({ success: true });
-      } catch (err) {
-        next(err);
-      }
-    });
 
     // GET /api/promo - Fetch all promo reels
     this.app.get('/api/promo', async (req, res, next) => {
@@ -867,65 +746,7 @@ export class App {
       }
     })();
 
-    // ── Polls ─────────────────────────────────────────────────────────────────
-    this.app.get('/api/polls', async (req, res) => {
-      const { countryCode } = req.query;
-      try {
-        const polls = await prisma.poll.findMany({
-          where: {
-            OR: [
-              { countryCode: countryCode ? String(countryCode).toUpperCase() : 'ALL' },
-              { countryCode: 'ALL' }
-            ]
-          },
-          orderBy: { createdAt: 'desc' },
-          take: 20,
-        });
-        res.json(polls);
-      } catch (e: any) {
-        res.json([]);
-      }
-    });
 
-    this.app.post('/api/polls/:id/vote', async (req, res) => {
-      const { id } = req.params;
-      const { optionIndex } = req.body;
-      if (optionIndex === undefined || typeof optionIndex !== 'number') {
-        return res.status(400).json({ error: 'Option index is required' });
-      }
-
-      // SECURITY: Rate-limit votes by IP — 1 vote per poll per IP per 24h
-      const voterIp = req.ip || req.socket.remoteAddress || 'unknown';
-      const voteKey = `poll_vote:${id}:${voterIp}`;
-      try {
-        const alreadyVoted = await redis.get(voteKey);
-        if (alreadyVoted) {
-          return res.status(429).json({ error: 'لقد صوّتت بالفعل على هذا الاستطلاع.' });
-        }
-
-        const poll = await prisma.poll.findUnique({ where: { id } });
-        if (!poll) {
-          return res.status(404).json({ error: 'Poll not found' });
-        }
-
-        const newVotes = [...poll.votes];
-        if (optionIndex >= 0 && optionIndex < newVotes.length) {
-          newVotes[optionIndex] += 1;
-        }
-
-        const updated = await prisma.poll.update({
-          where: { id },
-          data: { votes: newVotes }
-        });
-
-        // Record vote — expires after 24 hours (fail open if Redis is down)
-        await redis.set(voteKey, '1', 86400);
-
-        res.json({ success: true, votes: updated.votes });
-      } catch (err: any) {
-        res.status(500).json({ error: 'Vote registration failed', message: err.message });
-      }
-    });
 
 
 

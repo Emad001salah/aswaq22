@@ -3,18 +3,27 @@ import { prisma } from './prisma.ts';
 import * as path from 'path';
 import * as fs from 'fs';
 
-const redisHost = process.env.REDIS_HOST || 'localhost';
-const redisPort = parseInt(process.env.REDIS_PORT || '6379');
-const redisPassword = process.env.REDIS_PASSWORD || undefined;
+let connectionOpts: any;
 
-const connectionOpts = {
-  host: redisHost,
-  port: redisPort,
-  password: redisPassword,
-  enableOfflineQueue: false,   // Don't queue commands when Redis is down
-  maxRetriesPerRequest: 1,     // Fail fast
-  retryStrategy: () => null,   // No auto-reconnect – we use DB fallback mode
-};
+if (process.env.REDIS_URL) {
+  connectionOpts = {
+    url: process.env.REDIS_URL,
+    enableOfflineQueue: false,
+    maxRetriesPerRequest: null,
+  };
+} else {
+  const redisHost = process.env.REDIS_HOST || 'localhost';
+  const redisPort = parseInt(process.env.REDIS_PORT || '6379');
+  const redisPassword = process.env.REDIS_PASSWORD || undefined;
+
+  connectionOpts = {
+    host: redisHost,
+    port: redisPort,
+    password: redisPassword,
+    enableOfflineQueue: false,
+    maxRetriesPerRequest: null,
+  };
+}
 
 let imageQueue: Queue | null = null;
 let notificationQueue: Queue | null = null;
@@ -27,7 +36,9 @@ let isQueueSystemAvailable = false;
 // Test Redis connectivity once before creating workers
 async function initQueues() {
   const { default: Redis } = await import('ioredis');
-  const testClient = new Redis({ ...connectionOpts, lazyConnect: true });
+  const testClient = process.env.REDIS_URL
+    ? new Redis(process.env.REDIS_URL, { lazyConnect: true, enableOfflineQueue: false })
+    : new Redis({ ...connectionOpts, lazyConnect: true });
   testClient.on('error', (err) => {
     // Silently catch connection/DNS errors to prevent unhandled rejection crashes when Redis is down
   });
