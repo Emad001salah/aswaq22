@@ -738,7 +738,7 @@ useEffect(() => {
   const [selectedSpotlightId, setSelectedSpotlightId] = useState<string | undefined>(undefined);
   const [showWelcomeFlow, setShowWelcomeFlow] = useState(false);
   const [welcomeFlowInitialStep, setWelcomeFlowInitialStep] = useState<'splash' | 'features' | 'auth'>('splash');
-  const triggerLoginFlow = (initialStep: 'splash' | 'features' | 'auth' = 'auth') => {
+  const triggerLoginFlow = (initialStep: 'splash' | 'features' | 'auth' = 'splash') => {
     setWelcomeFlowInitialStep(initialStep);
     setShowWelcomeFlow(true);
   };
@@ -2408,7 +2408,7 @@ useEffect(() => {
           );
         }}
         onLoginClick={() => {
-          triggerLoginFlow('auth');
+          triggerLoginFlow('splash');
         }}
         onNotificationClick={handleNotificationRead}
         favoritesCount={favorites.length}
@@ -3249,7 +3249,7 @@ useEffect(() => {
                               <p className="text-xs text-slate-500">يمكنك التصفح بحرية، لكن للنشر والتفاعل تحتاج إلى حساب</p>
                             </div>
                             <button
-                              onClick={() => triggerLoginFlow('auth')}
+                              onClick={() => triggerLoginFlow('splash')}
                               className="px-6 py-2.5 rounded-2xl bg-fuchsia-500 text-white text-sm font-black hover:bg-fuchsia-400 transition-all shadow-lg shadow-fuchsia-500/20"
                             >
                               تسجيل الدخول / إنشاء حساب
@@ -3393,7 +3393,7 @@ useEffect(() => {
                           <button
                             onClick={() => {
                               if (!currentUser || currentUser.id === 'guest_user') {
-                                triggerLoginFlow('auth');
+                                triggerLoginFlow('splash');
                                 return;
                               }
                               if (!newPostText.trim() && selectedMedia.length === 0) return;
@@ -4379,7 +4379,7 @@ useEffect(() => {
             currentUser={currentUser}
             onLoginRequest={() => {
               setShowDiscovery(false);
-              triggerLoginFlow('auth');
+              triggerLoginFlow('splash');
             }}
             onAdUpdated={(updatedAd) => {
               setAds((prev) => prev.map((a) => (a.id === updatedAd.id ? updatedAd : a)));
