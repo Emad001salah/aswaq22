@@ -1,16 +1,17 @@
 # ═══════════════════════════════════════════════════════
-# Robots.txt — أسواق | Aswaq22.com
+# Robots.txt — أسواق | www.aswaq22.com
 # ═══════════════════════════════════════════════════════
 
 User-agent: *
 Allow: /
+Allow: /uploads/
 Disallow: /admin/
 Disallow: /api/
 Disallow: /auth/callback
-Disallow: /uploads/
 
 # سرعة الزحف — نسمح لجوجل بالزحف بحرية كاملة
 Crawl-delay: 1
 
 # خريطة الموقع
-Sitemap: https://aswaq22.com/sitemap.xml
+Sitemap: https://www.aswaq22.com/sitemap.xml
+
