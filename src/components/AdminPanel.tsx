@@ -183,9 +183,11 @@ export default function AdminPanel({
   const [polls, setPolls] = useState<any[]>([]);
   const [reels, setReels] = useState<any[]>([]);
   const [reports, setReports] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
 
   // ── UI States ──
   const [loading, setLoading] = useState(false);
+  const [loadingCategories, setLoadingCategories] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedUser, setSelectedUser] = useState<any>(null);
@@ -199,6 +201,13 @@ export default function AdminPanel({
   const [showAddEmployee, setShowAddEmployee] = useState(false);
   const [newEmployee, setNewEmployee] = useState({ name: '', email: '', password: '', role: 'ADMIN', managedCountry: '' });
   const [addingEmployee, setAddingEmployee] = useState(false);
+
+  const [showAddCategory, setShowAddCategory] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<any>(null);
+  const [newCategory, setNewCategory] = useState({ id: '', nameAr: '', nameEn: '', icon: '' });
+  const [newSubNameAr, setNewSubNameAr] = useState('');
+  const [newSubNameEn, setNewSubNameEn] = useState('');
+  const [activeSubCatId, setActiveSubCatId] = useState<string | null>(null);
 
   const [logoUploading, setLogoUploading] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
@@ -339,6 +348,21 @@ export default function AdminPanel({
     }
   }, [adminFetch]);
 
+  const fetchCategories = useCallback(async () => {
+    setLoadingCategories(true);
+    try {
+      const res = await fetch('/api/categories');
+      if (res.ok) {
+        const json = await res.json();
+        setCategories(json.data || []);
+      }
+    } catch (e) {
+      console.error('Error fetching categories:', e);
+    } finally {
+      setLoadingCategories(false);
+    }
+  }, []);
+
   // ── Load data on tab change ──
   useEffect(() => {
     if (activeTab === 'overview') fetchStats();
@@ -349,8 +373,9 @@ export default function AdminPanel({
     if (activeTab === 'employees') fetchEmployees();
     if (activeTab === 'polls') fetchPolls();
     if (activeTab === 'reels') fetchReels();
+    if (activeTab === 'categories') fetchCategories();
     if (activeTab === 'analytics') { fetchStats(); fetchAds(); fetchUsers(); }
-  }, [activeTab, selectedMarket]);
+  }, [activeTab, selectedMarket, fetchCategories]);
 
   useEffect(() => {
     if (activeTab === 'users') fetchUsers();
@@ -359,6 +384,29 @@ export default function AdminPanel({
 
   // ── User Actions ──
   const handleUserAction = async (userId: string, action: string) => {
+    // 1. Keep track of previous state for potential rollback
+    const prevUsers = [...allUsers];
+    const prevSelectedUser = selectedUser;
+    
+    // 2. Perform optimistic update
+    setAllUsers(prev => prev.map(u => {
+      if (u.id === userId) {
+        const copy = { ...u };
+        if (action === 'verify') copy.isVerified = 'verified';
+        if (action === 'unverify') copy.isVerified = null;
+        if (action === 'ban') {
+          copy.active = false;
+          copy.deletedAt = new Date().toISOString();
+        }
+        if (action === 'unban') {
+          copy.active = true;
+          copy.deletedAt = null;
+        }
+        return copy;
+      }
+      return u;
+    }));
+    
     setActionLoading(`${userId}_${action}`);
     try {
       const res = await adminFetch(`/api/admin/users/${userId}`, {
@@ -372,9 +420,15 @@ export default function AdminPanel({
         if (selectedUser?.id === userId) setSelectedUser(updated);
         addToast?.('تم', `تم تنفيذ الإجراء بنجاح`, 'success');
       } else {
+        // Rollback on server error
+        setAllUsers(prevUsers);
+        if (prevSelectedUser) setSelectedUser(prevSelectedUser);
         addToast?.('خطأ', `فشل الإجراء (${res.status})`, 'error');
       }
     } catch (e) {
+      // Rollback on network failure
+      setAllUsers(prevUsers);
+      if (prevSelectedUser) setSelectedUser(prevSelectedUser);
       addToast?.('خطأ', 'فشل تنفيذ الإجراء', 'error');
     } finally {
       setActionLoading(null);
@@ -383,6 +437,20 @@ export default function AdminPanel({
 
   // ── Ad Actions ──
   const handleAdAction = async (adId: string, status?: string, isFeatured?: boolean) => {
+    // 1. Keep track of previous state for rollback
+    const prevAds = [...adminAds];
+    
+    // 2. Perform optimistic update
+    setAdminAds(prev => prev.map(a => {
+      if (a.id === adId) {
+        const copy = { ...a };
+        if (status !== undefined) copy.status = status;
+        if (isFeatured !== undefined) copy.isFeatured = isFeatured;
+        return copy;
+      }
+      return a;
+    }));
+
     setActionLoading(`${adId}_ad`);
     try {
       const body: any = {};
@@ -400,9 +468,13 @@ export default function AdminPanel({
         if (status) onAdStatusChange(adId, status, isFeatured);
         addToast?.('تم', 'تم تحديث الإعلان بنجاح', 'success');
       } else {
+        // Rollback
+        setAdminAds(prevAds);
         addToast?.('خطأ', `فشل التحديث (${res.status})`, 'error');
       }
     } catch (e) {
+      // Rollback
+      setAdminAds(prevAds);
       addToast?.('خطأ', 'فشل تحديث الإعلان', 'error');
     } finally {
       setActionLoading(null);
@@ -553,6 +625,144 @@ export default function AdminPanel({
       addToast?.('خطأ', 'فشل إضافة الموظف/المدير', 'error');
     } finally {
       setAddingEmployee(false);
+    }
+  };
+
+  const handleEmployeeAction = async (empId: string, action: 'delete' | 'toggle_status') => {
+    setActionLoading(`${empId}_${action}`);
+    try {
+      const res = await adminFetch(`/api/admin/employees/${empId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      });
+      if (res.ok) {
+        if (action === 'delete') {
+          setEmployees(prev => prev.filter(e => e.id !== empId));
+          addToast?.('تم الحذف', 'تم حذف الموظف بنجاح', 'success');
+        } else {
+          const data = await res.json();
+          setEmployees(prev => prev.map(e => e.id === empId ? { ...e, active: data.active } : e));
+          addToast?.('تم التحديث', 'تم تغيير حالة الموظف بنجاح', 'success');
+        }
+      } else {
+        addToast?.('خطأ', `فشلت العملية (${res.status})`, 'error');
+      }
+    } catch (e) {
+      addToast?.('خطأ', 'تعذر الاتصال بالسيرفر لإتمام الإجراء', 'error');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleSaveCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCategory.nameAr.trim() || !newCategory.nameEn.trim() || !newCategory.icon.trim()) return;
+    
+    setActionLoading('save_category');
+    try {
+      const method = editingCategory ? 'PUT' : 'POST';
+      const url = editingCategory ? `/api/categories/${editingCategory.id}` : '/api/categories';
+      const res = await adminFetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: editingCategory ? editingCategory.id : newCategory.id.trim() || undefined,
+          nameAr: newCategory.nameAr.trim(),
+          nameEn: newCategory.nameEn.trim(),
+          icon: newCategory.icon.trim()
+        })
+      });
+      
+      if (res.ok) {
+        fetchCategories();
+        if ((window as any).refreshAppCategories) (window as any).refreshAppCategories();
+        
+        setNewCategory({ id: '', nameAr: '', nameEn: '', icon: '' });
+        setEditingCategory(null);
+        setShowAddCategory(false);
+        addToast?.('تم بنجاح', editingCategory ? 'تم تحديث الفئة' : 'تم إضافة الفئة بنجاح', 'success');
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        addToast?.('خطأ', errData.error || 'فشل حفظ الفئة في النظام', 'error');
+      }
+    } catch (e) {
+      addToast?.('خطأ', 'تعذر الاتصال بالسيرفر', 'error');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleDeleteCategory = async (id: string) => {
+    if (!confirm('هل أنت متأكد من حذف هذه الفئة وجميع تصنيفاتها الفرعية؟')) return;
+    setActionLoading(`delete_cat_${id}`);
+    try {
+      const res = await adminFetch(`/api/categories/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setCategories(prev => prev.filter(c => c.id !== id));
+        if ((window as any).refreshAppCategories) (window as any).refreshAppCategories();
+        addToast?.('تم الحذف', 'تم حذف الفئة بنجاح', 'success');
+      } else {
+        addToast?.('خطأ', 'فشل الحذف، قد تكون الفئة مرتبطة بإعلانات قائمة', 'error');
+      }
+    } catch (e) {
+      addToast?.('خطأ', 'تعذر الحذف', 'error');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleAddSubCategory = async (categoryId: string) => {
+    if (!newSubNameAr.trim() || !newSubNameEn.trim()) return;
+    setActionLoading(`add_sub_${categoryId}`);
+    try {
+      const res = await adminFetch(`/api/categories/${categoryId}/subcategories`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nameAr: newSubNameAr.trim(), nameEn: newSubNameEn.trim() })
+      });
+      if (res.ok) {
+        const newSub = await res.json();
+        setCategories(prev => prev.map(c => {
+          if (c.id === categoryId) {
+            return { ...c, subCategories: [...(c.subCategories || []), newSub] };
+          }
+          return c;
+        }));
+        setNewSubNameAr('');
+        setNewSubNameEn('');
+        setActiveSubCatId(null);
+        addToast?.('تم الإضافة', 'تم إضافة التصنيف الفرعي بنجاح', 'success');
+      } else {
+        addToast?.('خطأ', 'فشل إضافة التصنيف الفرعي', 'error');
+      }
+    } catch (e) {
+      addToast?.('خطأ', 'تعذر إضافة التصنيف الفرعي', 'error');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleDeleteSubCategory = async (categoryId: string, subId: string) => {
+    if (!confirm('هل تريد حذف هذا التصنيف الفرعي؟')) return;
+    setActionLoading(`delete_sub_${subId}`);
+    try {
+      const res = await adminFetch(`/api/categories/${categoryId}/subcategories/${subId}`, { method: 'DELETE' });
+      if (res.ok) {
+        setCategories(prev => prev.map(c => {
+          if (c.id === categoryId) {
+            return { ...c, subCategories: (c.subCategories || []).filter((s: any) => s.id !== subId) };
+          }
+          return c;
+        }));
+        addToast?.('تم الحذف', 'تم حذف التصنيف الفرعي بنجاح', 'success');
+      } else {
+        addToast?.('خطأ', 'فشل حذف التصنيف الفرعي', 'error');
+      }
+    } catch (e) {
+      addToast?.('خطأ', 'تعذر حذف التصنيف الفرعي', 'error');
+    } finally {
+      setActionLoading(null);
     }
   };
 
@@ -1165,36 +1375,250 @@ export default function AdminPanel({
               {/* CATEGORIES TAB */}
               {/* ════════════════════════════════════════════════════════════ */}
               {activeTab === 'categories' && (
-                <div className="space-y-4 animate-in fade-in duration-300">
-                  <SectionHeader title="الفئات والتصنيفات" subtitle="إحصائيات الفئات من قاعدة البيانات" />
+                <div className="space-y-6 animate-in fade-in duration-300">
+                  <div className="flex justify-between items-center mb-6">
+                    <SectionHeader title="الفئات والتصنيفات" subtitle="إدارة فئات المنصة والتصنيفات الفرعية بالكامل" />
+                    <button
+                      onClick={() => {
+                        setEditingCategory(null);
+                        setNewCategory({ id: '', nameAr: '', nameEn: '', icon: 'Tag' });
+                        setShowAddCategory(true);
+                      }}
+                      className="px-4 py-2 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 rounded-xl font-bold text-sm transition-colors flex items-center gap-2 border-none cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4" />
+                      إضافة فئة رئيسية
+                    </button>
+                  </div>
 
-                  {!stats?.categoryStats ? (
-                    <div className="flex items-center justify-center h-48"><Loader2 className="w-8 h-8 text-emerald-500 animate-spin" /></div>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {Object.entries(stats.categoryStats).map(([cat, count]: any, i) => (
-                        <div key={cat} className="p-4 rounded-2xl bg-slate-800/30 border border-white/5 hover:border-white/10 transition-all">
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-2">
-                              <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: `${pieColors[i % pieColors.length]}20` }}>
-                                <Tag className="w-4 h-4" style={{ color: pieColors[i % pieColors.length] }} />
-                              </div>
-                              <span className="text-sm font-bold text-white">{cat}</span>
+                  {showAddCategory && (
+                    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                      <div className="bg-slate-900 border border-white/10 p-6 rounded-3xl w-full max-w-md shadow-2xl">
+                        <div className="flex items-center justify-between mb-6">
+                          <h3 className="text-lg font-black text-white">
+                            {editingCategory ? 'تعديل الفئة الرئيسية' : 'إضافة فئة رئيسية جديدة'}
+                          </h3>
+                          <button 
+                            onClick={() => {
+                              setShowAddCategory(false);
+                              setEditingCategory(null);
+                            }} 
+                            className="p-2 bg-white/5 hover:bg-white/10 rounded-full transition-colors text-slate-400 border-none cursor-pointer"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                        <form onSubmit={handleSaveCategory} className="space-y-4">
+                          {!editingCategory && (
+                            <div>
+                              <label className="block text-xs font-bold text-slate-400 mb-1">المعرف الفريد (ID بالإنجليزية - اختياري)</label>
+                              <input 
+                                value={newCategory.id} 
+                                onChange={e => setNewCategory({...newCategory, id: e.target.value})} 
+                                type="text" 
+                                className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-indigo-500" 
+                                placeholder="مثال: vehicles (سيترك فارغاً للتوليد التلقائي)" 
+                              />
                             </div>
-                            <span className="text-xl font-black" style={{ color: pieColors[i % pieColors.length] }}>{count}</span>
-                          </div>
-                          <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden mt-2">
-                            <div
-                              className="h-full rounded-full transition-all duration-500"
-                              style={{
-                                width: `${Math.min(100, (count / Math.max(...Object.values(stats.categoryStats) as number[])) * 100)}%`,
-                                background: pieColors[i % pieColors.length]
-                              }}
+                          )}
+                          <div>
+                            <label className="block text-xs font-bold text-slate-400 mb-1">الاسم بالعربية</label>
+                            <input 
+                              required 
+                              value={newCategory.nameAr} 
+                              onChange={e => setNewCategory({...newCategory, nameAr: e.target.value})} 
+                              type="text" 
+                              className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-indigo-500" 
+                              placeholder="مثال: سيارات ومركبات" 
                             />
                           </div>
-                          <p className="text-[10px] text-slate-500 mt-1">{count} إعلان في هذه الفئة</p>
-                        </div>
-                      ))}
+                          <div>
+                            <label className="block text-xs font-bold text-slate-400 mb-1">الاسم بالإنجليزية</label>
+                            <input 
+                              required 
+                              value={newCategory.nameEn} 
+                              onChange={e => setNewCategory({...newCategory, nameEn: e.target.value})} 
+                              type="text" 
+                              className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 text-left" 
+                              placeholder="e.g. Motors & Vehicles" 
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold text-slate-400 mb-1">الأيقونة (اسم الأيقونة)</label>
+                            <select 
+                              value={newCategory.icon} 
+                              onChange={e => setNewCategory({...newCategory, icon: e.target.value})} 
+                              className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 [&>option]:bg-slate-900"
+                            >
+                              <option value="Tag">بطاقة (Tag)</option>
+                              <option value="Car">سيارة (Car)</option>
+                              <option value="Home">عقار (Home)</option>
+                              <option value="Smartphone">هاتف (Smartphone)</option>
+                              <option value="Laptop">كمبيوتر (Laptop)</option>
+                              <option value="Tv">شاشات (Tv)</option>
+                              <option value="Briefcase">وظائف (Briefcase)</option>
+                              <option value="Heart">صحة (Heart)</option>
+                              <option value="ShoppingBag">تسوق (ShoppingBag)</option>
+                              <option value="Globe">سفر وسياحة (Globe)</option>
+                              <option value="Coffee">خدمات ومطاعم (Coffee)</option>
+                              <option value="Book">كتب وتعليم (Book)</option>
+                              <option value="Gift">هدايا ومناسبات (Gift)</option>
+                            </select>
+                          </div>
+                          <button 
+                            type="submit" 
+                            disabled={actionLoading === 'save_category'} 
+                            className="w-full py-3 bg-indigo-500 hover:bg-indigo-600 text-white font-bold rounded-xl transition-colors disabled:opacity-50 mt-2 border-none cursor-pointer"
+                          >
+                            {actionLoading === 'save_category' ? 'جاري الحفظ...' : (editingCategory ? 'تحديث الفئة' : 'إضافة الفئة')}
+                          </button>
+                        </form>
+                      </div>
+                    </div>
+                  )}
+
+                  {loadingCategories ? (
+                    <div className="flex items-center justify-center h-48">
+                      <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
+                    </div>
+                  ) : categories.length === 0 ? (
+                    <div className="text-center py-20 text-slate-500">
+                      <Tag className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                      <p>لا توجد فئات مسجلة حالياً</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {categories.map((cat: any) => {
+                        const count = stats?.categoryStats?.[cat.nameAr] || stats?.categoryStats?.[cat.nameEn] || 0;
+                        return (
+                          <div key={cat.id} className="p-5 rounded-2xl bg-slate-800/30 border border-white/5 flex flex-col justify-between hover:border-white/10 transition-all">
+                            <div>
+                              {/* Header */}
+                              <div className="flex items-start justify-between mb-4">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-400">
+                                    <Tag className="w-5 h-5" />
+                                  </div>
+                                  <div>
+                                    <h3 className="text-sm font-black text-white flex items-center gap-1.5">
+                                      {cat.nameAr}
+                                      <span className="text-[10px] text-slate-500 font-mono">({cat.nameEn})</span>
+                                    </h3>
+                                    <p className="text-[10px] text-slate-500 font-bold mt-0.5">{count} إعلان نشط</p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  <button
+                                    onClick={() => {
+                                      setEditingCategory(cat);
+                                      setNewCategory({ id: cat.id, nameAr: cat.nameAr, nameEn: cat.nameEn, icon: cat.icon || 'Tag' });
+                                      setShowAddCategory(true);
+                                    }}
+                                    className="p-1.5 rounded-lg border-none bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-all cursor-pointer"
+                                    title="تعديل الفئة"
+                                  >
+                                    <Edit className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteCategory(cat.id)}
+                                    disabled={actionLoading === `delete_cat_${cat.id}`}
+                                    className="p-1.5 rounded-lg border-none bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition-all cursor-pointer"
+                                    title="حذف الفئة"
+                                  >
+                                    {actionLoading === `delete_cat_${cat.id}` ? (
+                                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                    ) : (
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    )}
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* Subcategories section */}
+                              <div className="border-t border-white/5 pt-4 mt-2">
+                                <div className="flex items-center justify-between mb-3">
+                                  <span className="text-[10px] font-black text-slate-400">التصنيفات الفرعية ({cat.subCategories?.length || 0}):</span>
+                                  {activeSubCatId !== cat.id ? (
+                                    <button
+                                      onClick={() => {
+                                        setNewSubNameAr('');
+                                        setNewSubNameEn('');
+                                        setActiveSubCatId(cat.id);
+                                      }}
+                                      className="text-[9px] font-bold text-indigo-400 hover:text-indigo-300 border-none bg-transparent cursor-pointer flex items-center gap-1"
+                                    >
+                                      <Plus className="w-3 h-3" />
+                                      إضافة تصنيف فرعي
+                                    </button>
+                                  ) : (
+                                    <button
+                                      onClick={() => setActiveSubCatId(null)}
+                                      className="text-[9px] font-bold text-slate-500 hover:text-slate-400 border-none bg-transparent cursor-pointer"
+                                    >
+                                      إلغاء
+                                    </button>
+                                  )}
+                                </div>
+
+                                {activeSubCatId === cat.id && (
+                                  <div className="p-3 bg-slate-900/60 rounded-xl border border-white/5 mb-3 space-y-2">
+                                    <div className="grid grid-cols-2 gap-2">
+                                      <input
+                                        value={newSubNameAr}
+                                        onChange={e => setNewSubNameAr(e.target.value)}
+                                        type="text"
+                                        placeholder="الاسم بالعربية"
+                                        className="bg-black/30 border border-white/10 rounded-lg px-2.5 py-1 text-xs text-white focus:outline-none focus:border-indigo-500"
+                                      />
+                                      <input
+                                        value={newSubNameEn}
+                                        onChange={e => setNewSubNameEn(e.target.value)}
+                                        type="text"
+                                        placeholder="Name in English"
+                                        className="bg-black/30 border border-white/10 rounded-lg px-2.5 py-1 text-xs text-white focus:outline-none focus:border-indigo-500 text-left"
+                                      />
+                                    </div>
+                                    <button
+                                      onClick={() => handleAddSubCategory(cat.id)}
+                                      disabled={actionLoading === `add_sub_${cat.id}`}
+                                      className="w-full py-1.5 bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-bold rounded-lg border-none cursor-pointer transition-colors"
+                                    >
+                                      {actionLoading === `add_sub_${cat.id}` ? 'جاري الإضافة...' : 'حفظ التصنيف الفرعي'}
+                                    </button>
+                                  </div>
+                                )}
+
+                                <div className="flex flex-wrap gap-1.5">
+                                  {cat.subCategories && cat.subCategories.length > 0 ? (
+                                    cat.subCategories.map((sub: any) => (
+                                      <span 
+                                        key={sub.id} 
+                                        className="inline-flex items-center gap-1 text-[9px] px-2.5 py-1 bg-slate-800 text-slate-300 rounded-lg hover:bg-slate-700/80 transition-all"
+                                      >
+                                        {sub.nameAr}
+                                        <button
+                                          onClick={() => handleDeleteSubCategory(cat.id, sub.id)}
+                                          disabled={actionLoading === `delete_sub_${sub.id}`}
+                                          className="text-slate-500 hover:text-rose-400 border-none bg-transparent cursor-pointer p-0 mr-1 flex items-center justify-center"
+                                          title="حذف"
+                                        >
+                                          {actionLoading === `delete_sub_${sub.id}` ? (
+                                            <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                                          ) : (
+                                            <X className="w-2.5 h-2.5" />
+                                          )}
+                                        </button>
+                                      </span>
+                                    ))
+                                  ) : (
+                                    <span className="text-[9px] text-slate-600">لا توجد تصنيفات فرعية</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -1587,11 +2011,49 @@ export default function AdminPanel({
                               </div>
                             </div>
                           </div>
-                          <div className="flex items-center gap-1.5">
-                            <div className={`w-1.5 h-1.5 rounded-full ${emp.active ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-                            <span className={`text-[10px] font-bold ${emp.active ? 'text-emerald-400' : 'text-rose-400'}`}>
-                              {emp.active ? 'نشط' : 'معطل'}
-                            </span>
+                          <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-1.5 ml-4">
+                              <div className={`w-1.5 h-1.5 rounded-full ${emp.active ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                              <span className={`text-[10px] font-bold ${emp.active ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                {emp.active ? 'نشط' : 'معطل'}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 border-r border-white/5 pr-3">
+                              <button
+                                onClick={() => handleEmployeeAction(emp.id, 'toggle_status')}
+                                disabled={actionLoading === `${emp.id}_toggle_status`}
+                                className={`px-2.5 py-1 rounded-lg border-none text-[10px] font-bold transition-all cursor-pointer ${
+                                  emp.active 
+                                    ? 'bg-amber-500/10 text-amber-400 hover:bg-amber-500/20' 
+                                    : 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20'
+                                }`}
+                                title={emp.active ? 'تعطيل الحساب' : 'تنشيط الحساب'}
+                              >
+                                {actionLoading === `${emp.id}_toggle_status` ? (
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                ) : emp.active ? (
+                                  'تعطيل'
+                                ) : (
+                                  'تنشيط'
+                                )}
+                              </button>
+                              <button
+                                onClick={() => {
+                                  if (confirm('هل أنت متأكد من حذف هذا الموظف نهائياً؟')) {
+                                    handleEmployeeAction(emp.id, 'delete');
+                                  }
+                                }}
+                                disabled={actionLoading === `${emp.id}_delete`}
+                                className="p-1.5 rounded-lg border-none bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition-all cursor-pointer"
+                                title="حذف نهائي"
+                              >
+                                {actionLoading === `${emp.id}_delete` ? (
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                ) : (
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                )}
+                              </button>
+                            </div>
                           </div>
                         </div>
                       ))}

@@ -830,12 +830,38 @@ export class App {
           return res.status(403).json({ error: 'Super Admin only' });
         }
 
-        const { id } = req.params;
+        const rawId = req.params.id;
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+        const id = uuidRegex.test(rawId) ? rawId : getDeterministicUuid(rawId);
+
         const { role, managedCountry, permissions, action } = req.body;
 
         if (action === 'delete') {
            await prisma.user.delete({ where: { id } });
            return res.json({ success: true });
+        }
+
+        if (action === 'toggle_status') {
+           const existing = await prisma.user.findUnique({ where: { id } });
+           if (!existing) return res.status(404).json({ error: 'User not found' });
+           const updated = await prisma.user.update({
+             where: { id },
+             data: { deletedAt: existing.deletedAt ? null : new Date() },
+             select: {
+               id: true,
+               name: true,
+               email: true,
+               role: true,
+               managedCountry: true,
+               permissions: true,
+               createdAt: true,
+               deletedAt: true
+             }
+           });
+           return res.json({
+             ...updated,
+             active: updated.deletedAt === null
+           });
         }
 
         const updated = await prisma.user.update({

@@ -1,5 +1,8 @@
 import { Router } from 'express';
 import { prisma } from '../../src/lib/prisma.ts';
+import { getDeterministicUuid } from '../utils/db-helpers.ts';
+
+const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export const CategoriesController = (adminAccessGuards: any[]) => {
   const router = Router();
@@ -19,12 +22,18 @@ export const CategoriesController = (adminAccessGuards: any[]) => {
   // POST /api/categories - Create Category — Admin only
   router.post('/', ...adminAccessGuards, async (req, res, next) => {
     const { id, nameAr, nameEn, icon } = req.body;
-    if (!id || !nameAr || !nameEn || !icon) {
+    if (!nameAr || !nameEn || !icon) {
       return res.status(400).json({ error: 'Missing required category fields' });
     }
+    const targetId = id ? (uuidRegex.test(id) ? id : getDeterministicUuid(id)) : undefined;
     try {
       const category = await prisma.category.create({
-        data: { id, nameAr, nameEn, icon },
+        data: { 
+          id: targetId,
+          nameAr, 
+          nameEn, 
+          icon 
+        },
       });
       res.status(201).json(category);
     } catch (err) {
@@ -34,7 +43,8 @@ export const CategoriesController = (adminAccessGuards: any[]) => {
 
   // PUT /api/categories/:id - Update Category — Admin only
   router.put('/:id', ...adminAccessGuards, async (req, res, next) => {
-    const { id } = req.params;
+    const rawId = req.params.id;
+    const id = uuidRegex.test(rawId) ? rawId : getDeterministicUuid(rawId);
     const { nameAr, nameEn, icon } = req.body;
     try {
       const category = await prisma.category.update({
@@ -49,7 +59,8 @@ export const CategoriesController = (adminAccessGuards: any[]) => {
 
   // DELETE /api/categories/:id - Delete Category — Admin only
   router.delete('/:id', ...adminAccessGuards, async (req, res, next) => {
-    const { id } = req.params;
+    const rawId = req.params.id;
+    const id = uuidRegex.test(rawId) ? rawId : getDeterministicUuid(rawId);
     try {
       await prisma.category.delete({
         where: { id },
