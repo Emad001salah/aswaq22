@@ -1877,7 +1877,11 @@ ${ads.map(ad => `  <url>
     } else {
       const distPath = path.join(process.cwd(), 'dist');
       this.app.use(express.static(distPath));
+      // SPA fallback — skip for server-generated files
       this.app.get('*', (req, res) => {
+        if (req.path === '/sitemap.xml' || req.path === '/robots.txt') {
+          return res.status(404).end();
+        }
         res.sendFile(path.join(distPath, 'index.html'));
       });
     }
