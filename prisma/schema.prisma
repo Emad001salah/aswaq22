@@ -695,3 +695,38 @@ model SystemSetting {
 
   @@map("system_settings")
 }
+
+model Country {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  countryCode    String   @unique @map("country_code") // e.g. "YE", "PS"
+  labelAr        String   @map("label_ar")
+  labelEn        String   @map("label_en")
+  currency       String
+  usdRate        Float    @default(1.0) @map("usd_rate")
+  centerLat      Float    @map("center_lat")
+  centerLng      Float    @map("center_lng")
+  active         Boolean  @default(true)
+  flag           String?  // Emoji or Icon URL
+  
+  cities         City[]
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@map("countries")
+}
+
+model City {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nameAr      String   @map("name_ar")
+  nameEn      String   @map("name_en")
+  lat         Float
+  lng         Float
+  countryId   String   @map("country_id") @db.Uuid
+  country     Country  @relation(fields: [countryId], references: [id], onDelete: Cascade)
+  active      Boolean  @default(true)
+
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("cities")
+}

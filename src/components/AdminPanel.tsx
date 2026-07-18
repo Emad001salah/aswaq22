@@ -184,10 +184,12 @@ export default function AdminPanel({
   const [reels, setReels] = useState<any[]>([]);
   const [reports, setReports] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
+  const [dbMarkets, setDbMarkets] = useState<any[]>([]);
 
   // ── UI States ──
   const [loading, setLoading] = useState(false);
   const [loadingCategories, setLoadingCategories] = useState(false);
+  const [loadingMarkets, setLoadingMarkets] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedUser, setSelectedUser] = useState<any>(null);
@@ -208,6 +210,13 @@ export default function AdminPanel({
   const [newSubNameAr, setNewSubNameAr] = useState('');
   const [newSubNameEn, setNewSubNameEn] = useState('');
   const [activeSubCatId, setActiveSubCatId] = useState<string | null>(null);
+
+  const [showAddMarket, setShowAddMarket] = useState(false);
+  const [editingMarket, setEditingMarket] = useState<any>(null);
+  const [newMarket, setNewMarket] = useState({ countryCode: '', labelAr: '', labelEn: '', currency: '', usdRate: '1', centerLat: '15.0', centerLng: '45.0', flag: '🌍' });
+  const [selectedMarketForCities, setSelectedMarketForCities] = useState<any>(null);
+  const [showAddCity, setShowAddCity] = useState(false);
+  const [newCity, setNewCity] = useState({ nameAr: '', nameEn: '', lat: '0.0', lng: '0.0' });
 
   const [logoUploading, setLogoUploading] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
@@ -363,6 +372,21 @@ export default function AdminPanel({
     }
   }, []);
 
+  const fetchMarkets = useCallback(async () => {
+    setLoadingMarkets(true);
+    try {
+      const res = await adminFetch('/api/markets/all');
+      if (res.ok) {
+        const json = await res.json();
+        setDbMarkets(json.data || []);
+      }
+    } catch (e) {
+      console.error('Error fetching markets:', e);
+    } finally {
+      setLoadingMarkets(false);
+    }
+  }, [adminFetch]);
+
   // ── Load data on tab change ──
   useEffect(() => {
     if (activeTab === 'overview') fetchStats();
@@ -374,8 +398,9 @@ export default function AdminPanel({
     if (activeTab === 'polls') fetchPolls();
     if (activeTab === 'reels') fetchReels();
     if (activeTab === 'categories') fetchCategories();
+    if (activeTab === 'markets') fetchMarkets();
     if (activeTab === 'analytics') { fetchStats(); fetchAds(); fetchUsers(); }
-  }, [activeTab, selectedMarket, fetchCategories]);
+  }, [activeTab, selectedMarket, fetchCategories, fetchMarkets]);
 
   useEffect(() => {
     if (activeTab === 'users') fetchUsers();
@@ -761,6 +786,159 @@ export default function AdminPanel({
       }
     } catch (e) {
       addToast?.('خطأ', 'تعذر حذف التصنيف الفرعي', 'error');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleSaveMarket = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newMarket.countryCode.trim() || !newMarket.labelAr.trim() || !newMarket.labelEn.trim() || !newMarket.currency.trim()) return;
+
+    setActionLoading('save_market');
+    try {
+      const method = editingMarket ? 'PUT' : 'POST';
+      const url = editingMarket ? `/api/markets/${editingMarket.id}` : '/api/markets';
+      const res = await adminFetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...newMarket,
+          usdRate: parseFloat(newMarket.usdRate) || 1.0,
+          centerLat: parseFloat(newMarket.centerLat) || 0.0,
+          centerLng: parseFloat(newMarket.centerLng) || 0.0
+        })
+      });
+
+      if (res.ok) {
+        fetchMarkets();
+        setNewMarket({ countryCode: '', labelAr: '', labelEn: '', currency: '', usdRate: '1', centerLat: '15.0', centerLng: '45.0', flag: '🌍' });
+        setEditingMarket(null);
+        setShowAddMarket(false);
+        addToast?.('تم بنجاح', editingMarket ? 'تم تحديث البلد' : 'تم إضافة البلد بنجاح', 'success');
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        addToast?.('خطأ', errData.error || 'فشل حفظ البلد في النظام', 'error');
+      }
+    } catch (e) {
+      addToast?.('خطأ', 'تعذر الاتصال بالسيرفر', 'error');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleDeleteMarket = async (id: string) => {
+    if (!confirm('هل أنت متأكد من حذف هذا البلد وجميع مدنه ومناطقه؟')) return;
+    setActionLoading(`delete_market_${id}`);
+    try {
+      const res = await adminFetch(`/api/markets/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setDbMarkets(prev => prev.filter(m => m.id !== id));
+        if (selectedMarketForCities?.id === id) setSelectedMarketForCities(null);
+        addToast?.('تم الحذف', 'تم حذف البلد بنجاح', 'success');
+      } else {
+        addToast?.('خطأ', 'فشل الحذف، قد يكون البلد مرتبط بإعلانات قائمة', 'error');
+      }
+    } catch (e) {
+      addToast?.('خطأ', 'تعذر الحذف', 'error');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleToggleMarketActive = async (market: any) => {
+    const nextActive = !market.active;
+    // Optimistic UI update
+    setDbMarkets(prev => prev.map(m => m.id === market.id ? { ...m, active: nextActive } : m));
+    
+    try {
+      const res = await adminFetch(`/api/markets/${market.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ active: nextActive })
+      });
+      if (!res.ok) {
+        // Rollback on failure
+        setDbMarkets(prev => prev.map(m => m.id === market.id ? { ...m, active: market.active } : m));
+        addToast?.('خطأ', 'فشل تغيير حالة تفعيل البلد', 'error');
+      }
+    } catch (e) {
+      // Rollback
+      setDbMarkets(prev => prev.map(m => m.id === market.id ? { ...m, active: market.active } : m));
+      addToast?.('خطأ', 'فشل الاتصال بالسيرفر', 'error');
+    }
+  };
+
+  const handleAddCity = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedMarketForCities || !newCity.nameAr.trim() || !newCity.nameEn.trim()) return;
+
+    setActionLoading(`add_city_${selectedMarketForCities.id}`);
+    try {
+      const res = await adminFetch(`/api/markets/${selectedMarketForCities.id}/cities`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...newCity,
+          lat: parseFloat(newCity.lat) || 0.0,
+          lng: parseFloat(newCity.lng) || 0.0
+        })
+      });
+
+      if (res.ok) {
+        const addedCity = await res.json();
+        
+        // Update local state and selection state
+        const updatedMarkets = dbMarkets.map(m => {
+          if (m.id === selectedMarketForCities.id) {
+            const updatedCities = [...(m.cities || []), addedCity];
+            return { ...m, cities: updatedCities };
+          }
+          return m;
+        });
+        setDbMarkets(updatedMarkets);
+        setSelectedMarketForCities(updatedMarkets.find(m => m.id === selectedMarketForCities.id));
+        
+        setNewCity({ nameAr: '', nameEn: '', lat: '0.0', lng: '0.0' });
+        setShowAddCity(false);
+        addToast?.('تم الإضافة', 'تم إضافة المدينة بنجاح', 'success');
+      } else {
+        addToast?.('خطأ', 'فشل إضافة المدينة', 'error');
+      }
+    } catch (e) {
+      addToast?.('خطأ', 'تعذر إضافة المدينة', 'error');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleDeleteCity = async (cityId: string) => {
+    if (!selectedMarketForCities || !confirm('هل تريد حذف هذه المدينة؟')) return;
+
+    setActionLoading(`delete_city_${cityId}`);
+    try {
+      const res = await adminFetch(`/api/markets/${selectedMarketForCities.id}/cities/${cityId}`, {
+        method: 'DELETE'
+      });
+
+      if (res.ok) {
+        // Update local state and selection state
+        const updatedMarkets = dbMarkets.map(m => {
+          if (m.id === selectedMarketForCities.id) {
+            const updatedCities = (m.cities || []).filter((c: any) => c.id !== cityId);
+            return { ...m, cities: updatedCities };
+          }
+          return m;
+        });
+        setDbMarkets(updatedMarkets);
+        setSelectedMarketForCities(updatedMarkets.find(m => m.id === selectedMarketForCities.id));
+        
+        addToast?.('تم الحذف', 'تم حذف المدينة بنجاح', 'success');
+      } else {
+        addToast?.('خطأ', 'فشل حذف المدينة', 'error');
+      }
+    } catch (e) {
+      addToast?.('خطأ', 'تعذر حذف المدينة', 'error');
     } finally {
       setActionLoading(null);
     }
@@ -1628,51 +1806,348 @@ export default function AdminPanel({
               {/* MARKETS TAB */}
               {/* ════════════════════════════════════════════════════════════ */}
               {activeTab === 'markets' && (
-                <div className="space-y-4 animate-in fade-in duration-300">
-                  <SectionHeader title="إدارة الأسواق" subtitle="الأسواق المتاحة في المنصة" />
+                <div className="space-y-6 animate-in fade-in duration-300">
+                  <div className="flex justify-between items-center mb-6">
+                    <SectionHeader title="إدارة الأسواق والبلدان" subtitle={`البلدان المتاحة بالمنصة (${dbMarkets.length} بلد)`} />
+                    <button
+                      onClick={() => {
+                        setEditingMarket(null);
+                        setNewMarket({ countryCode: '', labelAr: '', labelEn: '', currency: '', usdRate: '1', centerLat: '15.0', centerLng: '45.0', flag: '🌍' });
+                        setShowAddMarket(true);
+                      }}
+                      className="px-4 py-2 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 rounded-xl font-bold text-sm transition-colors flex items-center gap-2 border-none cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4" />
+                      إضافة بلد جديد
+                    </button>
+                  </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {Object.values(MARKETS).map((m: any) => (
-                      <div key={m.id} className="p-5 rounded-2xl bg-slate-800/30 border border-white/5 hover:border-emerald-500/20 transition-all">
-                        <div className="flex items-center gap-3 mb-4">
-                          <span className="text-3xl">{m.flag || '🌍'}</span>
-                          <div>
-                            <h3 className="text-sm font-black text-white">{m.labelAr}</h3>
-                            <p className="text-[10px] text-slate-500">{m.id.toUpperCase()} • {m.currency}</p>
-                          </div>
-                          <div className="mr-auto flex items-center gap-1.5">
-                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                            <span className="text-[10px] font-bold text-emerald-400">نشط</span>
-                          </div>
+                  {showAddMarket && (
+                    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                      <div className="bg-slate-900 border border-white/10 p-6 rounded-3xl w-full max-w-md shadow-2xl">
+                        <div className="flex items-center justify-between mb-6">
+                          <h3 className="text-lg font-black text-white">
+                            {editingMarket ? 'تعديل بيانات البلد' : 'إضافة بلد عربي جديد'}
+                          </h3>
+                          <button 
+                            onClick={() => {
+                              setShowAddMarket(false);
+                              setEditingMarket(null);
+                            }} 
+                            className="p-2 bg-white/5 hover:bg-white/10 rounded-full transition-colors text-slate-400 border-none cursor-pointer"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
                         </div>
-
-                        <div className="grid grid-cols-2 gap-3 mb-3">
-                          <div className="p-2.5 rounded-xl bg-slate-700/50">
-                            <p className="text-xs font-black text-white">{m.cities?.length || 0}</p>
-                            <p className="text-[9px] text-slate-500">مدينة</p>
-                          </div>
-                          <div className="p-2.5 rounded-xl bg-slate-700/50">
-                            <p className="text-xs font-black text-white">{m.currency}</p>
-                            <p className="text-[9px] text-slate-500">العملة</p>
-                          </div>
-                        </div>
-
-                        {m.cities && m.cities.length > 0 && (
+                        <form onSubmit={handleSaveMarket} className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
                           <div>
-                            <p className="text-[10px] text-slate-500 font-bold mb-2">المدن:</p>
-                            <div className="flex flex-wrap gap-1.5">
-                              {m.cities.slice(0, 8).map((c: any) => (
-                                <span key={c.id} className="text-[9px] px-2 py-0.5 bg-slate-700 text-slate-300 rounded-full">{c.nameAr || c.name}</span>
-                              ))}
-                              {m.cities.length > 8 && (
-                                <span className="text-[9px] px-2 py-0.5 bg-slate-700 text-slate-500 rounded-full">+{m.cities.length - 8}</span>
+                            <label className="block text-xs font-bold text-slate-400 mb-1">رمز البلد (Country Code - حرفين)</label>
+                            <input 
+                              required 
+                              disabled={!!editingMarket}
+                              value={newMarket.countryCode} 
+                              onChange={e => setNewMarket({...newMarket, countryCode: e.target.value})} 
+                              type="text" 
+                              className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 text-left uppercase" 
+                              placeholder="مثال: SY أو QA" 
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold text-slate-400 mb-1">الاسم بالعربية</label>
+                            <input 
+                              required 
+                              value={newMarket.labelAr} 
+                              onChange={e => setNewMarket({...newMarket, labelAr: e.target.value})} 
+                              type="text" 
+                              className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-indigo-500" 
+                              placeholder="مثال: سوريا" 
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold text-slate-400 mb-1">الاسم بالإنجليزية</label>
+                            <input 
+                              required 
+                              value={newMarket.labelEn} 
+                              onChange={e => setNewMarket({...newMarket, labelEn: e.target.value})} 
+                              type="text" 
+                              className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 text-left" 
+                              placeholder="e.g. Syria" 
+                            />
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-xs font-bold text-slate-400 mb-1">رمز العملة</label>
+                              <input 
+                                required 
+                                value={newMarket.currency} 
+                                onChange={e => setNewMarket({...newMarket, currency: e.target.value})} 
+                                type="text" 
+                                className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 uppercase" 
+                                placeholder="SYP" 
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-bold text-slate-400 mb-1">سعر الدولار مقابل العملة</label>
+                              <input 
+                                required 
+                                value={newMarket.usdRate} 
+                                onChange={e => setNewMarket({...newMarket, usdRate: e.target.value})} 
+                                type="number" 
+                                step="any"
+                                className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-indigo-500" 
+                                placeholder="1" 
+                              />
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-xs font-bold text-slate-400 mb-1">خط العرض (Center Lat)</label>
+                              <input 
+                                required 
+                                value={newMarket.centerLat} 
+                                onChange={e => setNewMarket({...newMarket, centerLat: e.target.value})} 
+                                type="number" 
+                                step="any"
+                                className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-indigo-500" 
+                                placeholder="35.0" 
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-bold text-slate-400 mb-1">خط الطول (Center Lng)</label>
+                              <input 
+                                required 
+                                value={newMarket.centerLng} 
+                                onChange={e => setNewMarket({...newMarket, centerLng: e.target.value})} 
+                                type="number" 
+                                step="any"
+                                className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-indigo-500" 
+                                placeholder="38.0" 
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold text-slate-400 mb-1">العلم (أو Emoji)</label>
+                            <input 
+                              value={newMarket.flag} 
+                              onChange={e => setNewMarket({...newMarket, flag: e.target.value})} 
+                              type="text" 
+                              className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 text-center" 
+                              placeholder="🇸🇾" 
+                            />
+                          </div>
+                          <button 
+                            type="submit" 
+                            disabled={actionLoading === 'save_market'} 
+                            className="w-full py-3 bg-indigo-500 hover:bg-indigo-600 text-white font-bold rounded-xl transition-colors disabled:opacity-50 mt-2 border-none cursor-pointer"
+                          >
+                            {actionLoading === 'save_market' ? 'جاري الحفظ...' : (editingMarket ? 'تحديث البيانات' : 'إضافة البلد')}
+                          </button>
+                        </form>
+                      </div>
+                    </div>
+                  )}
+
+                  {loadingMarkets ? (
+                    <div className="flex items-center justify-center h-48">
+                      <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                      {/* Left: Countries List */}
+                      <div className="lg:col-span-2 space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {dbMarkets.map((m: any) => (
+                            <div 
+                              key={m.id} 
+                              className={`p-5 rounded-2xl border transition-all flex flex-col justify-between ${
+                                selectedMarketForCities?.id === m.id 
+                                  ? 'bg-indigo-500/10 border-indigo-500' 
+                                  : 'bg-slate-800/30 border-white/5 hover:border-white/10'
+                              }`}
+                            >
+                              <div>
+                                <div className="flex items-center gap-3 mb-4">
+                                  <span className="text-3xl">{m.flag || '🌍'}</span>
+                                  <div>
+                                    <h3 className="text-sm font-black text-white">{m.labelAr}</h3>
+                                    <p className="text-[10px] text-slate-500 font-mono">{m.countryCode} • {m.currency} • $1={m.usdRate}</p>
+                                  </div>
+                                  <button
+                                    onClick={() => handleToggleMarketActive(m)}
+                                    className={`mr-auto px-2 py-0.5 rounded text-[9px] font-black border-none cursor-pointer transition-all ${
+                                      m.active 
+                                        ? 'bg-emerald-500/20 text-emerald-400' 
+                                        : 'bg-slate-900 text-slate-500'
+                                    }`}
+                                    title={m.active ? 'تعطيل البلد' : 'تفعيل البلد'}
+                                  >
+                                    {m.active ? 'نشط' : 'معطل'}
+                                  </button>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3 mb-4 text-center">
+                                  <button
+                                    onClick={() => setSelectedMarketForCities(m)}
+                                    className="p-2.5 rounded-xl bg-slate-700/30 hover:bg-slate-700/50 border-none cursor-pointer transition-all text-right block"
+                                  >
+                                    <p className="text-xs font-black text-white">{m.cities?.length || 0}</p>
+                                    <p className="text-[8px] text-slate-500">مدينة ومحافظة (إدارة ⚙️)</p>
+                                  </button>
+                                  <div className="p-2.5 rounded-xl bg-slate-700/30 text-right">
+                                    <p className="text-xs font-black text-white">{m.centerLat}, {m.centerLng}</p>
+                                    <p className="text-[8px] text-slate-500">إحداثيات الخريطة</p>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2 border-t border-white/5 pt-3">
+                                <button
+                                  onClick={() => {
+                                    setEditingMarket(m);
+                                    setNewMarket({
+                                      countryCode: m.countryCode,
+                                      labelAr: m.labelAr,
+                                      labelEn: m.labelEn,
+                                      currency: m.currency,
+                                      usdRate: String(m.usdRate),
+                                      centerLat: String(m.centerLat),
+                                      centerLng: String(m.centerLng),
+                                      flag: m.flag || '🌍'
+                                    });
+                                    setShowAddMarket(true);
+                                  }}
+                                  className="px-3 py-1 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg text-[10px] font-bold transition-all border-none cursor-pointer"
+                                >
+                                  تعديل البيانات
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteMarket(m.id)}
+                                  disabled={actionLoading === `delete_market_${m.id}`}
+                                  className="px-3 py-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-lg text-[10px] font-bold transition-all border-none cursor-pointer mr-auto"
+                                >
+                                  {actionLoading === `delete_market_${m.id}` ? '...' : 'حذف'}
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Right: Cities & Areas List for selected Country */}
+                      <div className="bg-slate-900/50 border border-white/5 rounded-2xl p-5">
+                        {selectedMarketForCities ? (
+                          <div className="space-y-4">
+                            <div className="flex justify-between items-center border-b border-white/5 pb-3">
+                              <div>
+                                <h4 className="text-xs font-black text-white">مدن ومناطق {selectedMarketForCities.labelAr}</h4>
+                                <p className="text-[9px] text-slate-500">{selectedMarketForCities.cities?.length || 0} منطقة نشطة</p>
+                              </div>
+                              <button
+                                onClick={() => {
+                                  setNewCity({ nameAr: '', nameEn: '', lat: String(selectedMarketForCities.centerLat), lng: String(selectedMarketForCities.centerLng) });
+                                  setShowAddCity(true);
+                                }}
+                                className="px-2 py-1 bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 rounded-lg text-[10px] font-bold transition-all border-none cursor-pointer flex items-center gap-1"
+                              >
+                                <Plus className="w-3 h-3" />
+                                إضافة مدينة
+                              </button>
+                            </div>
+
+                            {showAddCity && (
+                              <form onSubmit={handleAddCity} className="p-3 bg-slate-900 rounded-xl border border-white/5 space-y-3">
+                                <div>
+                                  <label className="block text-[9px] font-bold text-slate-400 mb-1">الاسم بالعربية</label>
+                                  <input 
+                                    required 
+                                    value={newCity.nameAr} 
+                                    onChange={e => setNewCity({...newCity, nameAr: e.target.value})} 
+                                    type="text" 
+                                    className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white" 
+                                    placeholder="مثال: صنعاء" 
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-[9px] font-bold text-slate-400 mb-1">الاسم بالإنجليزية</label>
+                                  <input 
+                                    required 
+                                    value={newCity.nameEn} 
+                                    onChange={e => setNewCity({...newCity, nameEn: e.target.value})} 
+                                    type="text" 
+                                    className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white text-left" 
+                                    placeholder="e.g. Sanaa" 
+                                  />
+                                </div>
+                                <div className="grid grid-cols-2 gap-2">
+                                  <div>
+                                    <label className="block text-[9px] font-bold text-slate-400 mb-1">خط العرض (Lat)</label>
+                                    <input 
+                                      required 
+                                      value={newCity.lat} 
+                                      onChange={e => setNewCity({...newCity, lat: e.target.value})} 
+                                      type="number" 
+                                      step="any"
+                                      className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white" 
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-[9px] font-bold text-slate-400 mb-1">خط الطول (Lng)</label>
+                                    <input 
+                                      required 
+                                      value={newCity.lng} 
+                                      onChange={e => setNewCity({...newCity, lng: e.target.value})} 
+                                      type="number" 
+                                      step="any"
+                                      className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white" 
+                                    />
+                                  </div>
+                                </div>
+                                <button 
+                                  type="submit"
+                                  disabled={actionLoading === `add_city_${selectedMarketForCities.id}`}
+                                  className="w-full py-1.5 bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-bold rounded-lg border-none cursor-pointer"
+                                >
+                                  {actionLoading === `add_city_${selectedMarketForCities.id}` ? 'جاري الحفظ...' : 'إضافة المدينة'}
+                                </button>
+                              </form>
+                            )}
+
+                            <div className="max-h-[50vh] overflow-y-auto space-y-2 pr-1">
+                              {selectedMarketForCities.cities && selectedMarketForCities.cities.length > 0 ? (
+                                selectedMarketForCities.cities.map((city: any) => (
+                                  <div key={city.id} className="p-3 bg-slate-800/20 border border-white/5 rounded-xl flex items-center justify-between">
+                                    <div>
+                                      <p className="text-xs font-bold text-white">{city.nameAr}</p>
+                                      <p className="text-[9px] text-slate-500 font-mono">{city.nameEn} • {city.lat}, {city.lng}</p>
+                                    </div>
+                                    <button
+                                      onClick={() => handleDeleteCity(city.id)}
+                                      disabled={actionLoading === `delete_city_${city.id}`}
+                                      className="p-1 text-slate-500 hover:text-rose-500 rounded border-none bg-transparent cursor-pointer"
+                                      title="حذف المدينة"
+                                    >
+                                      {actionLoading === `delete_city_${city.id}` ? (
+                                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                      ) : (
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      )}
+                                    </button>
+                                  </div>
+                                ))
+                              ) : (
+                                <p className="text-[10px] text-slate-600 text-center py-10">لا توجد مدن مسجلة لهذا البلد</p>
                               )}
                             </div>
                           </div>
+                        ) : (
+                          <div className="text-center py-20 text-slate-500">
+                            <Globe className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                            <p>انقر على "إدارة" بجانب أي بلد لعرض وتحديث مدنه ومناطقه هنا.</p>
+                          </div>
                         )}
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  )}
                 </div>
               )}
 

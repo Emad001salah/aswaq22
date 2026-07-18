@@ -50,6 +50,7 @@ import { BetaController }    from './controllers/beta.controller.ts';
 import { ShippingController } from './controllers/shipping.controller.ts';
 import { PollsController } from './controllers/polls.controller.ts';
 import { CategoriesController } from './controllers/categories.controller.ts';
+import { MarketsController } from './controllers/markets.controller.ts';
 
 // Workers
 import { startOutboxWorker } from './workers/outbox.worker.ts';
@@ -281,9 +282,11 @@ export class App {
     this.app.use('/api/v1',         ShippingController(this.io));
     this.app.use('/api/v1/polls',   PollsController());
     this.app.use('/api/v1/categories', CategoriesController(adminAccessGuards));
+    this.app.use('/api/v1/markets', MarketsController(adminAccessGuards));
 
     // Mount categories on legacy endpoint as well
     this.app.use('/api/categories', CategoriesController(adminAccessGuards));
+    this.app.use('/api/markets', MarketsController(adminAccessGuards));
     this.app.use('/api/polls', PollsController());
 
     // Legacy routes (backward compat – redirect to v1)
