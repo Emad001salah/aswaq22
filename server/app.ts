@@ -1508,7 +1508,64 @@ export class App {
       }
     });
 
+    // ── Dynamic Sitemap (SEO) ─────────────────────────────────────────────────
+    this.app.get('/sitemap.xml', async (req, res) => {
+      try {
+        const BASE_URL = 'https://aswaq22.com';
+        const today = new Date().toISOString().split('T')[0];
+
+        // Fetch active ads from DB
+        const ads = await prisma.ad.findMany({
+          where: { status: 'active' },
+          select: { id: true, updatedAt: true, title: true },
+          orderBy: { createdAt: 'desc' },
+          take: 5000, // max 5000 per sitemap
+        });
+
+        // Fetch categories from DB
+        const categories = await prisma.category.findMany({
+          select: { nameEn: true, id: true },
+        });
+
+        const staticPages = [
+          { url: '/',         priority: '1.0', changefreq: 'daily'   },
+          { url: '/ads',      priority: '0.9', changefreq: 'hourly'  },
+          { url: '/login',    priority: '0.5', changefreq: 'monthly' },
+          { url: '/register', priority: '0.5', changefreq: 'monthly' },
+        ];
+
+        const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${staticPages.map(p => `  <url>
+    <loc>${BASE_URL}${p.url}</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>${p.changefreq}</changefreq>
+    <priority>${p.priority}</priority>
+  </url>`).join('\n')}
+${categories.map(c => `  <url>
+    <loc>${BASE_URL}/?category=${encodeURIComponent(c.nameEn || '')}</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>`).join('\n')}
+${ads.map(ad => `  <url>
+    <loc>${BASE_URL}/ads/${ad.id}</loc>
+    <lastmod>${new Date(ad.updatedAt).toISOString().split('T')[0]}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>`).join('\n')}
+</urlset>`;
+
+        res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+        res.setHeader('Cache-Control', 'public, max-age=3600'); // cache 1 hour
+        res.send(xml);
+      } catch (err: any) {
+        res.status(500).send('<?xml version="1.0"?><error>Sitemap generation failed</error>');
+      }
+    });
+
     // ── Admin Settings ────────────────────────────────────────────────────────
+
     this.app.get('/api/public-stats', async (req, res) => {
       try {
         const totalAds = await prisma.ad.count();
