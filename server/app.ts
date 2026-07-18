@@ -116,7 +116,7 @@ export class App {
       const isLocal = host.includes('localhost') || host.includes('127.0.0.1') || process.env.NODE_ENV === 'test';
       
       const isHttp = req.protocol === 'http' || req.headers['x-forwarded-proto'] === 'http';
-      const needsWww = !host.startsWith('www.') && !isLocal;
+      const needsWww = host.toLowerCase() === 'aswaq22.com';
       const hasUppercasePath = /[A-Z]/.test(req.path);
       
       // Standardize trailing slash if it's not root / and has one
@@ -124,7 +124,7 @@ export class App {
       const cleanPath = pathEndsWithSlash ? req.path.slice(0, -1) : req.path;
       
       if ((isHttp || needsWww || hasUppercasePath || pathEndsWithSlash) && !isLocal) {
-        const canonicalHost = needsWww ? `www.${host}` : host;
+        const canonicalHost = needsWww ? 'www.aswaq22.com' : host;
         const canonicalPath = cleanPath.toLowerCase();
         const queryString = req.url.slice(req.path.length); // Preserves query parameters
         
@@ -2203,18 +2203,9 @@ ${urls.join('\n')}
 
         // 301 Redirect to the canonical version if there's any casing or slug mismatch
         if (decodeURIComponent(req.path).toLowerCase() !== decodeURIComponent(canonicalPath)) {
-          const host = req.headers['x-forwarded-host'] || req.headers.host || 'www.aswaq22.com';
-          const hostStr = Array.isArray(host) ? host[0] : host;
-          let secureHost = hostStr;
-          
-          if (hostStr.includes('localhost') || hostStr.includes('127.0.0.1')) {
-            secureHost = hostStr;
-          } else if (hostStr.includes('api.aswaq22.com')) {
-            secureHost = 'www.aswaq22.com';
-          } else {
-            secureHost = hostStr.startsWith('www.') ? hostStr : `www.${hostStr}`;
-          }
-          return res.redirect(301, `https://${secureHost}${canonicalPath}`);
+          const host = req.headers.host || 'www.aswaq22.com';
+          const targetHost = host.includes('localhost') || host.includes('127.0.0.1') ? host : 'www.aswaq22.com';
+          return res.redirect(301, `https://${targetHost}${canonicalPath}`);
         }
 
         // Render index.html with pre-injected tags (Universal Rendering)
@@ -2310,18 +2301,9 @@ ${urls.join('\n')}
         const canonicalUrl = `https://www.aswaq22.com${canonicalPath}`;
 
         if (decodeURIComponent(req.path).toLowerCase() !== decodeURIComponent(canonicalPath).toLowerCase()) {
-          const host = req.headers['x-forwarded-host'] || req.headers.host || 'www.aswaq22.com';
-          const hostStr = Array.isArray(host) ? host[0] : host;
-          let secureHost = hostStr;
-          
-          if (hostStr.includes('localhost') || hostStr.includes('127.0.0.1')) {
-            secureHost = hostStr;
-          } else if (hostStr.includes('api.aswaq22.com')) {
-            secureHost = 'www.aswaq22.com';
-          } else {
-            secureHost = hostStr.startsWith('www.') ? hostStr : `www.${hostStr}`;
-          }
-          return res.redirect(301, `https://${secureHost}${canonicalPath}`);
+          const host = req.headers.host || 'www.aswaq22.com';
+          const targetHost = host.includes('localhost') || host.includes('127.0.0.1') ? host : 'www.aswaq22.com';
+          return res.redirect(301, `https://${targetHost}${canonicalPath}`);
         }
 
         let html = getHtmlTemplate();
@@ -2416,10 +2398,10 @@ ${urls.join('\n')}
         const canonicalPath = `/${countryCodeParam}/${citySlugParam}/${category.nameEn.toLowerCase()}`;
         const canonicalUrl = `https://www.aswaq22.com${canonicalPath}`;
 
-        if (req.path !== canonicalPath) {
+        if (decodeURIComponent(req.path).toLowerCase() !== decodeURIComponent(canonicalPath).toLowerCase()) {
           const host = req.headers.host || 'www.aswaq22.com';
-          const secureHost = host.startsWith('www.') ? host : `www.${host}`;
-          return res.redirect(301, `https://${secureHost}${canonicalPath}`);
+          const targetHost = host.includes('localhost') || host.includes('127.0.0.1') ? host : 'www.aswaq22.com';
+          return res.redirect(301, `https://${targetHost}${canonicalPath}`);
         }
 
         let html = getHtmlTemplate();
