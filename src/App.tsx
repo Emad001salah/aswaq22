@@ -66,7 +66,6 @@ import { MARKETS, Market } from "./markets.ts";
 import Navbar from "./components/Navbar.tsx";
 import Hero from "./components/Hero.tsx";
 import AdCard from "./components/AdCard.tsx";
-import AdModal from "./components/AdModal.tsx";
 import HelpCenter from "./components/HelpCenter.tsx";
 import AiSearchModal from "./components/AiSearchModal.tsx";
 import type { AdMapHandle } from "./modules/maps/AdMap.tsx";
@@ -81,7 +80,8 @@ const AdMap = React.lazy(() => import("./modules/maps/AdMap.tsx"));
 const SpotlightFeed = React.lazy(() => import("./components/SpotlightFeed.tsx"));
 const JobPortal = React.lazy(() => import("./components/JobPortal.tsx"));
 const DeliveryDashboard = React.lazy(() => import("./modules/shipping/DeliveryDashboard.tsx"));
-
+// AdModal is large (129 KB) — lazy loaded to remove it from the initial bundle
+const AdModal = React.lazy(() => import("./components/AdModal.tsx"));
 import { Toaster } from "react-hot-toast";
 import ToastContainer, { ToastMessage } from "./components/Toast.tsx";
 import socket, { joinRoom } from "./lib/socket.ts";

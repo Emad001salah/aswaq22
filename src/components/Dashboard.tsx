@@ -565,20 +565,20 @@ export default function Dashboard({
       };
     }; // end initMinimap
 
-    // If Leaflet already loaded, init immediately; otherwise lazy-load it
+    // If Leaflet already loaded, init immediately; otherwise lazy-load from npm bundle
     if ((window as any).L) {
       return initMinimap();
-    } else if (!document.getElementById('leaflet-css')) {
-      const link = document.createElement('link');
-      link.id = 'leaflet-css';
-      link.rel = 'stylesheet';
-      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-      document.head.appendChild(link);
-
-      const script = document.createElement('script');
-      script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-      script.onload = () => initMinimap();
-      document.body.appendChild(script);
+    } else {
+      // Dynamic import: loads Leaflet CSS + JS from Vite bundle (no CDN dependency)
+      Promise.all([
+        import('leaflet/dist/leaflet.css'),
+        import('leaflet'),
+      ]).then(([, L]) => {
+        (window as any).L = L.default ?? L;
+        initMinimap();
+      }).catch(err => {
+        console.warn('Leaflet dynamic load failed:', err);
+      });
     }
   }, [showOnMap, activeTab, city]);
 

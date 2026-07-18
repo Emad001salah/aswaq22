@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
-    "build": "vite build",
+    "build": "cross-env NODE_OPTIONS=--max-old-space-size=4096 vite build",
+    "analyze": "cross-env ANALYZE=true NODE_OPTIONS=--max-old-space-size=4096 vite build",
     "start": "tsx server.ts",
     "test": "cross-env NODE_ENV=test NODE_OPTIONS=--experimental-vm-modules jest",
     "test:seed": "cross-env NODE_ENV=test npx tsx scripts/migrate-to-postgres.ts",
@@ -131,6 +132,7 @@
     "cross-env": "^10.1.0",
     "esbuild": "^0.25.0",
     "jest": "^30.4.2",
+    "rollup-plugin-visualizer": "^7.0.1",
     "tailwindcss": "^4.1.14",
     "ts-jest": "^29.4.11",
     "tsx": "^4.21.0",

@@ -2,6 +2,14 @@
 <html lang="ar" dir="rtl">
   <head>
     <meta charset="UTF-8" />
+
+    <!-- ═══════════════════════════════════════════════════
+         Performance: Preconnect & DNS Prefetch
+    ═══════════════════════════════════════════════════ -->
+    <link rel="preconnect" href="https://api.aswaq22.com" crossorigin />
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
+    <link rel="dns-prefetch" href="https://images.unsplash.com" />
+    <link rel="dns-prefetch" href="https://maps.googleapis.com" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
 
     <!-- ═══════════════════════════════════════════════════
@@ -90,11 +98,13 @@
     <link rel="icon" type="image/png" sizes="512x512" href="/aswaq-icon-512.png" />
 
     <!-- ═══════════════════════════════════════════════════
-         Leaflet CSS
+         Critical Inline CSS — prevents flash of unstyled content
     ═══════════════════════════════════════════════════ -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
     <style>
-      /* Fix Leaflet z-index conflicts with our UI */
+      /* Prevent FOUC: match app's dark background immediately */
+      html, body { margin: 0; padding: 0; background-color: #090d16; color: #f1f5f9; }
+      #root { min-height: 100vh; }
+      /* Leaflet z-index — loaded dynamically when map is opened */
       .leaflet-pane { z-index: 1 !important; }
       .leaflet-top, .leaflet-bottom { z-index: 10 !important; }
       .leaflet-control { z-index: 10 !important; }
@@ -102,8 +112,7 @@
   </head>
   <body>
     <div id="root"></div>
-    <!-- Leaflet JS - loaded before React app -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    <!-- Leaflet JS/CSS: loaded dynamically by react-leaflet when the map component mounts -->
     <!-- Google Maps API: loaded dynamically by googleMaps.ts with loading=async -->
     <script type="module" src="/src/main.tsx"></script>
   </body>

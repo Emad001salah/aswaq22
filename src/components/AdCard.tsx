@@ -25,7 +25,7 @@ interface AdCardProps {
   isDark?: boolean;
 }
 
-export default function AdCard({ ad, onClick, onLikeToggle, isFavorite, distanceInKm, currentMarket, loading, isDark }: AdCardProps) {
+export default React.memo(function AdCard({ ad, onClick, onLikeToggle, isFavorite, distanceInKm, currentMarket, loading, isDark }: AdCardProps) {
   const { t, i18n } = useTranslation();
   const isRtl = i18n.language === 'ar';
 
@@ -506,4 +506,4 @@ export default function AdCard({ ad, onClick, onLikeToggle, isFavorite, distance
       )}
     </AnimatePresence>
   );
-}
+})
