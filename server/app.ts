@@ -91,6 +91,7 @@ export class App {
 
   constructor() {
     this.app        = express();
+    this.app.set('trust proxy', true);
     this.httpServer = createServer(this.app);
 
     this.io = new Server(this.httpServer, {
