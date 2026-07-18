@@ -465,6 +465,36 @@ export default function AdminPanel({
     }
   };
 
+  const handleDeleteUser = async (userId: string) => {
+    if (!confirm('⚠️ تحذير هام جداً:\nهل أنت متأكد من حذف هذا المستخدم نهائياً؟\nسيتم حذف حسابه، وجميع إعلاناته، ورسائله، وإعجاباته، وتعليقاته بالكامل من قاعدة البيانات ولا يمكن التراجع عن هذا الإجراء!')) return;
+    
+    const prevUsers = [...allUsers];
+    const prevSelectedUser = selectedUser;
+    
+    setAllUsers(prev => prev.filter(u => u.id !== userId));
+    if (selectedUser?.id === userId) setSelectedUser(null);
+    
+    setActionLoading(`${userId}_delete`);
+    try {
+      const res = await adminFetch(`/api/admin/users/${userId}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        addToast?.('تم الحذف', 'تم حذف المستخدم وجميع بياناته نهائياً بنجاح', 'success');
+      } else {
+        setAllUsers(prevUsers);
+        if (prevSelectedUser) setSelectedUser(prevSelectedUser);
+        addToast?.('خطأ', 'فشل حذف المستخدم من الخادم', 'error');
+      }
+    } catch (e) {
+      setAllUsers(prevUsers);
+      if (prevSelectedUser) setSelectedUser(prevSelectedUser);
+      addToast?.('خطأ', 'تعذر الاتصال بالخادم لحذف المستخدم', 'error');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   // ── Ad Actions ──
   const handleAdAction = async (adId: string, status?: string, isFeatured?: boolean) => {
     // 1. Keep track of previous state for rollback
@@ -1495,6 +1525,14 @@ export default function AdminPanel({
                                     title={user.active ? 'حظر' : 'رفع الحظر'}
                                   >
                                     {user.active ? <UserX className="w-3.5 h-3.5" /> : <UserCheck className="w-3.5 h-3.5" />}
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteUser(user.id)}
+                                    disabled={!!actionLoading}
+                                    className="p-1.5 rounded-lg bg-rose-500/10 text-rose-400 hover:bg-rose-500 hover:text-white transition-all"
+                                    title="حذف نهائي"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
                                   </button>
                                 </div>
                               </td>

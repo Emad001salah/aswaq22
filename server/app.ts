@@ -1370,6 +1370,80 @@ export class App {
       }
     });
 
+    this.app.delete('/api/admin/users/:id', ...adminAccessGuards, async (req, res, next) => {
+      try {
+        const { id } = req.params;
+
+        // Perform cascading cleanup sequentially to avoid DB relation errors
+        await prisma.$transaction(async (tx) => {
+          // 1. Delete RefreshTokens, Sessions, PasswordResetTokens
+          await tx.refreshToken.deleteMany({ where: { userId: id } });
+          await tx.session.deleteMany({ where: { userId: id } });
+          await tx.passwordResetToken.deleteMany({ where: { userId: id } });
+
+          // 2. Delete Notifications
+          await tx.notification.deleteMany({ where: { userId: id } });
+
+          // 3. Delete Comments by user or on user's ads
+          await tx.comment.deleteMany({
+            where: {
+              OR: [
+                { authorId: id },
+                { ad: { userId: id } }
+              ]
+            }
+          });
+
+          // 4. Delete AdLikes by user or on user's ads
+          await tx.adLike.deleteMany({
+            where: {
+              OR: [
+                { userId: id },
+                { ad: { userId: id } }
+              ]
+            }
+          });
+
+          // 5. Delete Messages sent or received
+          await tx.message.deleteMany({
+            where: {
+              OR: [
+                { senderId: id },
+                { receiverId: id }
+              ]
+            }
+          });
+
+          // 6. Delete Conversations linked to user's ads or involving the user
+          await tx.conversation.deleteMany({
+            where: {
+              OR: [
+                { ad: { userId: id } },
+                { participantOne: id },
+                { participantTwo: id }
+              ]
+            }
+          });
+
+          // 7. Delete Ad Placements
+          await tx.adPlacement.deleteMany({ where: { advertiserId: id } });
+
+          // 8. Delete Ad Images for user's ads
+          await tx.adImage.deleteMany({ where: { ad: { userId: id } } });
+
+          // 9. Delete Ads
+          await tx.ad.deleteMany({ where: { userId: id } });
+
+          // 10. Finally, delete the User
+          await tx.user.delete({ where: { id } });
+        });
+
+        res.json({ success: true });
+      } catch (err) {
+        next(err);
+      }
+    });
+
     // ── Admin Settings ────────────────────────────────────────────────────────
     this.app.get('/api/public-stats', async (req, res) => {
       try {
