@@ -2203,8 +2203,17 @@ ${urls.join('\n')}
 
         // 301 Redirect to the canonical version if there's any casing or slug mismatch
         if (decodeURIComponent(req.path).toLowerCase() !== decodeURIComponent(canonicalPath)) {
-          const host = req.headers.host || 'www.aswaq22.com';
-          const secureHost = host.startsWith('www.') ? host : `www.${host}`;
+          const host = req.headers['x-forwarded-host'] || req.headers.host || 'www.aswaq22.com';
+          const hostStr = Array.isArray(host) ? host[0] : host;
+          let secureHost = hostStr;
+          
+          if (hostStr.includes('localhost') || hostStr.includes('127.0.0.1')) {
+            secureHost = hostStr;
+          } else if (hostStr.includes('api.aswaq22.com')) {
+            secureHost = 'www.aswaq22.com';
+          } else {
+            secureHost = hostStr.startsWith('www.') ? hostStr : `www.${hostStr}`;
+          }
           return res.redirect(301, `https://${secureHost}${canonicalPath}`);
         }
 
@@ -2301,8 +2310,17 @@ ${urls.join('\n')}
         const canonicalUrl = `https://www.aswaq22.com${canonicalPath}`;
 
         if (decodeURIComponent(req.path).toLowerCase() !== decodeURIComponent(canonicalPath).toLowerCase()) {
-          const host = req.headers.host || 'www.aswaq22.com';
-          const secureHost = host.startsWith('www.') ? host : `www.${host}`;
+          const host = req.headers['x-forwarded-host'] || req.headers.host || 'www.aswaq22.com';
+          const hostStr = Array.isArray(host) ? host[0] : host;
+          let secureHost = hostStr;
+          
+          if (hostStr.includes('localhost') || hostStr.includes('127.0.0.1')) {
+            secureHost = hostStr;
+          } else if (hostStr.includes('api.aswaq22.com')) {
+            secureHost = 'www.aswaq22.com';
+          } else {
+            secureHost = hostStr.startsWith('www.') ? hostStr : `www.${hostStr}`;
+          }
           return res.redirect(301, `https://${secureHost}${canonicalPath}`);
         }
 
