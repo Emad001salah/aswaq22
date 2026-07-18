@@ -738,5 +738,31 @@ export const AdsController = () => {
     }
   });
 
+  // POST /api/ads/:id/report (Secure)
+  router.post('/:id/report', authMiddleware, async (req: AuthenticatedRequest, res) => {
+    const { id } = req.params;
+    const { reason } = req.body;
+    if (!reason || !reason.trim()) {
+      return res.status(400).json({ error: 'Reason is required for reporting an ad' });
+    }
+    try {
+      const ad = await prisma.ad.findUnique({ where: { id } });
+      if (!ad) return res.status(404).json({ error: 'Ad not found' });
+
+      const report = await prisma.report.create({
+        data: {
+          adId: id,
+          reporterId: req.user!.id,
+          reason: reason.trim(),
+          status: 'pending'
+        }
+      });
+
+      res.status(201).json({ success: true, message: 'تم إرسال البلاغ بنجاح للإدارة وسيتم مراجعته.', report });
+    } catch (e: any) {
+      res.status(500).json({ error: 'Report Failed', message: e.message });
+    }
+  });
+
   return router;
 };

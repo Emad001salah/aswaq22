@@ -1444,6 +1444,70 @@ export class App {
       }
     });
 
+    this.app.get('/api/admin/reports', ...adminAccessGuards, async (req, res, next) => {
+      try {
+        const reports = await prisma.report.findMany({
+          orderBy: { timestamp: 'desc' }
+        });
+
+        // Resolve details dynamically for response representation
+        const resolvedReports = await Promise.all(
+          reports.map(async (r) => {
+            const reporter = await prisma.user.findUnique({
+              where: { id: r.reporterId },
+              select: { name: true, email: true }
+            });
+            const ad = await prisma.ad.findUnique({
+              where: { id: r.adId },
+              select: { title: true, status: true, userId: true }
+            });
+
+            return {
+              id: r.id,
+              type: 'بلاغ عن إعلان مخالف',
+              reason: r.reason,
+              status: r.status,
+              severity: 'high',
+              reporter: reporter?.name || reporter?.email || 'مستخدم غير معروف',
+              targetName: ad?.title || 'إعلان محذوف',
+              adId: r.adId,
+              date: new Date(r.timestamp).toLocaleDateString('ar'),
+            };
+          })
+        );
+
+        res.json(resolvedReports);
+      } catch (err) {
+        next(err);
+      }
+    });
+
+    this.app.patch('/api/admin/reports/:id', ...adminAccessGuards, async (req, res, next) => {
+      const { id } = req.params;
+      const { status } = req.body;
+      try {
+        const updated = await prisma.report.update({
+          where: { id },
+          data: { status }
+        });
+        res.json({ success: true, report: updated });
+      } catch (err) {
+        next(err);
+      }
+    });
+
+    this.app.delete('/api/admin/reports/:id', ...adminAccessGuards, async (req, res, next) => {
+      const { id } = req.params;
+      try {
+        await prisma.report.delete({
+          where: { id }
+        });
+        res.json({ success: true });
+      } catch (err) {
+        next(err);
+      }
+    });
+
     // ── Admin Settings ────────────────────────────────────────────────────────
     this.app.get('/api/public-stats', async (req, res) => {
       try {

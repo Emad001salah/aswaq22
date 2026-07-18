@@ -392,6 +392,19 @@ export default function AdminPanel({
     }
   }, [adminFetch]);
 
+  const fetchReports = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await adminFetch('/api/admin/reports');
+      if (res.ok) setReports(await res.json());
+      else console.error('Reports API error', res.status);
+    } catch (e) {
+      console.error('Reports fetch failed', e);
+    } finally {
+      setLoading(false);
+    }
+  }, [adminFetch]);
+
   // ── Load data on tab change ──
   useEffect(() => {
     if (activeTab === 'overview') fetchStats();
@@ -404,8 +417,9 @@ export default function AdminPanel({
     if (activeTab === 'reels') fetchReels();
     if (activeTab === 'categories') fetchCategories();
     if (activeTab === 'markets') fetchMarkets();
+    if (activeTab === 'reports') fetchReports();
     if (activeTab === 'analytics') { fetchStats(); fetchAds(); fetchUsers(); }
-  }, [activeTab, selectedMarket, fetchCategories, fetchMarkets]);
+  }, [activeTab, selectedMarket, fetchCategories, fetchMarkets, fetchReports]);
 
   useEffect(() => {
     if (activeTab === 'users') fetchUsers();
@@ -2834,38 +2848,82 @@ export default function AdminPanel({
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      {reports.map((report: any) => (
-                        <div key={report.id} className={`p-5 rounded-2xl border flex flex-col md:flex-row items-start md:items-center justify-between gap-4 ${
-                          report.severity === 'critical' ? 'bg-rose-500/5 border-rose-500/20' :
-                          report.severity === 'high' ? 'bg-amber-500/5 border-amber-500/20' :
-                          'bg-slate-800/30 border-white/5'
-                        }`}>
-                          <div className="flex items-center gap-3">
-                            <div className={`p-2.5 rounded-2xl ${report.severity === 'critical' ? 'bg-rose-500/10 text-rose-400' : report.severity === 'high' ? 'bg-amber-500/10 text-amber-400' : 'bg-slate-700 text-slate-400'}`}>
-                              <AlertCircle className="w-5 h-5" />
-                            </div>
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <p className="text-sm font-black text-white">{report.type}</p>
-                                <span className={`text-[9px] font-black px-2 py-0.5 rounded-full ${
-                                  report.status === 'pending' ? 'bg-amber-500/10 text-amber-400' :
-                                  report.status === 'investigating' ? 'bg-blue-500/10 text-blue-400' :
-                                  report.status === 'resolved' ? 'bg-emerald-500/10 text-emerald-400' :
-                                  'bg-slate-500/10 text-slate-400'
-                                }`}>
-                                  {report.status === 'pending' ? 'في الانتظار' : report.status === 'investigating' ? 'قيد التحقيق' : report.status === 'resolved' ? 'محلول' : 'مغلق'}
-                                </span>
+                      {reports.map((report: any) => {
+                        const handleStatusChange = async (nextStatus: string) => {
+                          const prev = [...reports];
+                          setReports(prev => prev.map(r => r.id === report.id ? { ...r, status: nextStatus } : r));
+                          try {
+                            const res = await adminFetch(`/api/admin/reports/${report.id}`, {
+                              method: 'PATCH',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ status: nextStatus })
+                            });
+                            if (!res.ok) {
+                              setReports(prev);
+                              addToast?.('خطأ', 'فشل تحديث حالة البلاغ', 'error');
+                            } else {
+                              addToast?.('تم بنجاح', `تم وضع البلاغ كـ ${nextStatus === 'resolved' ? 'محلول' : 'قيد التحقيق'}`, 'success');
+                            }
+                          } catch (e) {
+                            setReports(prev);
+                            addToast?.('خطأ', 'فشل الاتصال بالسيرفر', 'error');
+                          }
+                        };
+
+                        const handleDismissReport = async () => {
+                          if (!confirm('هل تريد حذف وتجاهل هذا البلاغ؟')) return;
+                          const prev = [...reports];
+                          setReports(prev => prev.filter(r => r.id !== report.id));
+                          try {
+                            const res = await adminFetch(`/api/admin/reports/${report.id}`, {
+                              method: 'DELETE'
+                            });
+                            if (!res.ok) {
+                              setReports(prev);
+                              addToast?.('خطأ', 'فشل حذف البلاغ', 'error');
+                            } else {
+                              addToast?.('تم التجاهل', 'تم حذف البلاغ بنجاح', 'success');
+                            }
+                          } catch (e) {
+                            setReports(prev);
+                            addToast?.('خطأ', 'تعذر الاتصال بالسيرفر', 'error');
+                          }
+                        };
+
+                        return (
+                          <div key={report.id} className={`p-5 rounded-2xl border flex flex-col md:flex-row items-start md:items-center justify-between gap-4 ${
+                            report.severity === 'critical' ? 'bg-rose-500/5 border-rose-500/20' :
+                            report.severity === 'high' ? 'bg-amber-500/5 border-amber-500/20' :
+                            'bg-slate-800/30 border-white/5'
+                          }`}>
+                            <div className="flex items-center gap-3">
+                              <div className={`p-2.5 rounded-2xl ${report.severity === 'critical' ? 'bg-rose-500/10 text-rose-400' : report.severity === 'high' ? 'bg-amber-500/10 text-amber-400' : 'bg-slate-700 text-slate-400'}`}>
+                                <AlertCircle className="w-5 h-5" />
                               </div>
-                              <p className="text-[10px] text-slate-500">المُبلِّغ: {report.reporter} • المستهدف: {report.targetName} • {report.date}</p>
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <p className="text-sm font-black text-white">{report.type}</p>
+                                  <span className={`text-[9px] font-black px-2 py-0.5 rounded-full ${
+                                    report.status === 'pending' ? 'bg-amber-500/10 text-amber-400' :
+                                    report.status === 'investigating' ? 'bg-blue-500/10 text-blue-400' :
+                                    report.status === 'resolved' ? 'bg-emerald-500/10 text-emerald-400' :
+                                    'bg-slate-500/10 text-slate-400'
+                                  }`}>
+                                    {report.status === 'pending' ? 'في الانتظار' : report.status === 'investigating' ? 'قيد التحقيق' : report.status === 'resolved' ? 'محلول' : 'مغلق'}
+                                  </span>
+                                </div>
+                                <p className="text-[10px] text-slate-300 mt-1">السبب: {report.reason}</p>
+                                <p className="text-[9px] text-slate-500 mt-0.5">المُبلِّغ: {report.reporter} • المستهدف: {report.targetName} • {report.date}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button onClick={() => handleStatusChange('resolved')} className="px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-400 text-[10px] font-black hover:bg-emerald-500 hover:text-white transition-all border-none cursor-pointer">حل</button>
+                              <button onClick={() => handleStatusChange('investigating')} className="px-3 py-1.5 rounded-xl bg-blue-500/10 text-blue-400 text-[10px] font-black hover:bg-blue-500 hover:text-white transition-all border-none cursor-pointer">تحقيق</button>
+                              <button onClick={handleDismissReport} className="p-1.5 rounded-xl bg-slate-700 text-slate-400 hover:text-white transition-all border-none cursor-pointer"><X className="w-3.5 h-3.5" /></button>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <button onClick={() => setReports(prev => prev.map(r => r.id === report.id ? { ...r, status: 'resolved' } : r))} className="px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-400 text-[10px] font-black hover:bg-emerald-500 hover:text-white transition-all">حل</button>
-                            <button onClick={() => setReports(prev => prev.map(r => r.id === report.id ? { ...r, status: 'investigating' } : r))} className="px-3 py-1.5 rounded-xl bg-blue-500/10 text-blue-400 text-[10px] font-black hover:bg-blue-500 hover:text-white transition-all">تحقيق</button>
-                            <button onClick={() => setReports(prev => prev.filter(r => r.id !== report.id))} className="p-1.5 rounded-xl bg-slate-700 text-slate-400 hover:text-white transition-all"><X className="w-3.5 h-3.5" /></button>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>
