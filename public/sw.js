@@ -1,7 +1,5 @@
-const CACHE_NAME = 'aswaq-pwa-cache-v1';
+const CACHE_NAME = 'aswaq-pwa-cache-v2';
 const ASSETS_TO_CACHE = [
-  '/',
-  '/index.html',
   '/aswaq-icon.png',
   '/aswaq-icon-192.png',
   '/aswaq-icon-512.png',
@@ -47,6 +45,14 @@ self.addEventListener('fetch', (event) => {
   // Exclude API routes, Live streams, and Socket.io connections from local storage caching
   if (url.pathname.startsWith('/api') || url.pathname.startsWith('/socket') || request.method !== 'GET') {
     return; // Pass through to standard browser fetch
+  }
+
+  // Bypass service worker cache completely for the main HTML file to prevent broken asset hashes
+  if (url.pathname === '/' || url.pathname === '/index.html') {
+    event.respondWith(
+      fetch(request).catch(() => caches.match('/index.html') || caches.match('/'))
+    );
+    return;
   }
 
   // Caching Strategy: Stale-While-Revalidate for app assets, Network-First for main documents
