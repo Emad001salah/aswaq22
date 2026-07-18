@@ -379,9 +379,14 @@ export default function AdminPanel({
       if (res.ok) {
         const json = await res.json();
         setDbMarkets(json.data || []);
+      } else {
+        const errText = await res.text().catch(() => '');
+        console.error('Failed to fetch markets:', res.status, errText);
+        addToast?.('خطأ في جلب الأسواق', `كود الحالة: ${res.status}. يرجى تحديث الصفحة أو التحقق من اكتمال بناء خادم الإنتاج.`, 'error');
       }
     } catch (e) {
       console.error('Error fetching markets:', e);
+      addToast?.('خطأ في الشبكة', 'فشل الاتصال بالخادم لجلب الأسواق.', 'error');
     } finally {
       setLoadingMarkets(false);
     }
