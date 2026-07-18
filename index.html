@@ -1,21 +1,96 @@
 <!doctype html>
-<html lang="en">
+<html lang="ar" dir="rtl">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <title>أسواق - المنصة الأولى للإعلانات والبيع المباشر</title>
+
+    <!-- ═══════════════════════════════════════════════════
+         SEO: العنوان والوصف والكلمات المفتاحية
+    ═══════════════════════════════════════════════════ -->
+    <title>أسواق | منصة الإعلانات المجانية في الوطن العربي — بيع، شراء، تأجير</title>
+    <meta name="description" content="أسواق — المنصة الأولى للإعلانات المجانية في الوطن العربي. انشر إعلانك في ثوانٍ وابحث عن سيارات، عقارات، إلكترونيات، وظائف، خدمات في 22 دولة عربية." />
+    <meta name="keywords" content="أسواق, إعلانات مجانية, بيع وشراء, عقارات, سيارات, وظائف, خدمات, السعودية, الإمارات, مصر, الكويت, قطر, البحرين, الأردن, المغرب, aswaq, classifieds, arab marketplace, aswaq22" />
+    <meta name="author" content="أسواق - Aswaq22" />
+    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
+    <meta name="googlebot" content="index, follow" />
+    <link rel="canonical" href="https://aswaq22.com/" />
+
+    <!-- ═══════════════════════════════════════════════════
+         Open Graph (Facebook / WhatsApp / LinkedIn)
+    ═══════════════════════════════════════════════════ -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="أسواق | Aswaq22" />
+    <meta property="og:title" content="أسواق — منصة الإعلانات الأولى في الوطن العربي" />
+    <meta property="og:description" content="انشر إعلانك مجاناً وابحث عن أفضل العروض في 22 دولة عربية. سيارات، عقارات، إلكترونيات، وظائف والمزيد." />
+    <meta property="og:url" content="https://aswaq22.com/" />
+    <meta property="og:image" content="https://aswaq22.com/aswaq-icon-512.png" />
+    <meta property="og:image:width" content="512" />
+    <meta property="og:image:height" content="512" />
+    <meta property="og:image:alt" content="شعار منصة أسواق للإعلانات المجانية" />
+    <meta property="og:locale" content="ar_AR" />
+
+    <!-- ═══════════════════════════════════════════════════
+         Twitter / X Cards
+    ═══════════════════════════════════════════════════ -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="أسواق — منصة الإعلانات الأولى في الوطن العربي" />
+    <meta name="twitter:description" content="انشر إعلانك مجاناً وابحث عن أفضل العروض في 22 دولة عربية. سيارات، عقارات، وظائف والمزيد." />
+    <meta name="twitter:image" content="https://aswaq22.com/aswaq-icon-512.png" />
+    <meta name="twitter:image:alt" content="شعار منصة أسواق" />
+
+    <!-- ═══════════════════════════════════════════════════
+         Schema.org — بيانات منظمة لجوجل (Rich Results)
+    ═══════════════════════════════════════════════════ -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "أسواق",
+      "alternateName": "Aswaq22",
+      "url": "https://aswaq22.com",
+      "description": "المنصة الأولى للإعلانات المجانية في الوطن العربي — بيع، شراء، تأجير في 22 دولة عربية",
+      "inLanguage": "ar",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": {
+          "@type": "EntryPoint",
+          "urlTemplate": "https://aswaq22.com/?q={search_term_string}"
+        },
+        "query-input": "required name=search_term_string"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "أسواق",
+        "url": "https://aswaq22.com",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://aswaq22.com/aswaq-icon-512.png",
+          "width": 512,
+          "height": 512
+        },
+        "sameAs": []
+      }
+    }
+    </script>
+
+    <!-- ═══════════════════════════════════════════════════
+         PWA & Icons
+    ═══════════════════════════════════════════════════ -->
     <link rel="manifest" href="/manifest.json" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="أَسْوَاق" />
+    <meta name="apple-mobile-web-app-title" content="أسواق" />
+    <meta name="theme-color" content="#090d16" />
     <link rel="apple-touch-icon" href="/aswaq-icon-192.png" />
     <link rel="icon" type="image/png" href="/aswaq-icon.png" />
     <link rel="shortcut icon" href="/aswaq-icon.png" type="image/png" />
     <link rel="icon" type="image/png" sizes="192x192" href="/aswaq-icon-192.png" />
     <link rel="icon" type="image/png" sizes="512x512" href="/aswaq-icon-512.png" />
-    <meta name="theme-color" content="#090d16" />
-    <!-- Leaflet CSS -->
+
+    <!-- ═══════════════════════════════════════════════════
+         Leaflet CSS
+    ═══════════════════════════════════════════════════ -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
     <style>
       /* Fix Leaflet z-index conflicts with our UI */
@@ -32,3 +107,4 @@
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
+
