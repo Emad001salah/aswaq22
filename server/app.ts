@@ -1511,7 +1511,7 @@ export class App {
     // ── Dynamic Sitemap (SEO) ─────────────────────────────────────────────────
     this.app.get('/sitemap.xml', async (req, res) => {
       try {
-        const BASE_URL = 'https://aswaq22.com';
+        const BASE_URL = 'https://www.aswaq22.com';
         const today = new Date().toISOString().split('T')[0];
 
         // Fetch active ads from DB
