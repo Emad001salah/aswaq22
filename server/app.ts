@@ -2191,14 +2191,18 @@ ${urls.join('\n')}
 
         // Resolve ad's country code dynamically
         const cities = await prisma.city.findMany({ include: { country: true } });
-        const city = cities.find(c => c.id === ad.city || c.nameAr === ad.city || c.nameEn === ad.city);
+        const city = cities.find(c => 
+          c.id.toLowerCase() === ad.city.toLowerCase() || 
+          c.nameAr === ad.city || 
+          c.nameEn.toLowerCase() === ad.city.toLowerCase()
+        );
         const countryCode = city?.country?.countryCode?.toLowerCase() || 'ye';
 
         const canonicalPath = `/${countryCode}/${ad.category.nameEn.toLowerCase()}/${slugify(ad.title)}-${ad.id}`.toLowerCase();
         const canonicalUrl = `https://www.aswaq22.com${canonicalPath}`;
 
         // 301 Redirect to the canonical version if there's any casing or slug mismatch
-        if (req.path.toLowerCase() !== canonicalPath) {
+        if (decodeURIComponent(req.path).toLowerCase() !== decodeURIComponent(canonicalPath)) {
           const host = req.headers.host || 'www.aswaq22.com';
           const secureHost = host.startsWith('www.') ? host : `www.${host}`;
           return res.redirect(301, `https://${secureHost}${canonicalPath}`);
@@ -2296,7 +2300,7 @@ ${urls.join('\n')}
         const canonicalPath = `/${countryCodeParam}/${category.nameEn.toLowerCase()}`;
         const canonicalUrl = `https://www.aswaq22.com${canonicalPath}`;
 
-        if (req.path !== canonicalPath) {
+        if (decodeURIComponent(req.path).toLowerCase() !== decodeURIComponent(canonicalPath).toLowerCase()) {
           const host = req.headers.host || 'www.aswaq22.com';
           const secureHost = host.startsWith('www.') ? host : `www.${host}`;
           return res.redirect(301, `https://${secureHost}${canonicalPath}`);
