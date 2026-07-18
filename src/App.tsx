@@ -6,6 +6,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, FormEvent, useMemo } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { App as CapApp } from '@capacitor/app';
 import { Browser } from '@capacitor/browser';
@@ -152,9 +153,31 @@ const formatPrice = (price: any) => {
   return new Intl.NumberFormat("en-US").format(Number(price));
 };
 
+export function slugify(text: string): string {
+  return text
+    .toString()
+    .toLowerCase()
+    .replace(/\s+/g, '-')           // Replace spaces with -
+    .replace(/[^\w\u0621-\u064A-]+/g, '') // Keep alphanumeric, Arabic chars and -
+    .replace(/--+/g, '-')          // Replace multiple - with single -
+    .replace(/^-+/, '')            // Trim - from start
+    .replace(/-+$/, '');           // Trim - from end
+}
+
 export default function App() {
   // Market Logic
   const { market: currentMarket, setMarket: setCurrentMarket } = useMarket();
+  const [selectedAd, setSelectedAd] = useState<Ad | null>(null);
+
+  // Navigation page views: 'home' | 'create-ad' | 'my-ads' | 'analytics' | 'messages' | 'settings'
+  const [currentTab, setCurrentTab] = useState("home");
+
+  // Search & Filters parameters
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCity, setSelectedCity] = useState("");
+  const [selectedDistrict, setSelectedDistrict] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [selectedSubCategory, setSelectedSubCategory] = useState("");
   
   // ── Auth Persistence via our own JWT ────────────────────────────────────
   // We use inMemoryPersistence for Firebase (to bypass Edge tracking prevention).
@@ -354,6 +377,118 @@ useEffect(() => {
       unsubscribeAuth();
     };
   }, []);
+
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // 1. Synchronize URL state on load / pathname changes
+  useEffect(() => {
+    const syncRouteToState = async () => {
+      const pathname = location.pathname;
+      if (!pathname || pathname === '/') return;
+
+      // Skip sync if it's dynamic search page
+      if (pathname.startsWith('/search/')) {
+        const query = decodeURIComponent(pathname.substring(8));
+        setSearchQuery(query);
+        setCurrentTab('home');
+        return;
+      }
+
+      // Check if it's an ad URL (starts with country and has UUID)
+      const uuidRegex = /[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+      const match = pathname.match(uuidRegex);
+      if (match) {
+        const adId = match[0];
+        if (selectedAd?.id !== adId) {
+          try {
+            const res = await fetch(`/api/ads/${adId}`);
+            if (res.ok) {
+              const adData = await res.json();
+              setSelectedAd(adData);
+            }
+          } catch (e) {
+            console.error('Failed to auto-fetch ad details from URL', e);
+          }
+        }
+        return;
+      }
+
+      // Check landing pages: /:country/:category or /:country/:city/:category
+      const segments = pathname.split('/').filter(Boolean);
+      if (segments.length >= 2) {
+        const countryCode = segments[0].toUpperCase();
+        if (MARKETS[countryCode]) {
+          setCurrentMarket(MARKETS[countryCode]);
+        }
+
+        if (segments.length === 2) {
+          const categorySlug = segments[1].toLowerCase();
+          const category = CATEGORIES.find(c => c.nameEn.toLowerCase() === categorySlug);
+          if (category) {
+            setSelectedCategory(category.id);
+          }
+        } else if (segments.length === 3) {
+          const citySlug = segments[1];
+          const categorySlug = segments[2].toLowerCase();
+          
+          const market = MARKETS[countryCode];
+          if (market) {
+            const city = market.cities.find(c => slugify(c.nameEn) === citySlug);
+            if (city) {
+              setSelectedCity(city.id);
+            }
+          }
+          const category = CATEGORIES.find(c => c.nameEn.toLowerCase() === categorySlug);
+          if (category) {
+            setSelectedCategory(category.id);
+          }
+        }
+      }
+    };
+
+    syncRouteToState();
+  }, [location.pathname]);
+
+  // 2. Synchronize state to URL pathname (for country, city, and category)
+  useEffect(() => {
+    // Avoid updating URL if we are currently looking at an ad detail page
+    const uuidRegex = /[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+    if (location.pathname.match(uuidRegex)) return;
+
+    const countryCode = currentMarket.countryCode.toLowerCase();
+    const categoryObject = CATEGORIES.find(c => c.id === selectedCategory);
+    const cat = categoryObject?.nameEn?.toLowerCase() || '';
+    
+    if (selectedCity) {
+      const market = MARKETS[currentMarket.countryCode];
+      const city = market?.cities.find(c => c.id === selectedCity);
+      if (city && cat) {
+        const citySlug = slugify(city.nameEn);
+        navigate(`/${countryCode}/${citySlug}/${cat}`);
+        return;
+      }
+    }
+    
+    if (cat) {
+      navigate(`/${countryCode}/${cat}`);
+    } else {
+      navigate('/');
+    }
+  }, [currentMarket.countryCode, selectedCategory, selectedCity]);
+
+  // 3. Synchronize selectedAd state reset to parent URL pathname
+  useEffect(() => {
+    if (!selectedAd) {
+      const uuidRegex = /[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+      if (location.pathname.match(uuidRegex)) {
+        const countryCode = currentMarket.countryCode.toLowerCase();
+        const categoryObject = CATEGORIES.find(c => c.id === selectedCategory);
+        const cat = categoryObject?.nameEn?.toLowerCase() || '';
+        navigate(cat ? `/${countryCode}/${cat}` : '/');
+      }
+    }
+  }, [selectedAd]);
 
   // Load Google Maps Script once globally
   useEffect(() => {
@@ -724,13 +859,23 @@ useEffect(() => {
   const [gpsError, setGpsError] = useState<string | null>(null);
 
   // Active overlays
-  const [selectedAd, setSelectedAd] = useState<Ad | null>(null);
   const handleSelectAd = (ad: Ad | null) => {
     if (ad && (ad.isLive || (ad as any).isPromo)) {
       setSelectedSpotlightId(ad.id);
       setShowDiscovery(true);
     } else {
       setSelectedAd(ad);
+      if (ad) {
+        const city = currentMarket.cities.find(c => c.id === ad.city || c.nameAr === ad.city || c.nameEn === ad.city);
+        const countryCode = currentMarket.countryCode.toLowerCase();
+        
+        const catId = ad.category;
+        const categoryObject = CATEGORIES.find(c => c.id === catId);
+        const categorySlug = categoryObject?.nameEn?.toLowerCase() || 'ads';
+        
+        const titleSlug = slugify(ad.title);
+        navigate(`/${countryCode}/${categorySlug}/${titleSlug}-${ad.id}`);
+      }
     }
   };
   const [selectedUserPreview, setSelectedUserPreview] = useState<User | null>(null);
@@ -1281,15 +1426,6 @@ useEffect(() => {
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
   const [unreadMessages, setUnreadMessages] = useState<ChatMessage[]>([]);
 
-  // Navigation page views: 'home' | 'create-ad' | 'my-ads' | 'analytics' | 'messages' | 'settings'
-  const [currentTab, setCurrentTab] = useState("home");
-
-  // Search & Filters parameters
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCity, setSelectedCity] = useState("");
-  const [selectedDistrict, setSelectedDistrict] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("");
-  const [selectedSubCategory, setSelectedSubCategory] = useState("");
   const [isMainCategoryDropdownOpen, setIsMainCategoryDropdownOpen] = useState(false);
   const [selectedJobType, setSelectedJobType] = useState<
     "all" | "seeking" | "hiring"

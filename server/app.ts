@@ -68,6 +68,17 @@ import { startMemoryMonitor, stopMemoryMonitor } from './lib/memoryMonitor.ts';
 
 
 
+export function slugify(text: string): string {
+  return text
+    .toString()
+    .toLowerCase()
+    .replace(/\s+/g, '-')           // Replace spaces with -
+    .replace(/[^\w\u0621-\u064A-]+/g, '') // Keep alphanumeric, Arabic chars and -
+    .replace(/--+/g, '-')          // Replace multiple - with single -
+    .replace(/^-+/, '')            // Trim - from start
+    .replace(/-+$/, '');           // Trim - from end
+}
+
 export class App {
   public app: express.Application;
   public httpServer: ReturnType<typeof createServer>;
@@ -96,6 +107,29 @@ export class App {
   // ── Middlewares ────────────────────────────────────────────────────────────
 
   private initializeMiddlewares(): void {
+    // 1. Canonical Domain & URL Redirection Middleware (HTTP->HTTPS, non-www -> www, lowercase paths in exactly 1 hop)
+    this.app.use((req, res, next) => {
+      const host = req.headers.host || '';
+      const isLocal = host.includes('localhost') || host.includes('127.0.0.1') || process.env.NODE_ENV === 'test';
+      
+      const isHttp = req.protocol === 'http' || req.headers['x-forwarded-proto'] === 'http';
+      const needsWww = !host.startsWith('www.') && !isLocal;
+      const hasUppercasePath = /[A-Z]/.test(req.path);
+      
+      // Standardize trailing slash if it's not root / and has one
+      const pathEndsWithSlash = req.path.length > 1 && req.path.endsWith('/');
+      const cleanPath = pathEndsWithSlash ? req.path.slice(0, -1) : req.path;
+      
+      if ((isHttp || needsWww || hasUppercasePath || pathEndsWithSlash) && !isLocal) {
+        const canonicalHost = needsWww ? `www.${host}` : host;
+        const canonicalPath = cleanPath.toLowerCase();
+        const queryString = req.url.slice(req.path.length); // Preserves query parameters
+        
+        return res.redirect(301, `https://${canonicalHost}${canonicalPath}${queryString}`);
+      }
+      next();
+    });
+
     // Prometheus Metrics endpoint
     this.app.get('/metrics', (req, res) => {
       if (process.env.NODE_ENV === 'test') {
@@ -1508,59 +1542,273 @@ export class App {
       }
     });
 
-    // ── Dynamic Sitemap (SEO) ─────────────────────────────────────────────────
-    this.app.get('/sitemap.xml', async (req, res) => {
-      try {
-        const BASE_URL = 'https://www.aswaq22.com';
-        const today = new Date().toISOString().split('T')[0];
+    // ── Split Sitemaps (SEO Index & Children) ──────────────────────────────────
+    this.app.get('/sitemap.xml', (req, res) => {
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <sitemap><loc>https://www.aswaq22.com/sitemaps/static.xml</loc></sitemap>
+  <sitemap><loc>https://www.aswaq22.com/sitemaps/categories.xml</loc></sitemap>
+  <sitemap><loc>https://www.aswaq22.com/sitemaps/cities.xml</loc></sitemap>
+  <sitemap><loc>https://www.aswaq22.com/sitemaps/ads-1.xml</loc></sitemap>
+  <sitemap><loc>https://www.aswaq22.com/sitemaps/image-sitemap.xml</loc></sitemap>
+  <sitemap><loc>https://www.aswaq22.com/sitemaps/video-sitemap.xml</loc></sitemap>
+</sitemapindex>`;
+      res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+      res.send(xml);
+    });
 
-        // Fetch active ads from DB
-        const ads = await prisma.ad.findMany({
-          where: { status: 'active' },
-          select: { id: true, updatedAt: true, title: true },
-          orderBy: { createdAt: 'desc' },
-          take: 5000, // max 5000 per sitemap
-        });
-
-        // Fetch categories from DB
-        const categories = await prisma.category.findMany({
-          select: { nameEn: true, id: true },
-        });
-
-        const staticPages = [
-          { url: '/',         priority: '1.0', changefreq: 'daily'   },
-          { url: '/ads',      priority: '0.9', changefreq: 'hourly'  },
-          { url: '/login',    priority: '0.5', changefreq: 'monthly' },
-          { url: '/register', priority: '0.5', changefreq: 'monthly' },
-        ];
-
-        const xml = `<?xml version="1.0" encoding="UTF-8"?>
+    this.app.get('/sitemaps/static.xml', (req, res) => {
+      const today = new Date().toISOString().split('T')[0];
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${staticPages.map(p => `  <url>
-    <loc>${BASE_URL}${p.url}</loc>
+  <url>
+    <loc>https://www.aswaq22.com/</loc>
     <lastmod>${today}</lastmod>
-    <changefreq>${p.changefreq}</changefreq>
-    <priority>${p.priority}</priority>
-  </url>`).join('\n')}
-${categories.map(c => `  <url>
-    <loc>${BASE_URL}/?category=${encodeURIComponent(c.nameEn || '')}</loc>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://www.aswaq22.com/ads</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>hourly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://www.aswaq22.com/login</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://www.aswaq22.com/register</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+</urlset>`;
+      res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+      res.send(xml);
+    });
+
+    this.app.get('/sitemaps/categories.xml', async (req, res, next) => {
+      try {
+        const countries = await prisma.country.findMany({ where: { active: true } });
+        const categories = await prisma.category.findMany();
+        const ads = await prisma.ad.findMany({
+          where: { status: 'ACTIVE' },
+          select: { city: true, categoryId: true }
+        });
+        const cities = await prisma.city.findMany({ include: { country: true } });
+
+        const today = new Date().toISOString().split('T')[0];
+        const urls: string[] = [];
+
+        for (const country of countries) {
+          const countryCities = cities.filter(c => c.countryId === country.id);
+          const countryCityIds = countryCities.map(c => c.id);
+          const countryCityNamesAr = countryCities.map(c => c.nameAr);
+          const countryCityNamesEn = countryCities.map(c => c.nameEn);
+
+          for (const category of categories) {
+            // Include category only if there's at least one active ad
+            const hasAds = ads.some(ad => 
+              ad.categoryId === category.id && 
+              (countryCityIds.includes(ad.city) || countryCityNamesAr.includes(ad.city) || countryCityNamesEn.includes(ad.city))
+            );
+
+            if (hasAds) {
+              const url = `https://www.aswaq22.com/${country.countryCode.toLowerCase()}/${category.nameEn.toLowerCase()}`;
+              urls.push(`  <url>
+    <loc>${url}</loc>
     <lastmod>${today}</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
-  </url>`).join('\n')}
-${ads.map(ad => `  <url>
-    <loc>${BASE_URL}/ads/${ad.id}</loc>
+  </url>`);
+            }
+          }
+        }
+
+        const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${urls.join('\n')}
+</urlset>`;
+        res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+        res.send(xml);
+      } catch (err) {
+        next(err);
+      }
+    });
+
+    this.app.get('/sitemaps/cities.xml', async (req, res, next) => {
+      try {
+        const countries = await prisma.country.findMany({ where: { active: true } });
+        const categories = await prisma.category.findMany();
+        const cities = await prisma.city.findMany({ where: { active: true }, include: { country: true } });
+        const ads = await prisma.ad.findMany({
+          where: { status: 'ACTIVE' },
+          select: { city: true, categoryId: true }
+        });
+
+        const today = new Date().toISOString().split('T')[0];
+        const urls: string[] = [];
+
+        for (const city of cities) {
+          const countryCode = city.country.countryCode.toLowerCase();
+          for (const category of categories) {
+            const hasAds = ads.some(ad => 
+              ad.categoryId === category.id && 
+              (ad.city === city.id || ad.city === city.nameAr || ad.city === city.nameEn)
+            );
+
+            if (hasAds) {
+              const citySlug = slugify(city.nameEn);
+              const url = `https://www.aswaq22.com/${countryCode}/${citySlug}/${category.nameEn.toLowerCase()}`;
+              urls.push(`  <url>
+    <loc>${url}</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>`);
+            }
+          }
+        }
+
+        const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${urls.join('\n')}
+</urlset>`;
+        res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+        res.send(xml);
+      } catch (err) {
+        next(err);
+      }
+    });
+
+    this.app.get('/sitemaps/ads-:page.xml', async (req, res, next) => {
+      try {
+        const page = parseInt(req.params.page) || 1;
+        const pageSize = 30000;
+        const skip = (page - 1) * pageSize;
+
+        const ads = await prisma.ad.findMany({
+          where: { status: 'ACTIVE' },
+          include: { category: true },
+          orderBy: { createdAt: 'desc' },
+          skip,
+          take: pageSize
+        });
+
+        const cities = await prisma.city.findMany({ include: { country: true } });
+        const urls: string[] = [];
+
+        for (const ad of ads) {
+          const city = cities.find(c => c.id === ad.city || c.nameAr === ad.city || c.nameEn === ad.city);
+          const countryCode = city?.country?.countryCode?.toLowerCase() || 'ye';
+          const categorySlug = ad.category.nameEn.toLowerCase();
+          const adSlug = slugify(ad.title);
+
+          const url = `https://www.aswaq22.com/${countryCode}/${categorySlug}/${adSlug}-${ad.id}`;
+          urls.push(`  <url>
+    <loc>${url}</loc>
     <lastmod>${new Date(ad.updatedAt).toISOString().split('T')[0]}</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>`).join('\n')}
-</urlset>`;
+    <priority>0.6</priority>
+  </url>`);
+        }
 
+        const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${urls.join('\n')}
+</urlset>`;
         res.setHeader('Content-Type', 'application/xml; charset=utf-8');
-        res.setHeader('Cache-Control', 'public, max-age=3600'); // cache 1 hour
         res.send(xml);
-      } catch (err: any) {
-        res.status(500).send('<?xml version="1.0"?><error>Sitemap generation failed</error>');
+      } catch (err) {
+        next(err);
+      }
+    });
+
+    this.app.get('/sitemaps/image-sitemap.xml', async (req, res, next) => {
+      try {
+        const ads = await prisma.ad.findMany({
+          where: { status: 'ACTIVE' },
+          include: { category: true, images: { take: 5 } },
+          orderBy: { createdAt: 'desc' },
+          take: 10000
+        });
+
+        const cities = await prisma.city.findMany({ include: { country: true } });
+        const urls: string[] = [];
+
+        for (const ad of ads) {
+          if (ad.images.length === 0) continue;
+
+          const city = cities.find(c => c.id === ad.city || c.nameAr === ad.city || c.nameEn === ad.city);
+          const countryCode = city?.country?.countryCode?.toLowerCase() || 'ye';
+          const categorySlug = ad.category.nameEn.toLowerCase();
+          const adSlug = slugify(ad.title);
+          const url = `https://www.aswaq22.com/${countryCode}/${categorySlug}/${adSlug}-${ad.id}`;
+
+          const imageTags = ad.images.map(img => {
+            const absoluteImgUrl = img.url.startsWith('http') ? img.url : `https://www.aswaq22.com${img.url}`;
+            return `    <image:image>
+      <image:loc>${absoluteImgUrl}</image:loc>
+      <image:title>${ad.title}</image:title>
+    </image:image>`;
+          }).join('\n');
+
+          urls.push(`  <url>
+    <loc>${url}</loc>
+${imageTags}
+  </url>`);
+        }
+
+        const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+${urls.join('\n')}
+</urlset>`;
+        res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+        res.send(xml);
+      } catch (err) {
+        next(err);
+      }
+    });
+
+    this.app.get('/sitemaps/video-sitemap.xml', async (req, res, next) => {
+      try {
+        const reels = await prisma.reel.findMany({
+          orderBy: { createdAt: 'desc' },
+          take: 1000
+        });
+
+        const urls: string[] = [];
+
+        for (const reel of reels) {
+          const absoluteVideoUrl = reel.videoUrl.startsWith('http') ? reel.videoUrl : `https://www.aswaq22.com${reel.videoUrl}`;
+          const title = reel.title || 'فيديو ترويجي - أسواق';
+          const thumbnail = 'https://www.aswaq22.com/aswaq-icon-512.png';
+          
+          urls.push(`  <url>
+    <loc>https://www.aswaq22.com/</loc>
+    <video:video>
+      <video:thumbnail_loc>${thumbnail}</video:thumbnail_loc>
+      <video:title>${title}</video:title>
+      <video:description>فيديو ريلز ترويجي على منصة أسواق</video:description>
+      <video:content_loc>${absoluteVideoUrl}</video:content_loc>
+      <video:publication_date>${reel.createdAt.toISOString()}</video:publication_date>
+    </video:video>
+  </url>`);
+        }
+
+        const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:video="http://www.google.com/schemas/sitemap-video/1.1">
+${urls.join('\n')}
+</urlset>`;
+        res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+        res.send(xml);
+      } catch (err) {
+        next(err);
       }
     });
 
@@ -1876,6 +2124,235 @@ ${ads.map(ad => `  <url>
   // ── Start ──────────────────────────────────────────────────────────────────
 
   public async start(): Promise<void> {
+    const getHtmlTemplate = (): string => {
+      const isProd = process.env.NODE_ENV === 'production';
+      const templatePath = isProd 
+        ? path.join(process.cwd(), 'dist', 'index.html')
+        : path.join(process.cwd(), 'index.html');
+      return fs.readFileSync(templatePath, 'utf-8');
+    };
+
+    // 1. Dynamic SEO Ad Detail Route: /:countryCode(2 letters)/:categoryName/:titleSlug-:id(UUID)
+    this.app.get('/:country([a-zA-Z]{2})/:category/:slugAndId', async (req, res, next) => {
+      const uuidRegex = /[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+      const match = req.params.slugAndId.match(uuidRegex);
+      if (!match) {
+        return next(); // Fall through if it's not a valid ad URL with UUID
+      }
+      
+      const adId = match[0];
+      try {
+        const ad = await prisma.ad.findUnique({
+          where: { id: adId },
+          include: { category: true }
+        });
+
+        if (!ad) {
+          // Check if ad was permanently deleted in Outbox events
+          const isDeleted = await prisma.outboxEvent.findFirst({
+            where: { aggregate: 'Ad', aggregateId: adId, eventType: 'DELETED' }
+          });
+          if (isDeleted) {
+            return res.status(410).send(`
+              <!DOCTYPE html>
+              <html lang="ar" dir="rtl">
+                <head>
+                  <meta charset="UTF-8" />
+                  <title>الإعلان محذوف | أسواق</title>
+                  <meta name="robots" content="noindex, follow" />
+                </head>
+                <body style="font-family: sans-serif; text-align: center; padding: 50px; background: #090d16; color: #fff;">
+                  <h1>410 Gone</h1>
+                  <p>هذا الإعلان تم حذفه نهائياً من منصة أسواق.</p>
+                  <a href="https://www.aswaq22.com/" style="color: #10b981; text-decoration: none;">العودة للرئيسية</a>
+                </body>
+              </html>
+            `);
+          }
+          return res.status(404).send(`
+            <!DOCTYPE html>
+            <html lang="ar" dir="rtl">
+              <head>
+                <meta charset="UTF-8" />
+                <title>الإعلان غير موجود | أسواق</title>
+                <meta name="robots" content="noindex, follow" />
+              </head>
+              <body style="font-family: sans-serif; text-align: center; padding: 50px; background: #090d16; color: #fff;">
+                <h1>404 Not Found</h1>
+                <p>عذراً، هذا الإعلان غير موجود أو ربما لم يتم إنشاؤه بعد.</p>
+                <a href="https://www.aswaq22.com/" style="color: #10b981; text-decoration: none;">العودة للرئيسية</a>
+              </body>
+            </html>
+          `);
+        }
+
+        // Resolve ad's country code dynamically
+        const cities = await prisma.city.findMany({ include: { country: true } });
+        const city = cities.find(c => c.id === ad.city || c.nameAr === ad.city || c.nameEn === ad.city);
+        const countryCode = city?.country?.countryCode?.toLowerCase() || 'ye';
+
+        const canonicalPath = `/${countryCode}/${ad.category.nameEn.toLowerCase()}/${slugify(ad.title)}-${ad.id}`.toLowerCase();
+        
+        // 301 Redirect to the canonical version if there's any casing or slug mismatch
+        if (req.path.toLowerCase() !== canonicalPath) {
+          const host = req.headers.host || 'www.aswaq22.com';
+          const secureHost = host.startsWith('www.') ? host : `www.${host}`;
+          return res.redirect(301, `https://${secureHost}${canonicalPath}`);
+        }
+
+        // Render index.html with pre-injected tags (Universal Rendering)
+        let html = getHtmlTemplate();
+        
+        // Inject Title
+        const title = `${ad.title} | أسواق ${city?.country?.labelAr || ''}`;
+        html = html.replace(/<title>.*?<\/title>/, `<title>${title}</title>`);
+        
+        // Inject Canonical Tag
+        const canonicalUrl = `https://www.aswaq22.com${canonicalPath}`;
+        const canonicalTag = `<link rel="canonical" href="${canonicalUrl}" />`;
+        if (html.includes('rel="canonical"')) {
+          html = html.replace(/<link rel="canonical"[^>]*>/, canonicalTag);
+        } else {
+          html = html.replace('</head>', `  ${canonicalTag}\n</head>`);
+        }
+
+        // Inject Description Tag
+        const descTag = `<meta name="description" content="${ad.description.substring(0, 150)}..." />`;
+        if (html.includes('name="description"')) {
+          html = html.replace(/<meta name="description"[^>]*>/, descTag);
+        } else {
+          html = html.replace('</head>', `  ${descTag}\n</head>`);
+        }
+
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        res.send(html);
+      } catch (err) {
+        next(err);
+      }
+    });
+
+    // 2. SEO Landing Page: Category landing for a country (e.g. /jo/cars)
+    this.app.get('/:country([a-zA-Z]{2})/:category', async (req, res, next) => {
+      const countryCodeParam = req.params.country.toLowerCase();
+      const categoryNameParam = req.params.category.toLowerCase();
+
+      try {
+        const country = await prisma.country.findFirst({
+          where: { countryCode: countryCodeParam.toUpperCase(), active: true }
+        });
+        const category = await prisma.category.findFirst({
+          where: { nameEn: { equals: categoryNameParam, mode: 'insensitive' } }
+        });
+
+        if (!country || !category) {
+          return next(); // Fall through if it's not a valid landing page
+        }
+
+        const canonicalPath = `/${countryCodeParam}/${category.nameEn.toLowerCase()}`;
+        if (req.path !== canonicalPath) {
+          const host = req.headers.host || 'www.aswaq22.com';
+          const secureHost = host.startsWith('www.') ? host : `www.${host}`;
+          return res.redirect(301, `https://${secureHost}${canonicalPath}`);
+        }
+
+        let html = getHtmlTemplate();
+        const title = `إعلانات ${category.nameAr} في ${country.labelAr} | أسواق`;
+        html = html.replace(/<title>.*?<\/title>/, `<title>${title}</title>`);
+
+        const canonicalUrl = `https://www.aswaq22.com${canonicalPath}`;
+        const canonicalTag = `<link rel="canonical" href="${canonicalUrl}" />`;
+        if (html.includes('rel="canonical"')) {
+          html = html.replace(/<link rel="canonical"[^>]*>/, canonicalTag);
+        } else {
+          html = html.replace('</head>', `  ${canonicalTag}\n</head>`);
+        }
+
+        const descTag = `<meta name="description" content="تصفح أحدث إعلانات ${category.nameAr} في ${country.labelAr} على منصة أسواق. بيع وشراء وسيارات وعقارات مجاناً." />`;
+        if (html.includes('name="description"')) {
+          html = html.replace(/<meta name="description"[^>]*>/, descTag);
+        } else {
+          html = html.replace('</head>', `  ${descTag}\n</head>`);
+        }
+
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        res.send(html);
+      } catch (err) {
+        next(err);
+      }
+    });
+
+    // 3. SEO Landing Page: City category landing for a country (e.g. /jo/amman/cars)
+    this.app.get('/:country([a-zA-Z]{2})/:city/:category', async (req, res, next) => {
+      const countryCodeParam = req.params.country.toLowerCase();
+      const citySlugParam = req.params.city.toLowerCase();
+      const categoryNameParam = req.params.category.toLowerCase();
+
+      try {
+        const country = await prisma.country.findFirst({
+          where: { countryCode: countryCodeParam.toUpperCase(), active: true },
+          include: { cities: true }
+        });
+        if (!country) return next();
+
+        const city = country.cities.find(c => slugify(c.nameEn) === citySlugParam && c.active);
+        const category = await prisma.category.findFirst({
+          where: { nameEn: { equals: categoryNameParam, mode: 'insensitive' } }
+        });
+
+        if (!city || !category) return next();
+
+        const canonicalPath = `/${countryCodeParam}/${citySlugParam}/${category.nameEn.toLowerCase()}`;
+        if (req.path !== canonicalPath) {
+          const host = req.headers.host || 'www.aswaq22.com';
+          const secureHost = host.startsWith('www.') ? host : `www.${host}`;
+          return res.redirect(301, `https://${secureHost}${canonicalPath}`);
+        }
+
+        let html = getHtmlTemplate();
+        const title = `إعلانات ${category.nameAr} في ${city.nameAr}، ${country.labelAr} | أسواق`;
+        html = html.replace(/<title>.*?<\/title>/, `<title>${title}</title>`);
+
+        const canonicalUrl = `https://www.aswaq22.com${canonicalPath}`;
+        const canonicalTag = `<link rel="canonical" href="${canonicalUrl}" />`;
+        if (html.includes('rel="canonical"')) {
+          html = html.replace(/<link rel="canonical"[^>]*>/, canonicalTag);
+        } else {
+          html = html.replace('</head>', `  ${canonicalTag}\n</head>`);
+        }
+
+        const descTag = `<meta name="description" content="تصفح إعلانات ${category.nameAr} في ${city.nameAr}، ${country.labelAr} على منصة أسواق. عقارات، سيارات، وظائف، إلكترونيات وأثاث." />`;
+        if (html.includes('name="description"')) {
+          html = html.replace(/<meta name="description"[^>]*>/, descTag);
+        } else {
+          html = html.replace('</head>', `  ${descTag}\n</head>`);
+        }
+
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        res.send(html);
+      } catch (err) {
+        next(err);
+      }
+    });
+
+    // 4. SEO Search Page: /search/:query (with noindex to prevent crawl spam)
+    this.app.get('/search/:query', async (req, res, next) => {
+      const searchQuery = req.params.query;
+      try {
+        let html = getHtmlTemplate();
+        const title = `نتائج البحث عن: ${searchQuery} | أسواق`;
+        html = html.replace(/<title>.*?<\/title>/, `<title>${title}</title>`);
+
+        // No-index search results by default to avoid search engine index spam
+        const noindexTag = `<meta name="robots" content="noindex, follow" />`;
+        html = html.replace('</head>', `  ${noindexTag}\n</head>`);
+
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        res.send(html);
+      } catch (err) {
+        next(err);
+      }
+    });
+
     if (process.env.NODE_ENV !== 'production') {
       const { createServer: createViteServer } = await import('vite');
       const vite = await createViteServer({

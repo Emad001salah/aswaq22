@@ -29,6 +29,29 @@ export default function AdCard({ ad, onClick, onLikeToggle, isFavorite, distance
   const { t, i18n } = useTranslation();
   const isRtl = i18n.language === 'ar';
 
+  const slugify = (text: string): string => {
+    return text
+      .toString()
+      .toLowerCase()
+      .replace(/\s+/g, '-')
+      .replace(/[^\w\u0621-\u064A-]+/g, '')
+      .replace(/--+/g, '-')
+      .replace(/^-+/, '')
+      .replace(/-+$/, '');
+  };
+
+  const adUrl = (() => {
+    if (!ad) return '#';
+    const countryCode = currentMarket?.countryCode?.toLowerCase() || 'ye';
+    
+    const catId = ad.category;
+    const categoryObject = CATEGORIES.find(c => c.id === catId);
+    const categorySlug = categoryObject?.nameEn?.toLowerCase() || 'ads';
+    
+    const titleSlug = slugify(ad.title);
+    return `/${countryCode}/${categorySlug}/${titleSlug}-${ad.id}`;
+  })();
+
   // Skeleton Render
   if (loading || !ad) {
     return (
@@ -167,9 +190,13 @@ export default function AdCard({ ad, onClick, onLikeToggle, isFavorite, distance
     }
   };
 
-  const handleCardClick = () => {
+  const handleCardClick = (e: React.MouseEvent) => {
+    if (e.metaKey || e.ctrlKey) return;
+    e.preventDefault();
     setInternalViews(prev => prev + 1);
-    onClick(ad);
+    if (onClick && ad) {
+      onClick(ad);
+    }
   };
 
   // Human date formatting with natural bilingual relative strings
@@ -224,8 +251,9 @@ export default function AdCard({ ad, onClick, onLikeToggle, isFavorite, distance
   return (
     <AnimatePresence>
       {!isDismissed && (
-        <motion.div
+        <motion.a
           layout
+          href={adUrl}
           onClick={handleCardClick}
           whileHover={{ y: -4, scale: 1.01 }}
           whileTap={{ scale: 0.98 }}
@@ -474,7 +502,7 @@ export default function AdCard({ ad, onClick, onLikeToggle, isFavorite, distance
         </div>
 
       </div>
-        </motion.div>
+        </motion.a>
       )}
     </AnimatePresence>
   );

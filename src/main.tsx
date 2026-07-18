@@ -1,5 +1,6 @@
 import {createRoot} from 'react-dom/client';
 import './i18n.ts';
+import { BrowserRouter, HashRouter } from 'react-router-dom';
 import App from './App.tsx';
 import ComingSoon from './components/ComingSoon.tsx';
 import './index.css';
@@ -110,14 +111,18 @@ if (import.meta.env.VITE_MAINTENANCE_MODE !== 'true' && 'serviceWorker' in navig
   });
 }
 
+const RouterComponent = Capacitor.isNativePlatform() ? HashRouter : BrowserRouter;
+
 createRoot(document.getElementById('root')!).render(
   <ThemeProvider>
     <MarketProvider>
-      {false ? ( // Hardcoded to false to override any Vercel maintenance variable settings
-        <ComingSoon />
-      ) : (
-        <App />
-      )}
+      <RouterComponent>
+        {false ? ( // Hardcoded to false to override any Vercel maintenance variable settings
+          <ComingSoon />
+        ) : (
+          <App />
+        )}
+      </RouterComponent>
     </MarketProvider>
   </ThemeProvider>,
 );

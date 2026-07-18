@@ -6,6 +6,12 @@
   "rewrites": [
     { "source": "/api/(.*)", "destination": "https://api.aswaq22.com/api/$1" },
     { "source": "/uploads/(.*)", "destination": "https://api.aswaq22.com/uploads/$1" },
+    { "source": "/sitemap.xml", "destination": "https://api.aswaq22.com/sitemap.xml" },
+    { "source": "/sitemaps/:file", "destination": "https://api.aswaq22.com/sitemaps/:file" },
+    { "source": "/search/:query", "destination": "https://api.aswaq22.com/search/:query" },
+    { "source": "/:country([a-zA-Z]{2})/:category/:slugAndId", "destination": "https://api.aswaq22.com/:country/:category/:slugAndId" },
+    { "source": "/:country([a-zA-Z]{2})/:category", "destination": "https://api.aswaq22.com/:country/:category" },
+    { "source": "/:country([a-zA-Z]{2})/:city/:category", "destination": "https://api.aswaq22.com/:country/:city/:category" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
