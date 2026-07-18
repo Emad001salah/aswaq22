@@ -1664,24 +1664,34 @@ ${ads.map(ad => `  <url>
       }
     });
 
-    // POST /api/admin/settings/logo - Upload platform logo image and store in DB as Base64 data URL
+    // POST /api/admin/settings/logo - Upload platform logo and save as real file (not Base64)
     this.app.post('/api/admin/settings/logo', ...adminAccessGuards, upload.single('logo'), async (req, res) => {
       logger.info({ message: `settings/logo upload request received, file present: ${!!req.file}` });
       if (!req.file) {
         return res.status(400).json({ success: false, message: 'لم يتم رفع أي ملف' });
       }
       try {
-        const base64Data = req.file.buffer.toString('base64');
-        const logoUrl = `data:${req.file.mimetype};base64,${base64Data}`;
+        const fs = await import('fs');
+        const uploadsDir = path.join(process.cwd(), 'uploads');
+        if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+
+        // Always save as logo.png for a stable URL
+        const ext = req.file.mimetype === 'image/png' ? 'png' : req.file.mimetype === 'image/jpeg' ? 'jpg' : 'png';
+        const logoFileName = `platform-logo.${ext}`;
+        const logoPath = path.join(uploadsDir, logoFileName);
+        fs.writeFileSync(logoPath, req.file.buffer);
+
+        // Store as a real URL (not Base64) so browsers can use it as favicon
+        const logoUrl = `/uploads/${logoFileName}`;
 
         const currentSettings = await getPlatformSettings();
         currentSettings.logoUrl = logoUrl;
         await savePlatformSettings(currentSettings);
 
-        logger.info({ message: `settings/logo uploaded and saved to DB successfully (Base64)` });
+        logger.info({ message: `settings/logo saved as file: ${logoFileName}` });
         res.json({ success: true, logoUrl });
       } catch (err: any) {
-        logger.error({ message: 'Failed uploading logo to DB', error: err.message });
+        logger.error({ message: 'Failed uploading logo', error: err.message });
         res.status(500).json({ error: 'Failed uploading logo', message: err.message });
       }
     });

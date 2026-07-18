@@ -1507,19 +1507,26 @@ useEffect(() => {
     fetchPlatformSettings();
   }, []);
 
-  // 1.1. Dynamic Favicon update when logoUrl changes (forces browser update by removing old links and using timestamp)
+  // 1.1. Dynamic Favicon update when logoUrl changes
   useEffect(() => {
     if (platformSettings?.logoUrl) {
-      // Remove any existing icons
-      const existingIcons = document.querySelectorAll("link[rel*='icon']");
-      existingIcons.forEach(el => el.parentNode?.removeChild(el));
+      // Remove any existing icon links
+      document.querySelectorAll("link[rel*='icon']").forEach(el => el.parentNode?.removeChild(el));
 
-      // Append new fresh icon link with cache-busting timestamp
-      const link = document.createElement('link');
-      link.type = 'image/png';
-      link.rel = 'shortcut icon';
-      link.href = `${platformSettings.logoUrl}?v=${Date.now()}`;
-      document.getElementsByTagName('head')[0].appendChild(link);
+      const isBase64 = platformSettings.logoUrl.startsWith('data:');
+      // Only add cache-busting for real URLs, not Base64 data URIs
+      const href = isBase64
+        ? platformSettings.logoUrl
+        : `${platformSettings.logoUrl}?v=${Date.now()}`;
+
+      // Add both rel types for maximum browser compatibility
+      ['icon', 'shortcut icon'].forEach(rel => {
+        const link = document.createElement('link');
+        link.type = 'image/png';
+        link.rel = rel;
+        link.href = href;
+        document.head.appendChild(link);
+      });
     }
   }, [platformSettings?.logoUrl]);
 
