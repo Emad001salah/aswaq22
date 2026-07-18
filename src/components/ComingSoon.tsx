@@ -22,7 +22,7 @@ const ComingSoon: React.FC<Props> = () => {
       // @ts-ignore
       window.dataLayer = window.dataLayer || [];
       // @ts-ignore
-      function gtag(){window.dataLayer.push(arguments);}
+      function gtag(..._args: any[]){window.dataLayer.push(arguments);}
       gtag('js', new Date());
       gtag('config', GA_MEASUREMENT_ID);
     }

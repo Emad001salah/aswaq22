@@ -6,7 +6,7 @@
  * تتصل بجميع الـ APIs الحقيقية في السيرفر
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   ShieldAlert,
   Users,
@@ -1752,7 +1752,7 @@ export default function AdminPanel({
                                     className="p-1.5 rounded-lg border-none bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-all cursor-pointer"
                                     title="تعديل الفئة"
                                   >
-                                    <Edit className="w-3.5 h-3.5" />
+                                    <Edit2 className="w-3.5 h-3.5" />
                                   </button>
                                   <button
                                     onClick={() => handleDeleteCategory(cat.id)}

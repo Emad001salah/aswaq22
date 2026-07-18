@@ -15,7 +15,7 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
-import { logger } from '../lib/logger.ts';
+import { logger } from './server/lib/logger.ts';
 
 export class AppError extends Error {
   constructor(
