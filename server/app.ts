@@ -55,6 +55,9 @@ import { MarketsController } from './controllers/markets.controller.ts';
 // Workers
 import { startOutboxWorker } from './workers/outbox.worker.ts';
 
+// SEO Schema Factory
+import * as schemaFactory from './seo/schema-factory.ts';
+
 // Swagger
 import { setupSwagger } from './swagger.ts';
 
@@ -2192,7 +2195,8 @@ ${urls.join('\n')}
         const countryCode = city?.country?.countryCode?.toLowerCase() || 'ye';
 
         const canonicalPath = `/${countryCode}/${ad.category.nameEn.toLowerCase()}/${slugify(ad.title)}-${ad.id}`.toLowerCase();
-        
+        const canonicalUrl = `https://www.aswaq22.com${canonicalPath}`;
+
         // 301 Redirect to the canonical version if there's any casing or slug mismatch
         if (req.path.toLowerCase() !== canonicalPath) {
           const host = req.headers.host || 'www.aswaq22.com';
@@ -2208,7 +2212,6 @@ ${urls.join('\n')}
         html = html.replace(/<title>.*?<\/title>/, `<title>${title}</title>`);
         
         // Inject Canonical Tag
-        const canonicalUrl = `https://www.aswaq22.com${canonicalPath}`;
         const canonicalTag = `<link rel="canonical" href="${canonicalUrl}" />`;
         if (html.includes('rel="canonical"')) {
           html = html.replace(/<link rel="canonical"[^>]*>/, canonicalTag);
@@ -2223,6 +2226,48 @@ ${urls.join('\n')}
         } else {
           html = html.replace('</head>', `  ${descTag}\n</head>`);
         }
+
+        // Generate JSON-LD Structured Data
+        let jsonLdString = '';
+        const catName = ad.category.nameEn.toLowerCase();
+        if (catName === 'jobs' || catName === 'job') {
+          jsonLdString += schemaFactory.getJobSchema(ad, canonicalUrl);
+        } else if (catName === 'properties' || catName === 'real-estate' || catName === 'apartments' || catName === 'lands') {
+          jsonLdString += schemaFactory.getAccommodationSchema(ad, canonicalUrl);
+        } else {
+          jsonLdString += schemaFactory.getProductSchema(ad, canonicalUrl);
+        }
+
+        // BreadcrumbList steps
+        const breadcrumbSteps = [
+          { name: "الرئيسية", url: "https://www.aswaq22.com/" },
+          { name: city?.country?.labelAr || "اليمن", url: `https://www.aswaq22.com/${countryCode}` },
+          { name: ad.category.nameAr, url: `https://www.aswaq22.com/${countryCode}/${ad.category.nameEn.toLowerCase()}` },
+          { name: ad.title, url: canonicalUrl }
+        ];
+        jsonLdString += schemaFactory.getBreadcrumbSchema(breadcrumbSteps, canonicalUrl);
+
+        // Inject JSON-LD
+        html = html.replace('</head>', `  ${jsonLdString}\n</head>`);
+
+        // Inject Open Graph and Twitter Card tags
+        const firstAdImage = (ad as any).images && (ad as any).images.length > 0 
+          ? (ad as any).images[0].url 
+          : 'https://www.aswaq22.com/aswaq-icon-512.png';
+        const absoluteImageUrl = firstAdImage.startsWith('http') ? firstAdImage : `https://www.aswaq22.com${firstAdImage}`;
+        
+        const ogTags = `
+  <meta property="og:title" content="${ad.title}" />
+  <meta property="og:description" content="${ad.description.substring(0, 150)}..." />
+  <meta property="og:image" content="${absoluteImageUrl}" />
+  <meta property="og:url" content="${canonicalUrl}" />
+  <meta property="og:type" content="article" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="${ad.title}" />
+  <meta name="twitter:description" content="${ad.description.substring(0, 150)}..." />
+  <meta name="twitter:image" content="${absoluteImageUrl}" />
+`;
+        html = html.replace('</head>', `${ogTags}\n</head>`);
 
         res.setHeader('Content-Type', 'text/html; charset=utf-8');
         res.send(html);
@@ -2249,6 +2294,8 @@ ${urls.join('\n')}
         }
 
         const canonicalPath = `/${countryCodeParam}/${category.nameEn.toLowerCase()}`;
+        const canonicalUrl = `https://www.aswaq22.com${canonicalPath}`;
+
         if (req.path !== canonicalPath) {
           const host = req.headers.host || 'www.aswaq22.com';
           const secureHost = host.startsWith('www.') ? host : `www.${host}`;
@@ -2259,7 +2306,6 @@ ${urls.join('\n')}
         const title = `إعلانات ${category.nameAr} في ${country.labelAr} | أسواق`;
         html = html.replace(/<title>.*?<\/title>/, `<title>${title}</title>`);
 
-        const canonicalUrl = `https://www.aswaq22.com${canonicalPath}`;
         const canonicalTag = `<link rel="canonical" href="${canonicalUrl}" />`;
         if (html.includes('rel="canonical"')) {
           html = html.replace(/<link rel="canonical"[^>]*>/, canonicalTag);
@@ -2273,6 +2319,50 @@ ${urls.join('\n')}
         } else {
           html = html.replace('</head>', `  ${descTag}\n</head>`);
         }
+
+        // Fetch active ads in this category & country to check if empty and to generate ItemList
+        const countryCities = await prisma.city.findMany({ where: { countryId: country.id } });
+        const countryCityIds = countryCities.map(c => c.id);
+        const countryCityNamesAr = countryCities.map(c => c.nameAr);
+        const countryCityNamesEn = countryCities.map(c => c.nameEn);
+
+        const activeAds = await prisma.ad.findMany({
+          where: {
+            categoryId: category.id,
+            status: 'ACTIVE',
+            OR: [
+              { city: { in: countryCityIds } },
+              { city: { in: countryCityNamesAr } },
+              { city: { in: countryCityNamesEn } }
+            ]
+          },
+          include: { category: true },
+          take: 20
+        });
+
+        // Thin content governance: inject noindex, follow if 0 ads
+        if (activeAds.length === 0) {
+          const noindexTag = `<meta name="robots" content="noindex, follow" />`;
+          html = html.replace('</head>', `  ${noindexTag}\n</head>`);
+        } else {
+          // Inject CollectionPage and ItemList
+          const collectionSchema = schemaFactory.getCollectionSchema(activeAds, title, canonicalUrl);
+          html = html.replace('</head>', `  ${collectionSchema}\n</head>`);
+        }
+
+        // Inject Open Graph / Twitter tags
+        const ogTags = `
+  <meta property="og:title" content="${title}" />
+  <meta property="og:description" content="تصفح أحدث إعلانات ${category.nameAr} في ${country.labelAr} على منصة أسواق." />
+  <meta property="og:image" content="https://www.aswaq22.com/aswaq-icon-512.png" />
+  <meta property="og:url" content="${canonicalUrl}" />
+  <meta property="og:type" content="website" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="${title}" />
+  <meta name="twitter:description" content="تصفح أحدث إعلانات ${category.nameAr} في ${country.labelAr} على منصة أسواق." />
+  <meta name="twitter:image" content="https://www.aswaq22.com/aswaq-icon-512.png" />
+`;
+        html = html.replace('</head>', `${ogTags}\n</head>`);
 
         res.setHeader('Content-Type', 'text/html; charset=utf-8');
         res.send(html);
@@ -2302,6 +2392,8 @@ ${urls.join('\n')}
         if (!city || !category) return next();
 
         const canonicalPath = `/${countryCodeParam}/${citySlugParam}/${category.nameEn.toLowerCase()}`;
+        const canonicalUrl = `https://www.aswaq22.com${canonicalPath}`;
+
         if (req.path !== canonicalPath) {
           const host = req.headers.host || 'www.aswaq22.com';
           const secureHost = host.startsWith('www.') ? host : `www.${host}`;
@@ -2312,7 +2404,6 @@ ${urls.join('\n')}
         const title = `إعلانات ${category.nameAr} في ${city.nameAr}، ${country.labelAr} | أسواق`;
         html = html.replace(/<title>.*?<\/title>/, `<title>${title}</title>`);
 
-        const canonicalUrl = `https://www.aswaq22.com${canonicalPath}`;
         const canonicalTag = `<link rel="canonical" href="${canonicalUrl}" />`;
         if (html.includes('rel="canonical"')) {
           html = html.replace(/<link rel="canonical"[^>]*>/, canonicalTag);
@@ -2326,6 +2417,45 @@ ${urls.join('\n')}
         } else {
           html = html.replace('</head>', `  ${descTag}\n</head>`);
         }
+
+        // Fetch active ads in this category & city
+        const activeAds = await prisma.ad.findMany({
+          where: {
+            categoryId: category.id,
+            status: 'ACTIVE',
+            OR: [
+              { city: city.id },
+              { city: city.nameAr },
+              { city: city.nameEn }
+            ]
+          },
+          include: { category: true },
+          take: 20
+        });
+
+        // Thin content governance: noindex, follow if empty
+        if (activeAds.length === 0) {
+          const noindexTag = `<meta name="robots" content="noindex, follow" />`;
+          html = html.replace('</head>', `  ${noindexTag}\n</head>`);
+        } else {
+          // Inject CollectionPage and ItemList
+          const collectionSchema = schemaFactory.getCollectionSchema(activeAds, title, canonicalUrl);
+          html = html.replace('</head>', `  ${collectionSchema}\n</head>`);
+        }
+
+        // Inject Open Graph / Twitter tags
+        const ogTags = `
+  <meta property="og:title" content="${title}" />
+  <meta property="og:description" content="تصفح إعلانات ${category.nameAr} في ${city.nameAr}، ${country.labelAr} على منصة أسواق." />
+  <meta property="og:image" content="https://www.aswaq22.com/aswaq-icon-512.png" />
+  <meta property="og:url" content="${canonicalUrl}" />
+  <meta property="og:type" content="website" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="${title}" />
+  <meta name="twitter:description" content="تصفح إعلانات ${category.nameAr} في ${city.nameAr}، ${country.labelAr} على منصة أسواق." />
+  <meta name="twitter:image" content="https://www.aswaq22.com/aswaq-icon-512.png" />
+`;
+        html = html.replace('</head>', `${ogTags}\n</head>`);
 
         res.setHeader('Content-Type', 'text/html; charset=utf-8');
         res.send(html);
@@ -2345,6 +2475,37 @@ ${urls.join('\n')}
         // No-index search results by default to avoid search engine index spam
         const noindexTag = `<meta name="robots" content="noindex, follow" />`;
         html = html.replace('</head>', `  ${noindexTag}\n</head>`);
+
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        res.send(html);
+      } catch (err) {
+        next(err);
+      }
+    });
+
+    // 5. SEO Homepage Route: /
+    this.app.get('/', async (req, res, next) => {
+      if (req.path !== '/') {
+        return next();
+      }
+      try {
+        let html = getHtmlTemplate();
+        
+        let schemas = schemaFactory.getWebSiteSchema() + '\n' + schemaFactory.getOrganizationSchema();
+        html = html.replace('</head>', `  ${schemas}\n</head>`);
+        
+        const ogTags = `
+  <meta property="og:title" content="منصة أسواق | بيع وشراء وسيارات وعقارات مجاناً" />
+  <meta property="og:description" content="منصة أسواق الأولى للإعلانات المبوبة المجانية في العالم العربي. تصفح آلاف العقارات، السيارات، الوظائف، والخدمات مجاناً." />
+  <meta property="og:image" content="https://www.aswaq22.com/aswaq-icon-512.png" />
+  <meta property="og:url" content="https://www.aswaq22.com/" />
+  <meta property="og:type" content="website" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="منصة أسواق" />
+  <meta name="twitter:description" content="منصة أسواق الأولى للإعلانات المبوبة المجانية في العالم العربي." />
+  <meta name="twitter:image" content="https://www.aswaq22.com/aswaq-icon-512.png" />
+`;
+        html = html.replace('</head>', `${ogTags}\n</head>`);
 
         res.setHeader('Content-Type', 'text/html; charset=utf-8');
         res.send(html);

@@ -115,8 +115,9 @@ async function main() {
     await prisma.$transaction(async (tx) => {
       for (const u of batch) {
         const userUuid = getDeterministicUuid(u.id);
+        const userEmail = u.email || `${u.id}@example.com`;
         await tx.user.upsert({
-          where: { id: userUuid },
+          where: { email: userEmail },
           update: {
             name: u.name,
             phone: u.phone || null,
@@ -126,7 +127,7 @@ async function main() {
           },
           create: {
             id: userUuid,
-            email: u.email || `${u.id}@example.com`,
+            email: userEmail,
             name: u.name,
             phone: u.phone || null,
             password: u.password || '$2b$10$PlaceholderPasswordHashForLegacyUsers...',
@@ -136,6 +137,9 @@ async function main() {
           },
         });
       }
+    }, {
+      maxWait: 20000,
+      timeout: 30000
     });
   }
 
@@ -242,6 +246,9 @@ async function main() {
           });
         }
       }
+    }, {
+      maxWait: 30000,
+      timeout: 45000
     });
   }
 

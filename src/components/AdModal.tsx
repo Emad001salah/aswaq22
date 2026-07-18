@@ -37,9 +37,10 @@ import {
   LogIn
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useNavigate } from 'react-router-dom';
 import { Ad, User, ChatMessage } from '../types.ts';
 import { Market, getCurrencyAr, getCurrencyNameAr } from '../markets.ts';
-import { INITIAL_USERS } from '../data.ts';
+import { INITIAL_USERS, CATEGORIES } from '../data.ts';
 import { Avatar } from './Avatar.tsx';
 
 const getYoutubeEmbedUrl = (url?: string): string | null => {
@@ -88,6 +89,46 @@ export default function AdModal({
   onLikeToggle
 }: AdModalProps) {
   const isRtl = document.documentElement.dir === 'rtl';
+  const navigate = useNavigate();
+  const [similarAds, setSimilarAds] = useState<Ad[]>([]);
+  const [loadingSimilar, setLoadingSimilar] = useState(false);
+
+  useEffect(() => {
+    const fetchSimilar = async () => {
+      setLoadingSimilar(true);
+      try {
+        const res = await fetch(`/api/ads?category=${ad.category}&limit=10`);
+        if (res.ok) {
+          const data = await res.json();
+          const list = data.ads || data || [];
+          const filtered = list.filter((item: Ad) => item.id !== ad.id);
+          setSimilarAds(filtered.slice(0, 3));
+        }
+      } catch (e) {
+        console.error('Failed to load similar ads', e);
+      } finally {
+        setLoadingSimilar(false);
+      }
+    };
+    if (ad?.id && ad?.category) {
+      fetchSimilar();
+    }
+  }, [ad.id, ad.category]);
+
+  const slugify = (text: string): string => {
+    return text
+      .toString()
+      .toLowerCase()
+      .replace(/\s+/g, '-')
+      .replace(/[^\w\u0621-\u064A-]+/g, '')
+      .replace(/--+/g, '-')
+      .replace(/^-+/, '')
+      .replace(/-+$/, '');
+  };
+
+  const categoryObject = CATEGORIES.find(c => c.id === ad.category);
+  const categoryName = categoryObject?.nameAr || 'القسم';
+
   const sellerName = ad.user?.name || ad.userName || (isRtl ? 'بائع أسواق' : 'Aswaq Seller');
   const sellerAvatar = ad.user?.avatar || ad.userAvatar;
   const [showReportForm, setShowReportForm] = useState(false);
@@ -324,7 +365,6 @@ export default function AdModal({
   const cityObj = currentMarket.cities.find((c) => c.id === ad.city);
   // Note: CATEGORIES and DISTRICTS are currently global in data.ts, but we use city-lookup from market
   const cityName = cityObj ? cityObj.nameAr : ad.city;
-  const categoryName = ad.category; // Simple fallback or use CATEGORIES from data.ts if needed
   const districtName = ad.district;
 
   // Load chat logs for this ad from Database
@@ -748,6 +788,16 @@ export default function AdModal({
 
         {/* Column 1: Media Showcase & Descriptions */}
         <div className="flex-1 p-5 sm:p-7 md:p-8 lg:overflow-y-auto lg:max-h-[85vh] space-y-6">
+          {/* Visual Breadcrumbs for Users & Search Crawlers */}
+          <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-bold mb-2 dir-rtl text-right select-none">
+            <span onClick={onClose} className="hover:text-emerald-500 cursor-pointer transition-colors">الرئيسية</span>
+            <ChevronRight className="w-3 h-3 shrink-0" />
+            <span className="text-slate-400 dark:text-slate-500">{currentMarket.labelAr}</span>
+            <ChevronRight className="w-3 h-3 shrink-0" />
+            <span className="text-slate-400 dark:text-slate-500">{categoryName}</span>
+            <ChevronRight className="w-3 h-3 shrink-0" />
+            <span className="text-emerald-500 truncate max-w-[200px]">{ad.title}</span>
+          </div>
 
           
           {/* Main Visual Carousel */}
@@ -1360,6 +1410,58 @@ export default function AdModal({
               </p>
             </div>
           </div>
+
+          {/* Similar Ads (Internal Linking Showcase) */}
+          {similarAds.length > 0 && (
+            <div className="space-y-4 pt-6 border-t border-slate-200 dark:border-slate-800">
+              <h4 className={`text-sm font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                {isRtl ? 'إعلانات مشابهة قد تهمك' : 'Similar Ads You May Like'}
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {similarAds.map((similarAd) => {
+                  const firstImage = similarAd.images && similarAd.images.length > 0 
+                    ? (Array.isArray(similarAd.images) ? similarAd.images[0] : JSON.parse(similarAd.images as any)[0])
+                    : 'https://www.aswaq22.com/aswaq-icon-512.png';
+                  
+                  const targetUrl = (() => {
+                    const countryCode = currentMarket.countryCode.toLowerCase() || 'ye';
+                    const categoryObject = CATEGORIES.find(c => c.id === similarAd.category);
+                    const categorySlug = categoryObject?.nameEn?.toLowerCase() || 'ads';
+                    const titleSlug = slugify(similarAd.title);
+                    return `/${countryCode}/${categorySlug}/${titleSlug}-${similarAd.id}`;
+                  })();
+
+                  return (
+                    <div 
+                      key={similarAd.id}
+                      onClick={() => navigate(targetUrl)}
+                      className={`group flex flex-col rounded-xl border p-2 cursor-pointer transition-all hover:border-emerald-500/50 ${isDark ? 'bg-slate-950/20 border-slate-800' : 'bg-slate-50 border-slate-200'}`}
+                    >
+                      <div className="relative aspect-video rounded-lg overflow-hidden bg-slate-200 dark:bg-slate-900 mb-2">
+                        <img 
+                          src={firstImage.startsWith('http') ? firstImage : `https://www.aswaq22.com${firstImage}`} 
+                          alt={similarAd.title}
+                          className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                          loading="lazy"
+                        />
+                      </div>
+                      <h5 className={`text-xs font-bold truncate ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                        {similarAd.title}
+                      </h5>
+                      <div className="flex justify-between items-center mt-1">
+                        <span className="text-[10px] text-emerald-500 font-black">
+                          {(similarAd.price || 0).toLocaleString()} {similarAd.currency === 'USD' ? '$' : isRtl ? getCurrencyAr(similarAd.currency) : similarAd.currency}
+                        </span>
+                        <span className="text-[9px] text-slate-400 truncate max-w-[80px]">
+                          {similarAd.city}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
         </div>
 

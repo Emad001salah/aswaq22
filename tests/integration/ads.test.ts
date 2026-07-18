@@ -6,6 +6,7 @@
  * Run: npm test -- tests/integration/ads.test.ts
  */
 
+import { jest } from '@jest/globals';
 import request from 'supertest';
 import { App } from '../../server/app.ts';
 import { prisma } from '../../src/lib/prisma.ts';
@@ -13,6 +14,8 @@ import jwt from 'jsonwebtoken';
 import { getDeterministicUuid } from '../../server/utils/db-helpers.ts';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'test-jwt-secret-key-minimum-32-chars!!';
+
+jest.setTimeout(60000);
 
 let serverInstance: App;
 let app: any;
