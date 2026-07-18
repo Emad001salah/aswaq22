@@ -3500,7 +3500,7 @@ useEffect(() => {
                                 id: `post_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
                                 authorId: currentUser?.id || "anon",
                                 authorName: currentUser?.name || (isRtl ? "ضيف المنصة المجهول" : "Anonymous Guest"),
-                                authorHandle: currentUser?.role === "merchant" ? (isRtl ? "تاجر_موثق" : "verified_merchant") : (isRtl ? "مشتري_نشط" : "active_buyer"),
+                                authorHandle: (currentUser?.role === "merchant" && currentUser?.isVerified === "verified") ? (isRtl ? "تاجر_موثق" : "verified_merchant") : "",
                                 authorAvatar: currentUser?.avatar || undefined,
                                 content: newPostText,
                                 image: selectedSocialImage,
