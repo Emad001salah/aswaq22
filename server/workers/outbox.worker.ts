@@ -21,6 +21,8 @@
 import { prisma } from '../../src/lib/prisma.ts';
 import { searchEngine } from '../../src/lib/meilisearch.ts';
 import { logger } from '../lib/logger.ts';
+import { queues } from '../../src/lib/queues.ts';
+
 
 const POLL_MS     = parseInt(process.env.OUTBOX_POLL_MS     || '5000', 10);
 const BATCH_SIZE  = parseInt(process.env.OUTBOX_BATCH_SIZE  || '50',   10);

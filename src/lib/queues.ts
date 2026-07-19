@@ -62,35 +62,40 @@ async function initQueues() {
     dispatchQueue.on('error', (err) => console.error('[Queue] Dispatch queue error:', err.message));
     mediaProcessingQueue.on('error', (err) => console.error('[Queue] Media processing queue error:', err.message));
 
-    imageWorker = new Worker('image-processing', async (job: Job) => {
-      const { imageId, imageUrl } = job.data;
-      await prisma.adImage.update({
-        where: { id: imageId },
-        data: { width: 800, height: 600, blurHash: 'LEHV6nWB2yk8pyo0adRgCQcDx[y?', url: imageUrl },
-      });
-    }, { connection: connectionOpts });
+    if (process.env.DISABLE_BULL_WORKERS === 'true') {
+      console.log('[Queue] ℹ️ BullMQ workers are disabled on this instance (DISABLE_BULL_WORKERS=true).');
+    } else {
+      console.log('[Queue] ⚙️ Initializing BullMQ worker threads...');
+      imageWorker = new Worker('image-processing', async (job: Job) => {
+        const { imageId, imageUrl } = job.data;
+        await prisma.adImage.update({
+          where: { id: imageId },
+          data: { width: 800, height: 600, blurHash: 'LEHV6nWB2yk8pyo0adRgCQcDx[y?', url: imageUrl },
+        });
+      }, { connection: connectionOpts });
 
-    notificationWorker = new Worker('notifications', async (job: Job) => {
-      const { userId, title, body } = job.data;
-      await prisma.notification.create({ data: { userId, title, description: body, type: 'chat' } });
-    }, { connection: connectionOpts });
+      notificationWorker = new Worker('notifications', async (job: Job) => {
+        const { userId, title, body } = job.data;
+        await prisma.notification.create({ data: { userId, title, description: body, type: 'chat' } });
+      }, { connection: connectionOpts });
 
-    dispatchWorker = new Worker('shipping-dispatch', async (job: Job) => {
-      const { shipmentId, attempt } = job.data;
-      const { DispatchEngine } = await import('../../server/lib/shipping/dispatchEngine.ts');
-      await DispatchEngine.broadcastShipmentOffer(shipmentId, attempt);
-    }, { connection: connectionOpts });
+      dispatchWorker = new Worker('shipping-dispatch', async (job: Job) => {
+        const { shipmentId, attempt } = job.data;
+        const { DispatchEngine } = await import('../../server/lib/shipping/dispatchEngine.ts');
+        await DispatchEngine.broadcastShipmentOffer(shipmentId, attempt);
+      }, { connection: connectionOpts });
 
-    mediaProcessingWorker = new Worker('media-processing', async (job: Job) => {
-      const { mediaId, tempObjectKey, adId, userId } = job.data;
-      const { processMediaObject } = await import('../../server/services/storage.service.ts');
-      await processMediaObject(mediaId, tempObjectKey, adId, userId);
-    }, { connection: connectionOpts, concurrency: 4 });
+      mediaProcessingWorker = new Worker('media-processing', async (job: Job) => {
+        const { mediaId, tempObjectKey, adId, userId } = job.data;
+        const { processMediaObject } = await import('../../server/services/storage.service.ts');
+        await processMediaObject(mediaId, tempObjectKey, adId, userId);
+      }, { connection: connectionOpts, concurrency: 4 });
 
-    imageWorker.on('error', (err) => console.error('[Queue] Image worker error:', err.message));
-    notificationWorker.on('error', (err) => console.error('[Queue] Notification worker error:', err.message));
-    dispatchWorker.on('error', (err) => console.error('[Queue] Dispatch worker error:', err.message));
-    mediaProcessingWorker.on('error', (err) => console.error('[Queue] Media processing worker error:', err.message));
+      imageWorker.on('error', (err) => console.error('[Queue] Image worker error:', err.message));
+      notificationWorker.on('error', (err) => console.error('[Queue] Notification worker error:', err.message));
+      dispatchWorker.on('error', (err) => console.error('[Queue] Dispatch worker error:', err.message));
+      mediaProcessingWorker.on('error', (err) => console.error('[Queue] Media processing worker error:', err.message));
+    }
 
   } catch {
     isQueueSystemAvailable = false;
