@@ -10,6 +10,7 @@ import { Market } from "../../markets.ts";
 import { CITIES } from "../../data.ts";
 import { API_BASE_URL } from "../../lib/config";
 import { apiFetch } from "../../lib/api";
+import { Avatar } from "../Avatar";
 
 interface SettingsTabProps {
   currentUser: User;
@@ -223,9 +224,11 @@ export default function SettingsTab({
             صورة الملف الشخصي
           </label>
           <div className="flex items-center gap-4">
-            <img
-              src={profileAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80'}
-              className="w-16 h-16 rounded-2xl object-cover border border-slate-700"
+            <Avatar
+              src={profileAvatar}
+              name={profileName || currentUser.name}
+              sizeClassName="w-16 h-16"
+              className="rounded-2xl border border-slate-700 shadow-md"
             />
             <label className="flex-1 cursor-pointer">
               <div className="h-11 flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-slate-200 text-xs font-bold transition-all border border-slate-700">
