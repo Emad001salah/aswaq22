@@ -1466,13 +1466,30 @@ export class App {
           // 7. Delete Ad Placements
           await tx.adPlacement.deleteMany({ where: { advertiserId: id } });
 
-          // 8. Delete Ad Images for user's ads
+          // 8. Delete Reels
+          await tx.reel.deleteMany({ where: { userId: id } });
+
+          // 9. Delete Orders & Shipments linked to the user
+          const orders = await tx.order.findMany({
+            where: { OR: [{ buyerId: id }, { sellerId: id }] },
+            select: { id: true }
+          });
+          const orderIds = orders.map(o => o.id);
+          if (orderIds.length > 0) {
+            await tx.shipment.deleteMany({ where: { orderId: { in: orderIds } } });
+            await tx.order.deleteMany({ where: { id: { in: orderIds } } });
+          }
+
+          // 10. Delete Ad Images for user's ads
           await tx.adImage.deleteMany({ where: { ad: { userId: id } } });
 
-          // 9. Delete Ads
+          // 11. Delete Ads
           await tx.ad.deleteMany({ where: { userId: id } });
 
-          // 10. Finally, delete the User
+          // 12. Delete MediaObjects uploaded by the user
+          await tx.mediaObject.deleteMany({ where: { uploadedBy: id } });
+
+          // 13. Finally, delete the User
           await tx.user.delete({ where: { id } });
         });
 
