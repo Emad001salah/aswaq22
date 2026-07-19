@@ -15,7 +15,7 @@ model User {
   id               String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   email            String              @unique
   name             String
-  phone            String?             @unique
+  phone            String?
   password         String
   avatar           String?
   role             UserRole            @default(USER)
