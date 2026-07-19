@@ -12,6 +12,8 @@ import { JobType } from '@prisma/client';
 import { getDeterministicUuid, getLegacyName } from '../utils/db-helpers.ts';
 import { resolveMediaUrl } from '../utils/media-url.ts';
 
+const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export const AdsController = () => {
   const router = Router();
 
@@ -86,7 +88,7 @@ export const AdsController = () => {
         cursor: cursor ? { id: String(cursor) } : undefined,
         where: {
           city: city ? String(city) : undefined,
-          categoryId: category ? getDeterministicUuid(String(category)) : undefined,
+          categoryId: category ? (uuidRegex.test(String(category)) ? String(category) : getDeterministicUuid(String(category))) : undefined,
           status: 'ACTIVE',
         },
         orderBy: {
@@ -220,7 +222,7 @@ export const AdsController = () => {
         where: {
           status: 'ACTIVE',
           city: city ? String(city) : undefined,
-          categoryId: category ? getDeterministicUuid(String(category)) : undefined,
+          categoryId: category ? (uuidRegex.test(String(category)) ? String(category) : getDeterministicUuid(String(category))) : undefined,
           price: {
             gte: minPrice ? parseFloat(String(minPrice)) : undefined,
             lte: maxPrice ? parseFloat(String(maxPrice)) : undefined,
@@ -341,8 +343,8 @@ export const AdsController = () => {
             description: dto.description,
             price: dto.price,
             currency: dto.currency || 'YER',
-            categoryId: getDeterministicUuid(dto.category),
-            subCategoryId: dto.subCategory ? getDeterministicUuid(dto.subCategory) : null,
+            categoryId: uuidRegex.test(dto.category) ? dto.category : getDeterministicUuid(dto.category),
+            subCategoryId: dto.subCategory ? (uuidRegex.test(dto.subCategory) ? dto.subCategory : getDeterministicUuid(dto.subCategory)) : null,
             jobType: dto.jobType as JobType,
             city: dto.city,
             district: dto.district,
@@ -575,10 +577,10 @@ export const AdsController = () => {
       };
 
       if (req.body.category) {
-        dataUpdate.categoryId = getDeterministicUuid(req.body.category);
+        dataUpdate.categoryId = uuidRegex.test(req.body.category) ? req.body.category : getDeterministicUuid(req.body.category);
       }
       if (req.body.subCategory) {
-        dataUpdate.subCategoryId = getDeterministicUuid(req.body.subCategory);
+        dataUpdate.subCategoryId = uuidRegex.test(req.body.subCategory) ? req.body.subCategory : getDeterministicUuid(req.body.subCategory);
       }
 
       const updated = await prisma.ad.update({
