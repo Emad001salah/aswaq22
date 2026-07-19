@@ -365,7 +365,7 @@ export const AdsController = () => {
             let url = img.url || '';
             let objectKey = null;
 
-            if (img.mediaId) {
+            if (img.mediaId && uuidRegex.test(img.mediaId)) {
               const media = await tx.mediaObject.findUnique({
                 where: { id: img.mediaId }
               });
@@ -384,7 +384,7 @@ export const AdsController = () => {
 
             imageRecords.push({
               adId: ad.id,
-              mediaId: img.mediaId || null,
+              mediaId: (img.mediaId && uuidRegex.test(img.mediaId)) ? img.mediaId : null,
               objectKey: objectKey || img.url || null,
               url: url,
               sortOrder: idx,

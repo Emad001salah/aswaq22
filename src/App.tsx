@@ -622,10 +622,11 @@ useEffect(() => {
     try {
       const res = await fetch('/api/categories');
       if (res.ok) {
-        const data = await res.json();
-        if (data && data.length > 0) {
+        const result = await res.json();
+        const categoriesList = Array.isArray(result) ? result : (result.data && Array.isArray(result.data) ? result.data : []);
+        if (categoriesList && categoriesList.length > 0) {
           // Sort fetched categories based on the order defined in CATEGORIES array
-          const sortedData = data.sort((a, b) => {
+          const sortedData = categoriesList.sort((a: any, b: any) => {
             const indexA = CATEGORIES.findIndex(c => c.id === a.id);
             const indexB = CATEGORIES.findIndex(c => c.id === b.id);
             // If both exist in CATEGORIES, sort by that order
@@ -635,7 +636,7 @@ useEffect(() => {
             // If only B exists, B comes first
             if (indexB !== -1) return 1;
             // Otherwise, sort by ID alphabetically
-            return a.id.localeCompare(b.id);
+            return (a.id || '').localeCompare(b.id || '');
           });
           setCategories(sortedData);
         }
