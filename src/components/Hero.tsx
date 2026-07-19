@@ -120,6 +120,64 @@ const CATEGORY_BACKGROUNDS: Record<string, string> = {
     "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=400&q=50",
 };
 
+function getCategoryKey(cat: any): string {
+  if (!cat) return 'other';
+  if (typeof cat === 'string') {
+    if (CATEGORY_ICONS[cat] || CATEGORY_BACKGROUNDS[cat]) return cat;
+    return 'other';
+  }
+  const id = cat.id || '';
+  if (CATEGORY_ICONS[id] || CATEGORY_BACKGROUNDS[id]) return id;
+
+  const nameAr = cat.nameAr || '';
+  const nameEn = cat.nameEn || '';
+  const icon = cat.icon || '';
+
+  if (nameAr.includes('سيارات') || nameAr.includes('مركبات') || nameEn.toLowerCase().includes('car')) return 'cars';
+  if (nameAr.includes('عقارات') || nameAr.includes('أراضي') || nameEn.toLowerCase().includes('real')) return 'realestate';
+  if (nameAr.includes('سكن') || nameAr.includes('إيجار') || nameEn.toLowerCase().includes('rent')) return 'rentals';
+  if (nameAr.includes('فنادق') || nameEn.toLowerCase().includes('hotel')) return 'hotels';
+  if (nameAr.includes('منتجعات') || nameEn.toLowerCase().includes('resort')) return 'resorts';
+  if (nameAr.includes('تأجير سيارات') || nameEn.toLowerCase().includes('car rental')) return 'car_rental';
+  if (nameAr.includes('إلكترونيات') || nameEn.toLowerCase().includes('electronic')) return 'electronics';
+  if (nameAr.includes('هواتف') || nameAr.includes('جوالات') || nameEn.toLowerCase().includes('phone')) return 'phones';
+  if (nameAr.includes('كمبيوتر') || nameAr.includes('لابتوب') || nameEn.toLowerCase().includes('laptop')) return 'laptops';
+  if (nameAr.includes('أثاث') || nameEn.toLowerCase().includes('furniture')) return 'furniture';
+  if (nameAr.includes('ملابس') || nameAr.includes('موضة') || nameEn.toLowerCase().includes('clothing')) return 'clothing';
+  if (nameAr.includes('وظائف') || nameAr.includes('فرص') || nameEn.toLowerCase().includes('job')) return 'jobs';
+  if (nameAr.includes('خدمات') || nameAr.includes('صيانة') || nameEn.toLowerCase().includes('service')) return 'services';
+  if (nameAr.includes('مواشي') || nameAr.includes('حيوانات') || nameEn.toLowerCase().includes('livestock')) return 'livestock';
+  if (nameAr.includes('دراجات') || nameEn.toLowerCase().includes('bike')) return 'bicycles';
+  if (nameAr.includes('شاحنات') || nameAr.includes('معدات') || nameEn.toLowerCase().includes('truck')) return 'trucks';
+  if (nameAr.includes('كتب') || nameAr.includes('تعليم') || nameEn.toLowerCase().includes('education')) return 'educational';
+  if (nameAr.includes('أغذية') || nameAr.includes('مأكولات') || nameEn.toLowerCase().includes('food')) return 'food';
+  if (nameAr.includes('طبية') || nameAr.includes('صحة') || nameEn.toLowerCase().includes('medical')) return 'medical';
+  if (nameAr.includes('عطور') || nameAr.includes('تجميل') || nameEn.toLowerCase().includes('perfume')) return 'perfumes';
+  if (nameAr.includes('بناء') || nameAr.includes('مقاولات') || nameEn.toLowerCase().includes('construction')) return 'construction';
+  if (nameAr.includes('يدوية') || nameAr.includes('حرف') || nameEn.toLowerCase().includes('craft')) return 'custom_work';
+
+  const iconLower = icon.toLowerCase();
+  if (iconLower === 'car') return 'cars';
+  if (iconLower === 'home' || iconLower === 'building') return 'realestate';
+  if (iconLower === 'smartphone' || iconLower === 'tv') return 'phones';
+  if (iconLower === 'laptop') return 'laptops';
+  if (iconLower === 'briefcase') return 'jobs';
+  if (iconLower === 'sofa') return 'furniture';
+  if (iconLower === 'shirt') return 'clothing';
+  if (iconLower === 'wrench') return 'services';
+  if (iconLower === 'beef') return 'livestock';
+  if (iconLower === 'bike') return 'bicycles';
+  if (iconLower === 'truck') return 'trucks';
+  if (iconLower === 'bookopen') return 'educational';
+  if (iconLower === 'utensils') return 'food';
+  if (iconLower === 'heartpulse') return 'medical';
+  if (iconLower === 'gem') return 'perfumes';
+  if (iconLower === 'hammer') return 'construction';
+  if (iconLower === 'palette') return 'custom_work';
+
+  return 'other';
+}
+
 interface HeroProps {
   onSearch: (filters: {
     query: string;
@@ -650,10 +708,11 @@ export default function Hero({
 
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 gap-3 sm:gap-4">
             {categories.filter(c => c.id !== 'other').map((cat, index) => {
+               const catKey = getCategoryKey(cat);
                const worksAsSelected = category === cat.id;
-               const IconComponent = CATEGORY_ICONS[cat.id] || Hexagon;
+               const IconComponent = CATEGORY_ICONS[catKey] || Hexagon;
                const bgImage =
-                 CATEGORY_BACKGROUNDS[cat.id] || CATEGORY_BACKGROUNDS.other;
+                 CATEGORY_BACKGROUNDS[catKey] || CATEGORY_BACKGROUNDS.other;
 
                const isPromoted = index === 0 || index === 1;
 

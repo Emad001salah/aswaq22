@@ -161,10 +161,17 @@ export default function JobPortal({
   };
 
   const marketAds = ads.filter(ad => currentMarket?.cities?.some(c => c.id === ad.city || c.nameAr === ad.city || c.nameEn === ad.city) || false);
+  const displayAds = marketAds.length > 0 ? marketAds : ads;
+
+  const isJobAd = (ad: Ad) => {
+    const cat = (ad.category || '').toLowerCase();
+    const catId = ((ad as any).categoryId || '').toLowerCase();
+    return cat === "jobs" || cat.includes("وظائف") || cat.includes("فرص") || cat.includes("job") || catId.length > 0;
+  };
 
   // Lists of Vacant Jobs and Job Seekers based on updated category identifiers
-  const jobVacancies = marketAds.filter(ad => ad.category === "jobs" && ad.jobType !== "seeking");
-  const jobSeekers = marketAds.filter(ad => ad.category === "jobs" && ad.jobType === "seeking");
+  const jobVacancies = displayAds.filter(ad => (ad.category === "jobs" || isJobAd(ad)) && ad.jobType !== "seeking");
+  const jobSeekers = displayAds.filter(ad => (ad.category === "jobs" || isJobAd(ad)) && ad.jobType === "seeking");
 
   // Filter logic
   const filteredVacancies = jobVacancies.filter(ad => {

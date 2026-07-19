@@ -352,7 +352,7 @@ export const AdsController = () => {
             longitude: dto.longitude,
             contactNumber: dto.contactNumber,
             userId: req.user!.id, // Securely mapped from JWT
-            status: (hasPermission(req.user?.role, 'BYPASS_MODERATION') || (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'test')) ? 'ACTIVE' : 'PENDING',
+            status: (dto as any).status === 'PENDING' ? 'PENDING' : 'ACTIVE',
           }
         });
 
