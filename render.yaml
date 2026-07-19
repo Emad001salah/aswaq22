@@ -1,1 +1,87 @@
-world
+services:
+  # 1. Web Service: Express API Server + Client Frontend
+  - type: web
+    name: aswaq-api
+    env: node
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL
+        sync: true
+      - key: REDIS_URL
+        sync: true
+      - key: MEILISEARCH_HOST
+        sync: true
+      - key: MEILISEARCH_API_KEY
+        sync: true
+      - key: SENTRY_DSN
+        sync: true
+      # Firebase Client Settings
+      - key: VITE_FIREBASE_API_KEY
+        sync: true
+      - key: VITE_FIREBASE_AUTH_DOMAIN
+        sync: true
+      - key: VITE_FIREBASE_PROJECT_ID
+        sync: true
+      - key: VITE_FIREBASE_STORAGE_BUCKET
+        sync: true
+      - key: VITE_FIREBASE_MESSAGING_SENDER_ID
+        sync: true
+      - key: VITE_FIREBASE_APP_ID
+        sync: true
+      # Firebase Backend Admin Settings
+      - key: FIREBASE_SERVICE_ACCOUNT_KEY
+        sync: true
+      # Cloudflare R2 Credentials
+      - key: R2_ACCOUNT_ID
+        sync: true
+      - key: R2_ACCESS_KEY_ID
+        sync: true
+      - key: R2_SECRET_ACCESS_KEY
+        sync: true
+      - key: R2_BUCKET_NAME
+        sync: true
+      - key: MEDIA_PUBLIC_BASE_URL
+        sync: true
+
+  # 2. Worker Service: BullMQ Background Job Worker
+  - type: worker
+    name: aswaq-worker
+    env: node
+    buildCommand: npm install && npm run build
+    startCommand: npm run worker
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL
+        sync: true
+      - key: REDIS_URL
+        sync: true
+      - key: MEILISEARCH_HOST
+        sync: true
+      - key: MEILISEARCH_API_KEY
+        sync: true
+      # Firebase Backend Admin Settings
+      - key: FIREBASE_SERVICE_ACCOUNT_KEY
+        sync: true
+      # Cloudflare R2 Credentials
+      - key: R2_ACCOUNT_ID
+        sync: true
+      - key: R2_ACCESS_KEY_ID
+        sync: true
+      - key: R2_SECRET_ACCESS_KEY
+        sync: true
+      - key: R2_BUCKET_NAME
+        sync: true
+      # Backup configurations
+      - key: BACKUP_S3_ENDPOINT
+        sync: true
+      - key: BACKUP_S3_REGION
+        sync: true
+      - key: BACKUP_S3_ACCESS_KEY_ID
+        sync: true
+      - key: BACKUP_S3_SECRET_ACCESS_KEY
+        sync: true
+      - key: BACKUP_S3_BUCKET
+        sync: true
