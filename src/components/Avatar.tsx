@@ -9,8 +9,8 @@ interface AvatarProps {
 
 // Check if the URL is our known placeholder Unsplash image
 const isPlaceholder = (url?: string | null): boolean => {
-  if (!url) return true;
-  return url.includes('photo-1535713875002-d1d0cf377fde');
+  if (!url || url.trim() === '') return true;
+  return url.includes('photo-1535713875002-d1d0cf377fde') || url.includes('unsplash.com');
 };
 
 export const getAvatarColor = (name: string) => {

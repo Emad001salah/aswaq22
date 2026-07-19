@@ -29,11 +29,23 @@ export default function SettingsTab({
 }: SettingsTabProps) {
   const isRtl = true;
 
+  const cleanBio = (bio?: string | null) => (bio && bio.includes('Test Bio') ? '' : (bio || ''));
+  const cleanAvatar = (avatar?: string | null) => (avatar && (avatar.includes('photo-1535713875002-d1d0cf377fde') || avatar.includes('unsplash')) ? '' : (avatar || ''));
+
   // Form states
-  const [profileName, setProfileName] = useState(currentUser.name);
+  const [profileName, setProfileName] = useState(currentUser.name || "");
   const [profilePhone, setProfilePhone] = useState(currentUser.phone || "");
-  const [profileBio, setProfileBio] = useState(currentUser.bio || "");
-  const [profileAvatar, setProfileAvatar] = useState(currentUser.avatar || "");
+  const [profileBio, setProfileBio] = useState(cleanBio(currentUser.bio));
+  const [profileAvatar, setProfileAvatar] = useState(cleanAvatar(currentUser.avatar));
+
+  useEffect(() => {
+    if (currentUser) {
+      setProfileName(currentUser.name || "");
+      setProfilePhone(currentUser.phone || "");
+      setProfileBio(cleanBio(currentUser.bio));
+      setProfileAvatar(cleanAvatar(currentUser.avatar));
+    }
+  }, [currentUser]);
   
   // Notification preference states
   const [priceDropAlerts, setPriceDropAlerts] = useState((currentUser as any).priceDropAlerts !== false);
