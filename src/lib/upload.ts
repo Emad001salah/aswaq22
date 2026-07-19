@@ -12,6 +12,11 @@ export function uploadFileWithProgress(options: UploadOptions) {
 
   xhr.open('POST', options.url, true);
 
+  const token = localStorage.getItem('aswaq_access_token') || localStorage.getItem('auth_token');
+  if (token) {
+    xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+  }
+
   // Track upload progress
   xhr.upload.onprogress = (event) => {
     if (event.lengthComputable) {

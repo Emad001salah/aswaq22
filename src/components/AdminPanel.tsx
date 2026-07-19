@@ -7,6 +7,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { apiFetch } from '../lib/api';
 import {
   ShieldAlert,
   Users,
@@ -250,7 +251,7 @@ export default function AdminPanel({
 
       const token = localStorage.getItem('aswaq_access_token') || localStorage.getItem('auth_token') || '';
 
-      return fetch(url, {
+      return apiFetch(url, {
         credentials: 'include',
         ...opts,
         headers: {

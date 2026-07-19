@@ -9,6 +9,7 @@ import { User, Ad } from "../../types.ts";
 import { Market } from "../../markets.ts";
 import { CITIES } from "../../data.ts";
 import { API_BASE_URL } from "../../lib/config";
+import { apiFetch } from "../../lib/api";
 
 interface SettingsTabProps {
   currentUser: User;
@@ -94,13 +95,11 @@ export default function SettingsTab({
     setSettingsSaved(true);
 
     try {
-      const storedToken = localStorage.getItem('aswaq_access_token');
-      // Sync on backend using the real PUT /api/v1/users/:id endpoint!
-      const res = await fetch(`${API_BASE_URL}/v1/users/${currentUser.id}`, {
+      // Sync on backend using the real PUT /api/v1/users/:id endpoint with auto-refreshing apiFetch!
+      const res = await apiFetch(`${API_BASE_URL}/v1/users/${currentUser.id}`, {
         method: "PUT",
         headers: { 
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${storedToken || ''}`
+          "Content-Type": "application/json"
         },
         body: JSON.stringify({
           name: profileName,

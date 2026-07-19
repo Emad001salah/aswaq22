@@ -18,6 +18,7 @@ import {
   Briefcase,
   CheckCircle2,
 } from "lucide-react";
+import { apiFetch } from "../../lib/api";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
@@ -497,12 +498,10 @@ export default function CreateAdTab({
       const url = editingAd ? `/api/ads/${editingAd.id}` : "/api/ads";
       const method = editingAd ? "PUT" : "POST";
 
-      const token = localStorage.getItem("aswaq_access_token") || localStorage.getItem("auth_token");
-      const response = await fetch(url, {
+      const response = await apiFetch(url, {
         method: method,
         headers: {
           "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify(body),
       });
