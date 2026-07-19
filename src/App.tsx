@@ -60,6 +60,7 @@ import { User, Ad, ChatMessage, AppNotification, UserRole } from "./types.ts";
 import { CITIES, CATEGORIES, INITIAL_USERS, DISTRICTS, SUB_CATEGORIES } from "./data.ts";
 import { useTheme } from "./context/ThemeContext.tsx";
 import { useMarket } from "./context/MarketContext.tsx";
+import { apiFetch } from "./lib/api";
 
 import { AnimatePresence, motion } from "motion/react";
 import { MARKETS, Market } from "./markets.ts";
@@ -1940,7 +1941,7 @@ useEffect(() => {
             const formData = new FormData();
             formData.append('file', file);
             
-            const res = await fetch('/api/storage/upload', {
+            const res = await apiFetch('/api/storage/upload', {
               method: 'POST',
               body: formData
             });
@@ -1960,7 +1961,7 @@ useEffect(() => {
             const formData = new FormData();
             formData.append('file', file);
             
-            const res = await fetch('/api/storage/upload', {
+            const res = await apiFetch('/api/storage/upload', {
               method: 'POST',
               body: formData
             });
@@ -1984,11 +1985,10 @@ useEffect(() => {
       };
       const csrfToken = getCookie('csrf_token');
 
-      const response = await fetch(`/api/users/${currentUser.id}`, {
+      const response = await apiFetch(`/api/users/${currentUser.id}`, {
         method: "PUT",
         headers: { 
           "Content-Type": "application/json",
-          ...(token ? { "Authorization": `Bearer ${token}` } : {}),
           ...(csrfToken ? { "x-csrf-token": csrfToken } : {})
         },
         body: JSON.stringify({ ...currentUser, ...finalData }),
@@ -2005,7 +2005,12 @@ useEffect(() => {
       } else {
         const responseText = await response.text();
         console.error("Profile update failed server response:", responseText);
-        addToast("خطأ", "فشل تحديث الملف الشخصي في خادم أسواق", "notification");
+        let errorMsg = "فشل تحديث الملف الشخصي في خادم أسواق";
+        try {
+          const parsed = JSON.parse(responseText);
+          if (parsed.message) errorMsg = parsed.message;
+        } catch {}
+        addToast("خطأ في التحديث", errorMsg, "error");
       }
     } catch (e) {
       console.error("Profile update failed", e);
