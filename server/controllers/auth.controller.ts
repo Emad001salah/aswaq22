@@ -9,6 +9,8 @@ import { validationMiddleware } from '../middleware/validation.ts';
 import { RegisterUserDto } from '../dto/auth.dto.ts';
 import { getDeterministicUuid } from '../utils/db-helpers.ts';
 import { admin } from '../lib/firebase-admin.ts';
+import { firebaseAuthLimiter } from '../middleware/phone-rate-limit.ts';
+import { getFlag, isInRollout, isFeatureEnabled } from '../lib/feature-flags.ts';
 
 export function AuthController() {
   const router = Router();
@@ -18,6 +20,30 @@ export function AuthController() {
   const otpFallbackStore = new Map<string, { code: string; expiresAt: Date }>();
 
   const getOtpKey = (phone: string) => `otp:phone:${phone}`;
+
+  router.get('/config/features', async (req: Request, res: Response) => {
+    let userId: string | undefined = undefined;
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.split(' ')[1];
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'change-me-in-production') as any;
+        userId = decoded.sub || decoded.id;
+      } catch (err) {
+        // ignore invalid token for config retrieval
+      }
+    }
+
+    const [firebasePhone, r2Storage] = await Promise.all([
+      isFeatureEnabled('firebase_phone_auth', userId),
+      isFeatureEnabled('r2_storage', userId),
+    ]);
+
+    res.json({
+      firebasePhoneAuth: firebasePhone,
+      r2Storage: r2Storage,
+    });
+  });
 
   router.post('/register', validationMiddleware(RegisterUserDto), async (req: Request, res: Response) => {
     const { email, name, phone, password, role } = req.body;
@@ -340,6 +366,15 @@ export function AuthController() {
   }
 
   router.post('/phone/send', async (req: Request, res: Response) => {
+    const isFirebaseEnabled = (await getFlag('firebase_phone_auth')).enabled;
+    const isTwilioEnabled = process.env.TWILIO_AUTH_ENABLED !== 'false' && process.env.PHONE_AUTH_PROVIDER !== 'firebase';
+    if (isFirebaseEnabled || !isTwilioEnabled) {
+      return res.status(410).json({
+        error: 'Legacy OTP Disabled',
+        message: 'تم إيقاف خدمة التحقق القديمة. يرجى استخدام Firebase Authentication.'
+      });
+    }
+
     const { phone } = req.body;
     if (!phone) {
       return res.status(400).json({ error: 'Phone number is required' });
@@ -388,6 +423,15 @@ export function AuthController() {
 
 
   router.post('/phone/verify', async (req: Request, res: Response) => {
+    const isFirebaseEnabled = (await getFlag('firebase_phone_auth')).enabled;
+    const isTwilioEnabled = process.env.TWILIO_AUTH_ENABLED !== 'false' && process.env.PHONE_AUTH_PROVIDER !== 'firebase';
+    if (isFirebaseEnabled || !isTwilioEnabled) {
+      return res.status(410).json({
+        error: 'Legacy OTP Disabled',
+        message: 'تم إيقاف خدمة التحقق القديمة. يرجى استخدام Firebase Authentication.'
+      });
+    }
+
     const { phone, code, name } = req.body;
     if (!phone || !code) {
       return res.status(400).json({ error: 'Phone and code are required' });
@@ -490,7 +534,16 @@ export function AuthController() {
     }
   });
 
-  router.post('/firebase/login', async (req: Request, res: Response) => {
+  router.post('/firebase/login', firebaseAuthLimiter, async (req: Request, res: Response) => {
+    const flag = await getFlag('firebase_phone_auth');
+    if (!flag.enabled) {
+      return res.status(503).json({
+        error: 'Auth Temporarily Unavailable',
+        message: 'خدمة التحقق بالهاتف غير متاحة مؤقتاً. يرجى المحاولة لاحقاً.',
+        retryAfter: 300
+      });
+    }
+
     const { idToken } = req.body;
 
     if (!idToken) {
@@ -503,6 +556,21 @@ export function AuthController() {
 
       const userEmail = email || `${id}@phone.aswaq.com`;
       const uuid = getDeterministicUuid(id);
+
+      // Canary rollout check
+      const isAllowed = flag.rolloutPct >= 100 || isInRollout(uuid, flag.rolloutPct, flag.allowedUsers);
+      if (!isAllowed) {
+        return res.status(403).json({
+          error: 'Access Denied',
+          message: 'هذه الميزة غير متاحة لحسابك حالياً (إطلاق تجريبي).'
+        });
+      }
+
+      // E.164 validation for phone number in token
+      if (phone && !/^\+[1-9]\d{6,14}$/.test(phone)) {
+        return res.status(400).json({ error: 'Invalid phone format in token' });
+      }
+
       let user = await prisma.user.findFirst({
         where: {
           OR: [

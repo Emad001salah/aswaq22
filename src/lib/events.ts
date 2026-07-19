@@ -26,6 +26,10 @@ eventBus.on('ad.created', async (ad: any) => {
   // 2. Offload Image resizing and metadata generating to BullMQ
   if (ad.imagesToProcess && ad.imagesToProcess.length > 0) {
     for (const img of ad.imagesToProcess) {
+      if (img.mediaId) {
+        // Skip legacy processing for enterprise R2 media objects
+        continue;
+      }
       await queues.addImageJob({
         imageId: img.id,
         imageUrl: img.url,

@@ -28,9 +28,11 @@ if (process.env.REDIS_URL) {
 let imageQueue: Queue | null = null;
 let notificationQueue: Queue | null = null;
 let dispatchQueue: Queue | null = null;
+let mediaProcessingQueue: Queue | null = null;
 let imageWorker: Worker | null = null;
 let notificationWorker: Worker | null = null;
 let dispatchWorker: Worker | null = null;
+let mediaProcessingWorker: Worker | null = null;
 let isQueueSystemAvailable = false;
 
 // Test Redis connectivity once before creating workers
@@ -52,11 +54,13 @@ async function initQueues() {
     imageQueue = new Queue('image-processing', { connection: connectionOpts });
     notificationQueue = new Queue('notifications', { connection: connectionOpts });
     dispatchQueue = new Queue('shipping-dispatch', { connection: connectionOpts });
+    mediaProcessingQueue = new Queue('media-processing', { connection: connectionOpts });
     isQueueSystemAvailable = true;
 
     imageQueue.on('error', (err) => console.error('[Queue] Image queue error:', err.message));
     notificationQueue.on('error', (err) => console.error('[Queue] Notification queue error:', err.message));
     dispatchQueue.on('error', (err) => console.error('[Queue] Dispatch queue error:', err.message));
+    mediaProcessingQueue.on('error', (err) => console.error('[Queue] Media processing queue error:', err.message));
 
     imageWorker = new Worker('image-processing', async (job: Job) => {
       const { imageId, imageUrl } = job.data;
@@ -77,9 +81,16 @@ async function initQueues() {
       await DispatchEngine.broadcastShipmentOffer(shipmentId, attempt);
     }, { connection: connectionOpts });
 
+    mediaProcessingWorker = new Worker('media-processing', async (job: Job) => {
+      const { mediaId, tempObjectKey, adId, userId } = job.data;
+      const { processMediaObject } = await import('../../server/services/storage.service.ts');
+      await processMediaObject(mediaId, tempObjectKey, adId, userId);
+    }, { connection: connectionOpts, concurrency: 4 });
+
     imageWorker.on('error', (err) => console.error('[Queue] Image worker error:', err.message));
     notificationWorker.on('error', (err) => console.error('[Queue] Notification worker error:', err.message));
     dispatchWorker.on('error', (err) => console.error('[Queue] Dispatch worker error:', err.message));
+    mediaProcessingWorker.on('error', (err) => console.error('[Queue] Media processing worker error:', err.message));
 
   } catch {
     isQueueSystemAvailable = false;
@@ -101,6 +112,10 @@ async function closeQueues() {
     await dispatchWorker.close();
     dispatchWorker = null;
   }
+  if (mediaProcessingWorker) {
+    await mediaProcessingWorker.close();
+    mediaProcessingWorker = null;
+  }
   if (imageQueue) {
     await imageQueue.close();
     imageQueue = null;
@@ -112,6 +127,10 @@ async function closeQueues() {
   if (dispatchQueue) {
     await dispatchQueue.close();
     dispatchQueue = null;
+  }
+  if (mediaProcessingQueue) {
+    await mediaProcessingQueue.close();
+    mediaProcessingQueue = null;
   }
   isQueueSystemAvailable = false;
 }
@@ -192,6 +211,30 @@ export const queues = {
       await dispatchQueue.add('dispatch-expand', data, { delay: delayMs, removeOnComplete: true });
     } catch (e) {
       console.error('[Queue] Failed to enqueue dispatch job:', e);
+    }
+  },
+
+  async addMediaProcessingJob(data: { mediaId: string; tempObjectKey: string; adId: string; userId: string }): Promise<void> {
+    if (!isQueueSystemAvailable || !mediaProcessingQueue) {
+      console.log(`[Queue Fallback] Redis offline. Synchronously processing media: ${data.mediaId}`);
+      try {
+        const { processMediaObject } = await import('../../server/services/storage.service.ts');
+        await processMediaObject(data.mediaId, data.tempObjectKey, data.adId, data.userId);
+      } catch (err) {
+        console.error('[Queue Fallback] Media processing failed:', err);
+      }
+      return;
+    }
+
+    try {
+      await mediaProcessingQueue.add('process', data, {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 5000 },
+        removeOnComplete: { count: 100 },
+        removeOnFail: { count: 50 }
+      });
+    } catch (e) {
+      console.error('[Queue] Failed to enqueue media processing job:', e);
     }
   },
 

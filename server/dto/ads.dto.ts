@@ -2,9 +2,13 @@ import { IsString, IsNumber, IsArray, IsOptional, IsNotEmpty, ValidateNested, Ar
 import { Type } from 'class-transformer';
 
 export class AdImageDto {
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  url: string;
+  url?: string;
+
+  @IsOptional()
+  @IsString()
+  mediaId?: string;
 
   @IsOptional()
   @IsNumber()

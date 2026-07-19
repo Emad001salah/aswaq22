@@ -10,6 +10,7 @@ import { logger } from '../lib/logger.ts';
 import { storageService } from '../services/storage.service.ts';
 import { JobType } from '@prisma/client';
 import { getDeterministicUuid, getLegacyName } from '../utils/db-helpers.ts';
+import { resolveMediaUrl } from '../utils/media-url.ts';
 
 export const AdsController = () => {
   const router = Router();
@@ -356,14 +357,40 @@ export const AdsController = () => {
         // Insert initial images
         let imagesToProcess: any[] = [];
         if (dto.images && dto.images.length > 0) {
-          const imageRecords = dto.images.map((img, idx) => ({
-            adId: ad.id,
-            url: img.url,
-            sortOrder: idx,
-            width: img.width,
-            height: img.height,
-            blurHash: img.blurHash,
-          }));
+          const imageRecords = [];
+          for (let idx = 0; idx < dto.images.length; idx++) {
+            const img = dto.images[idx];
+            let url = img.url || '';
+            let objectKey = null;
+
+            if (img.mediaId) {
+              const media = await tx.mediaObject.findUnique({
+                where: { id: img.mediaId }
+              });
+              if (media) {
+                if (media.uploadedBy !== req.user!.id) {
+                  throw new Error('Unauthorized or invalid media resource');
+                }
+                
+                const resolvedUrl = resolveMediaUrl(media);
+                if (resolvedUrl) {
+                  url = resolvedUrl;
+                }
+                objectKey = media.objectKey;
+              }
+            }
+
+            imageRecords.push({
+              adId: ad.id,
+              mediaId: img.mediaId || null,
+              objectKey: objectKey || img.url || null,
+              url: url,
+              sortOrder: idx,
+              width: img.width || null,
+              height: img.height || null,
+              blurHash: img.blurHash || null,
+            });
+          }
 
           await tx.adImage.createMany({ data: imageRecords });
           

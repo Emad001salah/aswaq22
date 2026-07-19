@@ -557,7 +557,7 @@ const AuthStep = ({
     } finally { setLoading(false); }
   };
 
-  /* ── Send OTP via Backend ── */
+  /* ── Send OTP via Backend / Firebase ── */
   const handleSendOtp = async () => {
     clearErr();
     if (!phone) { setError('يرجى إدخال رقم الهاتف'); return; }
@@ -565,7 +565,11 @@ const AuthStep = ({
     if (!/^\+[1-9]\d{6,14}$/.test(fullPhone)) { setError('صيغة رقم الهاتف غير صحيحة'); return; }
     setLoading(true);
     try {
-      const result = await sendPhoneOtp(fullPhone);
+      initRecaptcha();
+      const result = await sendPhoneOtp(fullPhone, recaptchaRef.current || undefined);
+      if (result.confirmationResult) {
+        confirmationRef.current = result.confirmationResult;
+      }
       setOtpSent(true);
       setPhoneStep('otp');
       setOtpCountdown(60);
@@ -579,7 +583,7 @@ const AuthStep = ({
     } finally { setLoading(false); }
   };
 
-  /* ── Verify OTP via Backend ── */
+  /* ── Verify OTP via Backend / Firebase ── */
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     clearErr();
@@ -587,7 +591,10 @@ const AuthStep = ({
     setLoading(true);
     try {
       const fullPhone = getFullPhoneNumber();
-      const d = await verifyPhoneOtp(fullPhone, otp, { name: mode === 'signup' ? name : undefined });
+      const d = await verifyPhoneOtp(fullPhone, otp, {
+        name: mode === 'signup' ? name : undefined,
+        confirmationResult: confirmationRef.current || undefined
+      });
       if (d.accessToken) localStorage.setItem('aswaq_access_token', d.accessToken);
       if (d.refreshToken) localStorage.setItem('aswaq_refresh_token', d.refreshToken);
       if (d.user) {

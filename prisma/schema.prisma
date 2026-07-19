@@ -50,6 +50,9 @@ model User {
   deliveryAgent    DeliveryAgent?
   sessions           Session[] @relation("UserSessions")
   passwordResetTokens PasswordResetToken[] @relation("UserPasswordResetTokens")
+  avatarMediaId    String?             @unique @map("avatar_media_id") @db.Uuid
+  avatarMedia      MediaObject?        @relation("UserAvatar", fields: [avatarMediaId], references: [id])
+  uploadedMedia    MediaObject[]       @relation("UploadedMedia")
 
   @@map("users")
 }
@@ -127,14 +130,17 @@ enum JobType {
 }
 
 model AdImage {
-  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  adId      String   @map("ad_id") @db.Uuid
-  ad        Ad       @relation(fields: [adId], references: [id], onDelete: Cascade)
+  id        String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  adId      String       @map("ad_id") @db.Uuid
+  ad        Ad           @relation(fields: [adId], references: [id], onDelete: Cascade)
+  mediaId   String?      @map("media_id") @db.Uuid
+  media     MediaObject? @relation("AdImageMedia", fields: [mediaId], references: [id])
+  objectKey String?      @map("object_key")
   url       String
-  sortOrder Int      @default(0) @map("sort_order")
+  sortOrder Int          @default(0) @map("sort_order")
   width     Int?
-  height    Int?
-  blurHash  String?  @map("blur_hash")
+  height     Int?
+  blurHash  String?      @map("blur_hash")
 
   @@index([adId, sortOrder])
   @@map("ad_images")
@@ -729,4 +735,67 @@ model City {
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   @@map("cities")
+}
+
+model MediaObject {
+  id           String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  uploadedBy   String        @map("uploaded_by") @db.Uuid
+  uploader     User          @relation("UploadedMedia", fields: [uploadedBy], references: [id])
+  status       MediaStatus   @default(PENDING)
+  
+  objectKey    String        @map("object_key")   
+  bucket       String        @default("aswaq-media")
+  mimeType     String?       @map("mime_type")
+  size         Int?
+  width        Int?
+  height       Int?
+  checksum     String?       
+  blurHash     String?       @map("blur_hash")
+  
+  variants     MediaVariant[]
+  
+  adImages     AdImage[]     @relation("AdImageMedia")
+  userAvatar   User?         @relation("UserAvatar")
+  
+  createdAt    DateTime      @default(now()) @map("created_at")
+  processedAt  DateTime?     @map("processed_at")
+  deletedAt    DateTime?     @map("deleted_at")
+
+  @@index([uploadedBy])
+  @@index([status])
+  @@map("media_objects")
+}
+
+model MediaVariant {
+  id         String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  mediaId    String        @map("media_id") @db.Uuid
+  media      MediaObject   @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+  
+  variantKey String        @map("variant_key")   
+  objectKey  String        @map("object_key")    
+  status     VariantStatus @default(PENDING)
+  width      Int?
+  height     Int?
+  size       Int?
+  uploadedAt DateTime?     @map("uploaded_at")
+  error      String?                             
+
+  @@unique([mediaId, variantKey])
+  @@map("media_variants")
+}
+
+enum MediaStatus {
+  PENDING      
+  PROCESSING   
+  READY        
+  PARTIAL      
+  FAILED       
+  DELETED
+}
+
+enum VariantStatus {
+  PENDING
+  UPLOADING
+  READY
+  FAILED
 }
