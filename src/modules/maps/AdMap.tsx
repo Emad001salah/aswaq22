@@ -9,6 +9,7 @@ if (typeof window !== 'undefined') {
 
 import { Ad } from '../../types.ts';
 import { getCurrencyAr } from '../../markets.ts';
+import { CITIES } from '../../data.ts';
 
 export interface AdMapHandle {
   triggerLocation: () => void;
@@ -233,9 +234,10 @@ const AdMap = forwardRef<AdMapHandle, AdMapProps>(function AdMap(props, ref) {
     const CLUSTER_DISTANCE = 0.015; // roughly 1.5km threshold
 
     activeAds.forEach(ad => {
-      const lat = Number(ad.latitude) || (ad.city && marketCityCoords[ad.city]?.lat) || 0;
-      const lng = Number(ad.longitude) || (ad.city && marketCityCoords[ad.city]?.lng) || 0;
-      if (!lat || !lng) return;
+      const cityKey = (ad.city || '').toLowerCase();
+      const matchedCity = CITIES.find(c => c.id === ad.city || c.id === cityKey || c.nameAr === ad.city);
+      const lat = Number(ad.latitude) || (ad.city && marketCityCoords[ad.city]?.lat) || (ad.city && marketCityCoords[cityKey]?.lat) || matchedCity?.lat || marketCenter.lat || 15.3694;
+      const lng = Number(ad.longitude) || (ad.city && marketCityCoords[ad.city]?.lng) || (ad.city && marketCityCoords[cityKey]?.lng) || matchedCity?.lng || marketCenter.lng || 44.1910;
 
       // Find an existing cluster close enough
       let foundCluster = false;

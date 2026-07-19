@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useImperativeHandle, forwardRef } f
 import { useTranslation } from 'react-i18next';
 import { Ad } from '../types.ts';
 import { getCurrencyAr } from '../markets.ts';
+import { CITIES } from '../data.ts';
 
 export interface AdMapHandle {
   triggerLocation: () => void;
@@ -188,9 +189,10 @@ export default forwardRef<AdMapHandle, AdMapProps>(function AdMap(props, ref) {
 
     // Ads markers
     activeAds.forEach(ad => {
-      const lat = Number(ad.latitude) || (ad.city && marketCityCoords[ad.city]?.lat) || 0;
-      const lng = Number(ad.longitude) || (ad.city && marketCityCoords[ad.city]?.lng) || 0;
-      if (!lat) return;
+      const cityKey = (ad.city || '').toLowerCase();
+      const matchedCity = CITIES.find(c => c.id === ad.city || c.id === cityKey || c.nameAr === ad.city);
+      const lat = Number(ad.latitude) || (ad.city && marketCityCoords[ad.city]?.lat) || (ad.city && marketCityCoords[cityKey]?.lat) || matchedCity?.lat || marketCenter.lat || 15.3694;
+      const lng = Number(ad.longitude) || (ad.city && marketCityCoords[ad.city]?.lng) || (ad.city && marketCityCoords[cityKey]?.lng) || matchedCity?.lng || marketCenter.lng || 44.1910;
 
       const icon = L.divIcon({
         className: '',
