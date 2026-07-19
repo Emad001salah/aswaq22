@@ -99,10 +99,15 @@ export const StorageController = () => {
 
       logger.info(`[StorageController] Enqueued media processing job for media: ${mediaObject.id}`);
 
-      // F. Return success response with mediaId immediately to the frontend
+      // F. Return success response with mediaId and expected url immediately to the frontend
+      const publicBaseUrl = (process.env.MEDIA_PUBLIC_BASE_URL || 'https://media.aswaq22.com').replace(/\/$/, '');
+      const destinationKey = `uploads/media/${mediaObject.id}_master.webp`;
+      const futureUrl = `${publicBaseUrl}/${destinationKey}`;
+
       return res.json({
         success: true,
         mediaId: mediaObject.id,
+        url: futureUrl,
         status: 'PENDING',
         message: 'تم رفع الملف بنجاح وجارٍ معالجته في الخلفية'
       });
