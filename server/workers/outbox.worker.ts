@@ -178,3 +178,9 @@ export function isOutboxWorkerRunning(): boolean {
   return running;
 }
 
+// Auto-start worker if run directly from the command line
+if (process.argv[1]?.includes('outbox.worker.ts')) {
+  startOutboxWorker();
+}
+
+
