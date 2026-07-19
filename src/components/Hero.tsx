@@ -34,8 +34,13 @@ import {
   Store,
   Mic,
   MicOff,
+  Building,
+  Hotel,
+  Palmtree,
+  CarFront,
+  Play,
+  Pause,
 } from "lucide-react";
-import * as LucideIcons from "lucide-react";
 import { CITIES, CATEGORIES, DISTRICTS } from "../data.ts";
 import { Category, City, Ad } from "../types.ts";
 import { Market, getCurrencyAr } from "../markets.ts";
@@ -49,10 +54,10 @@ const CATEGORY_ICONS: Record<
   electronics: Tv,
   phones: Smartphone,
   laptops: Laptop,
-  rentals: LucideIcons.Building,
-  hotels: LucideIcons.Hotel,
-  resorts: LucideIcons.Palmtree,
-  car_rental: LucideIcons.CarFront,
+  rentals: Building,
+  hotels: Hotel,
+  resorts: Palmtree,
+  car_rental: CarFront,
   furniture: Sofa,
   clothing: Shirt,
   jobs: Briefcase,
@@ -436,7 +441,7 @@ export default function Hero({
                 }`}
                 title={isPaused ? (isRtl ? 'تفعيل التمرير التلقائي' : 'Enable auto-scroll') : (isRtl ? 'إيقاف التمرير التلقائي مؤقتاً' : 'Pause auto-scroll')}
               >
-                {isPaused ? <LucideIcons.Play className="w-3 h-3 animate-pulse" /> : <LucideIcons.Pause className="w-3 h-3" />}
+                {isPaused ? <Play className="w-3 h-3 animate-pulse" /> : <Pause className="w-3 h-3" />}
                 <span>{isPaused ? (isRtl ? 'متوقف مؤقتاً' : 'Paused') : (isRtl ? 'تمرير تلقائي نشط' : 'Auto-scroll active')}</span>
               </button>
             </div>
@@ -566,9 +571,9 @@ export default function Hero({
                             title={isPaused ? (isRtl ? 'متابعة التمرير التلقائي' : 'Resume auto-scroll') : (isRtl ? 'إيقاف مؤقت' : 'Pause auto-scroll')}
                           >
                             {isPaused ? (
-                              <LucideIcons.Play className="w-3.5 h-3.5 text-emerald-400" />
+                              <Play className="w-3.5 h-3.5 text-emerald-400" />
                             ) : (
-                              <LucideIcons.Pause className="w-3.5 h-3.5 text-white" />
+                              <Pause className="w-3.5 h-3.5 text-white" />
                             )}
                           </button>
                         </div>
@@ -646,7 +651,7 @@ export default function Hero({
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 gap-3 sm:gap-4">
             {categories.filter(c => c.id !== 'other').map((cat, index) => {
                const worksAsSelected = category === cat.id;
-               const IconComponent = (cat.icon && (LucideIcons as any)[cat.icon]) || CATEGORY_ICONS[cat.id] || Hexagon;
+               const IconComponent = CATEGORY_ICONS[cat.id] || Hexagon;
                const bgImage =
                  CATEGORY_BACKGROUNDS[cat.id] || CATEGORY_BACKGROUNDS.other;
 

@@ -1,5 +1,12 @@
 import React, { useState, useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+
+if (typeof window !== 'undefined') {
+  (window as any).L = L;
+}
+
 import { Ad } from '../../types.ts';
 import { getCurrencyAr } from '../../markets.ts';
 

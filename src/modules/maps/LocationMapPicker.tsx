@@ -1,5 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+
+if (typeof window !== 'undefined') {
+  (window as any).L = L;
+}
+
 import { Search, MapPin, Navigation, Loader2, Package } from 'lucide-react';
 
 interface LocationMapPickerProps {

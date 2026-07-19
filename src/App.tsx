@@ -66,14 +66,31 @@ import { MARKETS, Market } from "./markets.ts";
 import Navbar from "./components/Navbar.tsx";
 import Hero from "./components/Hero.tsx";
 import AdCard from "./components/AdCard.tsx";
-import HelpCenter from "./components/HelpCenter.tsx";
-import AiSearchModal from "./components/AiSearchModal.tsx";
 import type { AdMapHandle } from "./modules/maps/AdMap.tsx";
-import ExchangeRatesWidget from "./components/ExchangeRatesWidget.tsx";
-import PriceInsightsWidget from "./components/PriceInsightsWidget.tsx";
-import UserProfileModal from "./components/UserProfileModal.tsx";
+// Widget and modal components — lazy loaded, only appear on demand
+const HelpCenter = React.lazy(() => import("./components/HelpCenter.tsx"));
+const AiSearchModal = React.lazy(() => import("./components/AiSearchModal.tsx"));
+const UserProfileModal = React.lazy(() => import("./components/UserProfileModal.tsx"));
+const ExchangeRatesWidget = React.lazy(() => import("./components/ExchangeRatesWidget.tsx"));
+const PriceInsightsWidget = React.lazy(() => import("./components/PriceInsightsWidget.tsx"));
+import { Toaster } from "react-hot-toast";
+import ToastContainer, { ToastMessage } from "./components/Toast.tsx";
+import socket, { joinRoom } from "./lib/socket.ts";
+import MainContentArea from "./components/MainContentArea.tsx";
+import { setupPushNotifications } from "./lib/native";
+import { onAuthStateChanged } from "firebase/auth";
+import { auth } from "./lib/firebase";
+import { API_BASE_URL } from "./lib/config";
+import { loadGoogleMapsScript } from "./modules/maps/googleMaps.ts";
 
-// Lazy-loaded components for optimal bundle performance (loads chunks dynamically when required)
+// Heavy modals — lazy loaded since they only appear on user interaction
+const AuthModal = React.lazy(() => import("./components/AuthModal.tsx"));
+const WelcomeFlow = React.lazy(() => import("./components/WelcomeFlow.tsx"));
+const LocationMapPicker = React.lazy(() => import("./modules/maps/LocationMapPicker.tsx"));
+const IdentityVerificationModal = React.lazy(() => import("./components/IdentityVerificationModal.tsx"));
+const OtpVerification = React.lazy(() => import("./components/OtpVerification.tsx").then(m => ({ default: m.OtpVerification })));
+
+// Heavy pages — lazy loaded since they only appear on user navigation
 const Dashboard = React.lazy(() => import("./components/Dashboard.tsx"));
 const AdminPanel = React.lazy(() => import("./components/AdminPanel.tsx"));
 const AdMap = React.lazy(() => import("./modules/maps/AdMap.tsx"));
@@ -82,20 +99,6 @@ const JobPortal = React.lazy(() => import("./components/JobPortal.tsx"));
 const DeliveryDashboard = React.lazy(() => import("./modules/shipping/DeliveryDashboard.tsx"));
 // AdModal is large (129 KB) — lazy loaded to remove it from the initial bundle
 const AdModal = React.lazy(() => import("./components/AdModal.tsx"));
-import { Toaster } from "react-hot-toast";
-import ToastContainer, { ToastMessage } from "./components/Toast.tsx";
-import socket, { joinRoom } from "./lib/socket.ts";
-import MainContentArea from "./components/MainContentArea.tsx";
-import WelcomeFlow from "./components/WelcomeFlow.tsx";
-import LocationMapPicker from "./modules/maps/LocationMapPicker.tsx";
-import AuthModal from "./components/AuthModal.tsx";
-import IdentityVerificationModal from "./components/IdentityVerificationModal.tsx";
-import { OtpVerification } from "./components/OtpVerification.tsx";
-import { setupPushNotifications } from "./lib/native";
-import { onAuthStateChanged } from "firebase/auth";
-import { auth } from "./lib/firebase";
-import { API_BASE_URL } from "./lib/config";
-import { loadGoogleMapsScript } from "./modules/maps/googleMaps.ts";
 
 // Global geographical anchors for distance calculations
 const CITY_COORDINATES: Record<string, { lat: number; lng: number }> = {
