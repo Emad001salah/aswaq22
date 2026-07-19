@@ -1924,6 +1924,9 @@ ${urls.join('\n')}
       }
       try {
         const fs = await import('fs');
+        const { isFeatureEnabled } = await import('./lib/feature-flags.ts');
+        const { storageService } = await import('./services/storage.service.ts');
+
         const uploadsDir = path.join(process.cwd(), 'uploads');
         if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 
@@ -1931,16 +1934,25 @@ ${urls.join('\n')}
         const ext = req.file.mimetype === 'image/png' ? 'png' : req.file.mimetype === 'image/jpeg' ? 'jpg' : 'png';
         const logoFileName = `platform-logo.${ext}`;
         const logoPath = path.join(uploadsDir, logoFileName);
-        fs.writeFileSync(logoPath, req.file.buffer);
 
-        // Store as a real URL (not Base64) so browsers can use it as favicon
-        const logoUrl = `/uploads/${logoFileName}`;
+        let logoUrl = `/uploads/${logoFileName}`;
+
+        // Verify if R2 is enabled for this upload
+        const r2Enabled = await isFeatureEnabled('r2_storage', (req as any).user?.id || 'admin');
+        if (r2Enabled) {
+          const destinationKey = `uploads/platform-logo.${ext}`;
+          await storageService.uploadFileByKey(destinationKey, req.file.buffer, req.file.mimetype);
+          logoUrl = `${process.env.MEDIA_PUBLIC_BASE_URL || 'https://media.aswaq22.com'}/${destinationKey}`;
+          logger.info({ message: `settings/logo uploaded to R2: ${destinationKey}` });
+        } else {
+          fs.writeFileSync(logoPath, req.file.buffer);
+          logger.info({ message: `settings/logo saved locally: ${logoFileName}` });
+        }
 
         const currentSettings = await getPlatformSettings();
         currentSettings.logoUrl = logoUrl;
         await savePlatformSettings(currentSettings);
 
-        logger.info({ message: `settings/logo saved as file: ${logoFileName}` });
         res.json({ success: true, logoUrl });
       } catch (err: any) {
         logger.error({ message: 'Failed uploading logo', error: err.message });
