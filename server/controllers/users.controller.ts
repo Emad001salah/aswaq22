@@ -166,11 +166,26 @@ export const UsersController = () => {
     }
 
     try {
+      if (req.body.phone && req.body.phone.trim() !== '') {
+        const existingUserWithPhone = await prisma.user.findFirst({
+          where: {
+            phone: req.body.phone.trim(),
+            id: { not: req.params.id }
+          }
+        });
+        if (existingUserWithPhone) {
+          return res.status(400).json({
+            error: 'Phone Already In Use',
+            message: 'رقم الهاتف هذا مستخدم بالفعل في حساب آخر.'
+          });
+        }
+      }
+
       const updated = await prisma.user.update({
         where: { id: req.params.id },
         data: {
           name: req.body.name,
-          phone: req.body.phone,
+          phone: req.body.phone ? req.body.phone.trim() : null,
           avatar: req.body.avatar,
           bio: req.body.bio,
           city: req.body.city,
@@ -189,6 +204,12 @@ export const UsersController = () => {
       });
       res.json(updated);
     } catch (e: any) {
+      if (e.code === 'P2002') {
+        return res.status(400).json({
+          error: 'Phone Already In Use',
+          message: 'رقم الهاتف هذا مستخدم بالفعل في حساب آخر.'
+        });
+      }
       res.status(500).json({ error: 'Update Failed', message: e.message });
     }
   });

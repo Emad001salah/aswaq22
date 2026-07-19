@@ -8,6 +8,7 @@ import { X, MapPin, Calendar, Star, ShieldCheck, Mail, Phone, MessageSquare, Ext
 import { User, Ad, UserRole } from '../types.ts';
 import { CITIES } from '../data.ts';
 import { Avatar } from './Avatar.tsx';
+import { apiFetch } from '../lib/api';
 
 interface UserProfileModalProps {
   user: User;
@@ -78,12 +79,8 @@ export default function UserProfileModal({
       const formData = new FormData();
       formData.append('file', file);
 
-      const token = localStorage.getItem('aswaq_access_token') || localStorage.getItem('auth_token');
-      const res = await fetch('/api/storage/upload', {
+      const res = await apiFetch('/api/storage/upload', {
         method: 'POST',
-        headers: {
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        },
         body: formData
       });
 

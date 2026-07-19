@@ -42,8 +42,8 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Exclude API routes, Live streams, and Socket.io connections from local storage caching
-  if (url.pathname.startsWith('/api') || url.pathname.startsWith('/socket') || request.method !== 'GET') {
+  // Exclude API routes, Live streams, Socket.io, and non-HTTP(S) schemes (e.g. chrome-extension://)
+  if (url.pathname.startsWith('/api') || url.pathname.startsWith('/socket') || request.method !== 'GET' || !url.protocol.startsWith('http')) {
     return; // Pass through to standard browser fetch
   }
 
