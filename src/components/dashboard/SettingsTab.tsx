@@ -37,6 +37,7 @@ export default function SettingsTab({
   const [profilePhone, setProfilePhone] = useState(currentUser.phone || "");
   const [profileBio, setProfileBio] = useState(cleanBio(currentUser.bio));
   const [profileAvatar, setProfileAvatar] = useState(cleanAvatar(currentUser.avatar));
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
 
   useEffect(() => {
     if (currentUser) {
@@ -244,22 +245,49 @@ export default function SettingsTab({
             />
             <label className="flex-1 cursor-pointer">
               <div className="h-11 flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-slate-200 text-xs font-bold transition-all border border-slate-700">
-                <Camera className="w-4 h-4" />
-                تغيير الصورة
+                {isUploadingAvatar ? <Loader2 className="w-4 h-4 animate-spin text-emerald-400" /> : <Camera className="w-4 h-4" />}
+                {isUploadingAvatar ? "جاري رفع الصورة..." : "تغيير الصورة"}
               </div>
               <input
                 type="file"
                 accept="image/*"
                 className="hidden"
+                disabled={isUploadingAvatar}
                 onChange={async (e) => {
                   const file = e.target.files?.[0];
                   if (!file) return;
-                  const reader = new FileReader();
-                  reader.onloadend = () => {
-                    if (typeof reader.result === "string")
-                      setProfileAvatar(reader.result);
-                  };
-                  reader.readAsDataURL(file);
+                  try {
+                    setIsUploadingAvatar(true);
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    const res = await apiFetch('/api/storage/upload', {
+                      method: 'POST',
+                      body: formData,
+                    });
+                    if (res.ok) {
+                      const data = await res.json();
+                      if (data.url) {
+                        setProfileAvatar(data.url);
+                        addToast?.('تم رفع الصورة', 'تم رفع الصورة الشخصية سحابياً بنجاح', 'success');
+                      }
+                    } else {
+                      // Fallback to Base64 preview if cloud upload returns non-ok
+                      const reader = new FileReader();
+                      reader.onloadend = () => {
+                        if (typeof reader.result === 'string') setProfileAvatar(reader.result);
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  } catch (err) {
+                    console.error('Avatar upload error:', err);
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                      if (typeof reader.result === 'string') setProfileAvatar(reader.result);
+                    };
+                    reader.readAsDataURL(file);
+                  } finally {
+                    setIsUploadingAvatar(false);
+                  }
                 }}
               />
             </label>

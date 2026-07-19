@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { prisma } from '../../src/lib/prisma.ts';
 import { authService } from '../services/auth.service.ts';
+import { storageService } from '../services/storage.service.ts';
 import { validationMiddleware } from '../middleware/validation.ts';
 import { RegisterUserDto, LoginUserDto } from '../dto/auth.dto.ts';
 import { authMiddleware, AuthenticatedRequest } from '../middleware/auth.ts';
@@ -166,16 +167,54 @@ export const UsersController = () => {
     }
 
     try {
+      let avatarUrl = req.body.avatar;
+      let coverUrl = req.body.coverPhoto;
+
+      if (avatarUrl && avatarUrl.startsWith('data:image/')) {
+        try {
+          const matches = avatarUrl.match(/^data:(image\/\w+);base64,(.+)$/);
+          if (matches) {
+            const mimeType = matches[1];
+            const buffer = Buffer.from(matches[2], 'base64');
+            const ext = mimeType.split('/')[1] || 'jpg';
+            avatarUrl = await storageService.uploadFile({
+              buffer,
+              originalname: `avatar-${Date.now()}.${ext}`,
+              mimetype: mimeType
+            });
+          }
+        } catch (err) {
+          console.error('Failed to upload base64 avatar to storage:', err);
+        }
+      }
+
+      if (coverUrl && coverUrl.startsWith('data:image/')) {
+        try {
+          const matches = coverUrl.match(/^data:(image\/\w+);base64,(.+)$/);
+          if (matches) {
+            const mimeType = matches[1];
+            const buffer = Buffer.from(matches[2], 'base64');
+            const ext = mimeType.split('/')[1] || 'jpg';
+            coverUrl = await storageService.uploadFile({
+              buffer,
+              originalname: `cover-${Date.now()}.${ext}`,
+              mimetype: mimeType
+            });
+          }
+        } catch (err) {
+          console.error('Failed to upload base64 cover to storage:', err);
+        }
+      }
 
       const updated = await prisma.user.update({
         where: { id: req.params.id },
         data: {
           name: req.body.name,
           phone: req.body.phone ? req.body.phone.trim() : null,
-          avatar: req.body.avatar,
+          avatar: avatarUrl,
           bio: req.body.bio,
           city: req.body.city,
-          coverPhoto: req.body.coverPhoto,
+          coverPhoto: coverUrl,
         },
         select: {
           id: true,
