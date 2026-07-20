@@ -380,9 +380,18 @@ useEffect(() => {
       await syncFirebaseUserToBackend(fbUser);
     });
 
+    const handleAuthRequired = () => {
+      console.warn('[App] Authentication required event received. Prompting login...');
+      addToast('مطلوب تسجيل الدخول', 'يرجى تسجيل الدخول للوصول لهذه العملية.', 'info');
+      setIsAuthModalOpen(true);
+    };
+
+    window.addEventListener('aswaq:auth-required', handleAuthRequired);
+
     return () => {
       cancelled = true;
       unsubscribeAuth();
+      window.removeEventListener('aswaq:auth-required', handleAuthRequired);
     };
   }, []);
 

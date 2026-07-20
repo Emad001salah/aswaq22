@@ -115,6 +115,11 @@ export async function apiFetch(url: string, options: RequestInit = {}): Promise<
         return fetch(url, { credentials: 'include', ...options, headers });
       }
     }
+
+    // Unhandled 401 Unauthorized -> Prompt user to log in via AuthModal
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('aswaq:auth-required'));
+    }
   }
 
   return response;
