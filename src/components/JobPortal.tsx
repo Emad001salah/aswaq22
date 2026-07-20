@@ -277,9 +277,21 @@ export default function JobPortal({
   ];
 
   const isJobAd = (ad: Ad) => {
+    if (!ad) return false;
     const cat = (ad.category || '').toLowerCase();
-    const catId = ((ad as any).categoryId || '').toLowerCase();
-    return cat === "jobs" || cat.includes("وظائف") || cat.includes("فرص") || cat.includes("job") || catId.length > 0;
+    const sub = (ad.subCategory || '').toLowerCase();
+    const title = (ad.title || '').toLowerCase();
+    return (
+      cat === "jobs" ||
+      cat === "27a06a9e-3d5e-7f67-eb60-4a39536208c9" ||
+      cat.includes("وظائف") ||
+      cat.includes("فرص") ||
+      cat.includes("job") ||
+      sub.includes("وظائف") ||
+      title.includes("مطلوب") ||
+      title.includes("وظيفة") ||
+      title.includes("سيرة ذاتية")
+    );
   };
 
   const rawVacancies = ads.filter(ad => isJobAd(ad) && ad.jobType !== "seeking");
@@ -291,23 +303,31 @@ export default function JobPortal({
 
   // Filter logic
   const filteredVacancies = jobVacancies.filter(ad => {
-    const matchesSearch = ad.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          ad.description.toLowerCase().includes(searchTerm.toLowerCase());
+    if (!ad) return false;
+    const title = ad.title || '';
+    const desc = ad.description || '';
+    const matchesSearch = !searchTerm || 
+                          title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          desc.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCity = !selectedCity || ad.city === selectedCity;
     const matchesSpecialty = !selectedSpecialty || ad.subCategory === selectedSpecialty;
     return matchesSearch && matchesCity && matchesSpecialty;
   });
 
   const filteredSeekers = jobSeekers.filter(ad => {
-    const matchesSearch = ad.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          ad.description.toLowerCase().includes(searchTerm.toLowerCase());
+    if (!ad) return false;
+    const title = ad.title || '';
+    const desc = ad.description || '';
+    const matchesSearch = !searchTerm || 
+                          title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          desc.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCity = !selectedCity || ad.city === selectedCity;
     const matchesSpecialty = !selectedSpecialty || ad.subCategory === selectedSpecialty;
     return matchesSearch && matchesCity && matchesSpecialty;
   });
 
   // Extract unique specialties/subcategories from ads
-  const uniqueSpecialties = Array.from(new Set(marketAds
+  const uniqueSpecialties = Array.from(new Set(ads
     .filter(ad => ad.category === "jobs")
     .map(ad => ad.subCategory)
     .filter(Boolean)
