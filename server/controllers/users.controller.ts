@@ -161,8 +161,8 @@ export const UsersController = () => {
    *       403:
    *         description: Forbidden
    */
-  router.put('/:id', authMiddleware, async (req: AuthenticatedRequest, res) => {
-    const targetUserId = req.params.id === 'me' ? req.user?.id : req.params.id;
+  const handleUserUpdate = async (req: AuthenticatedRequest, res: Response) => {
+    const targetUserId = req.params.id === 'me' || !req.params.id ? req.user?.id : req.params.id;
 
     if (req.user?.id !== targetUserId && req.user?.role !== 'ADMIN') {
       return res.status(403).json({ success: false, message: 'مطلوب تسجيل الدخول بحساب صاحب الملف لتحديثه.' });
@@ -184,7 +184,7 @@ export const UsersController = () => {
               buffer,
               originalname: `avatar-${Date.now()}.${ext}`,
               mimetype: mimeType
-            });
+            }, `avatars/${userIdToUpdate}`);
           }
         } catch (err) {
           console.error('Failed to upload base64 avatar to storage:', err);
@@ -202,23 +202,24 @@ export const UsersController = () => {
               buffer,
               originalname: `cover-${Date.now()}.${ext}`,
               mimetype: mimeType
-            });
+            }, `uploads/${userIdToUpdate}`);
           }
         } catch (err) {
           console.error('Failed to upload base64 cover to storage:', err);
         }
       }
 
+      const updateData: any = {};
+      if (req.body.name !== undefined) updateData.name = req.body.name;
+      if (req.body.phone !== undefined) updateData.phone = req.body.phone ? req.body.phone.trim() : null;
+      if (avatarUrl !== undefined) updateData.avatar = avatarUrl;
+      if (req.body.bio !== undefined) updateData.bio = req.body.bio;
+      if (req.body.city !== undefined) updateData.city = req.body.city;
+      if (coverUrl !== undefined) updateData.coverPhoto = coverUrl;
+
       const updated = await prisma.user.update({
         where: { id: userIdToUpdate },
-        data: {
-          name: req.body.name,
-          phone: req.body.phone ? req.body.phone.trim() : null,
-          avatar: avatarUrl,
-          bio: req.body.bio,
-          city: req.body.city,
-          coverPhoto: coverUrl,
-        },
+        data: updateData,
         select: {
           id: true,
           email: true,
@@ -228,6 +229,9 @@ export const UsersController = () => {
           bio: true,
           coverPhoto: true,
           role: true,
+          isVerified: true,
+          phoneVerified: true,
+          emailVerified: true,
         }
       });
       res.json(updated);
@@ -240,7 +244,13 @@ export const UsersController = () => {
       }
       res.status(500).json({ error: 'Update Failed', message: e.message });
     }
-  });
+  };
+
+  router.put('/me', authMiddleware, handleUserUpdate);
+  router.patch('/me', authMiddleware, handleUserUpdate);
+  router.patch('/me/avatar', authMiddleware, handleUserUpdate);
+  router.put('/:id', authMiddleware, handleUserUpdate);
+  router.patch('/:id', authMiddleware, handleUserUpdate);
 
   // GET /api/users/:id/favorites
   router.get('/:id/favorites', async (req, res) => {

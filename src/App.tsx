@@ -2134,12 +2134,12 @@ useEffect(() => {
       const csrfToken = getCookie('csrf_token');
 
       const response = await apiFetch(`/api/v1/users/me`, {
-        method: "PUT",
+        method: "PATCH",
         headers: { 
           "Content-Type": "application/json",
           ...(csrfToken ? { "x-csrf-token": csrfToken } : {})
         },
-        body: JSON.stringify({ ...currentUser, ...finalData }),
+        body: JSON.stringify(finalData),
       });
       if (response.ok) {
         const updatedUser = await response.json();
