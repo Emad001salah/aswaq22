@@ -64,8 +64,21 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
             </p>
             <button
               onClick={() => {
-                localStorage.removeItem('aswaq_cached_categories');
-                window.location.href = '/';
+                try {
+                  localStorage.clear();
+                  sessionStorage.clear();
+                  if ('caches' in window) {
+                    caches.keys().then(names => {
+                      names.forEach(name => caches.delete(name));
+                    });
+                  }
+                  if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.getRegistrations().then(regs => {
+                      regs.forEach(r => r.unregister());
+                    });
+                  }
+                } catch (_) {}
+                window.location.href = '/?reload=' + Date.now();
               }}
               style={{
                 width: '100%',
