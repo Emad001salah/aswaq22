@@ -104,22 +104,25 @@ export const getDeviceLocation = async () => {
     }
   }
 
-  // Fallback to standard Browser Geolocation API
-  return new Promise<{ lat: number; lng: number }>((resolve, reject) => {
-    if (!navigator.geolocation) {
-      reject(new Error('Geolocation is not supported by this browser'));
-      return;
+  // Fallback to standard Browser Geolocation API or safe default fallback
+  return new Promise<{ lat: number; lng: number }>((resolve) => {
+    if (!navigator.geolocation || typeof navigator.geolocation.getCurrentPosition !== 'function') {
+      return resolve({ lat: 15.3694, lng: 44.1910 });
     }
 
-    navigator.geolocation.getCurrentPosition(
-      (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      (err) => reject(err),
-      { 
-        enableHighAccuracy: true, 
-        timeout: 15000,
-        maximumAge: 0 
-      }
-    );
+    try {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        () => resolve({ lat: 15.3694, lng: 44.1910 }),
+        { 
+          enableHighAccuracy: false, 
+          timeout: 4000,
+          maximumAge: 60000 
+        }
+      );
+    } catch (_) {
+      resolve({ lat: 15.3694, lng: 44.1910 });
+    }
   });
 };
 

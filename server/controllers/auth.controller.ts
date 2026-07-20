@@ -14,7 +14,7 @@ import { getFlag, isInRollout, isFeatureEnabled } from '../lib/feature-flags.ts'
 
 export function AuthController() {
   const router = Router();
-  const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'your-refresh-secret-key';
+  const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'aswaq_jwt_refresh_secret_key_2026';
 
   const OTP_TTL_SECONDS = 5 * 60;
   const otpFallbackStore = new Map<string, { code: string; expiresAt: Date }>();

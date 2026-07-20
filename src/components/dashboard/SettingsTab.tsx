@@ -111,9 +111,9 @@ export default function SettingsTab({
     setSettingsSaved(true);
 
     try {
-      // Sync on backend using the real PUT /api/v1/users/:id endpoint with auto-refreshing apiFetch!
-      const res = await apiFetch(`${API_BASE_URL}/v1/users/${currentUser.id}`, {
-        method: "PUT",
+      // Sync on backend using the real PATCH /api/v1/users/me endpoint with auto-refreshing apiFetch!
+      const res = await apiFetch(`/api/v1/users/me`, {
+        method: "PATCH",
         headers: { 
           "Content-Type": "application/json"
         },
@@ -122,6 +122,9 @@ export default function SettingsTab({
           phone: profilePhone || null,
           bio: profileBio || null,
           avatar: profileAvatar || null,
+          priceDropAlerts,
+          newAdAlerts,
+          alertCity,
         }),
       });
       if (res.ok) {

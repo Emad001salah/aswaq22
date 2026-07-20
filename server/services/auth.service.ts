@@ -43,7 +43,7 @@ export class AuthService {
           userId,
           tokenHash,
           sessionId: currentSessionId,
-          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+          expiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // 90 days validity
         },
       });
     });

@@ -56,14 +56,14 @@ describe('E2E Journey: Moderation & Security Enforcement', () => {
     // Mock Moderator Token
     moderatorToken = jwt.sign({ id: getDeterministicUuid('mod-id'), role: 'MODERATOR' }, JWT_SECRET, { expiresIn: '15m' });
 
-    // Seed an Ad
+    const cat = await prisma.category.findFirst();
     const ad = await prisma.ad.create({
       data: {
         title: 'Security Test Ad',
         description: 'Testing RBAC',
         price: 100,
         currency: 'USD',
-        categoryId: getDeterministicUuid('electronics'),
+        categoryId: cat?.id || getDeterministicUuid('electronics'),
         city: 'Riyadh',
         userId: userId,
         status: 'PENDING',
