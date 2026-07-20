@@ -18,6 +18,7 @@ interface SettingsTabProps {
   ads: Ad[];
   isDark: boolean;
   addToast?: (title: string, desc: string, type: "success" | "error" | "info" | "notification") => void;
+  onUpdateUser?: (user: User) => void;
 }
 
 export default function SettingsTab({
@@ -26,6 +27,7 @@ export default function SettingsTab({
   ads,
   isDark,
   addToast,
+  onUpdateUser,
 }: SettingsTabProps) {
   const isRtl = true;
 
@@ -126,6 +128,7 @@ export default function SettingsTab({
         const updatedUser = await res.json();
         const mergedUser = { ...currentUser, ...updatedUser };
         localStorage.setItem('aswaq_current_user', JSON.stringify(mergedUser));
+        onUpdateUser?.(mergedUser);
         console.log('[SettingsTab] Profile synced successfully:', mergedUser);
         addToast?.("تم حفظ التغييرات", "تم حفظ إعدادات حسابك وتحديثها بنجاح.", "success");
       } else {

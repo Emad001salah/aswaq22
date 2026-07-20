@@ -4061,6 +4061,7 @@ useEffect(() => {
               unreadMessagesCount={unreadMessages.length}
               categories={categories}
               addToast={addToast}
+              onUpdateUser={setCurrentUser}
             />
           </React.Suspense>
         )}

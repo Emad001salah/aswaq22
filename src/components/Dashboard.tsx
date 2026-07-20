@@ -48,6 +48,7 @@ interface DashboardProps {
   unreadMessagesCount?: number;
   categories?: any[];
   addToast?: (title: string, desc: string, type: "success" | "error" | "info" | "notification") => void;
+  onUpdateUser?: (user: User) => void;
 }
 
 export default function Dashboard({
@@ -65,6 +66,7 @@ export default function Dashboard({
   unreadMessagesCount = 0,
   categories: categoriesProp,
   addToast,
+  onUpdateUser,
 }: DashboardProps) {
   const { t, i18n } = useTranslation();
   const isRtl = i18n.language === "ar";
@@ -619,6 +621,7 @@ export default function Dashboard({
               ads={ads}
               isDark={isDark}
               addToast={addToast}
+              onUpdateUser={onUpdateUser}
             />
           </ErrorBoundary>
         )}
