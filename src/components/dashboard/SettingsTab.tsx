@@ -99,30 +99,44 @@ export default function SettingsTab({
 
   const handleSaveSettings = async (e: FormEvent) => {
     e.preventDefault();
-    if (isSaving) return; // منع الإرسال المتكرر
+    if (isSaving) return;
     setIsSaving(true);
 
+    // قراءة الـ token مباشرة من localStorage
+    const token = localStorage.getItem('aswaq_access_token') || localStorage.getItem('auth_token');
+
+    if (!token) {
+      addToast?.("يرجى تسجيل الدخول أولاً", "لم يتم العثور على جلسة مسجلة. أعد تسجيل الدخول.", "error");
+      setIsSaving(false);
+      return;
+    }
+
     try {
-      // أرسل فقط الحقول الموجودة فعلاً في قاعدة البيانات
-      const payload: Record<string, any> = {
+      const payload = {
         name: profileName,
         phone: profilePhone || null,
         bio: profileBio || null,
         avatar: profileAvatar || null,
       };
 
-      const res = await apiFetch(`/api/v1/users/me`, {
+      console.log('[SettingsTab] Saving profile... Token length:', token.length);
+
+      const res = await fetch(`/api/v1/users/me`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
         body: JSON.stringify(payload),
       });
+
+      console.log('[SettingsTab] Server response status:', res.status);
 
       if (res.ok) {
         const updatedUser = await res.json();
         const mergedUser = {
           ...currentUser,
           ...updatedUser,
-          // احتفظ بالتفضيلات المحلية (غير موجودة في DB)
           priceDropAlerts,
           newAdAlerts,
           alertCity,
@@ -137,25 +151,20 @@ export default function SettingsTab({
         try {
           const errData = await res.json();
           errMsg = errData.message || errMsg;
+          console.error('[SettingsTab] Save failed:', res.status, errData);
         } catch (_) {}
-        console.error('[SettingsTab] Save failed. Status:', res.status, errMsg);
-        addToast?.("فشل الحفظ", errMsg, "error");
+        addToast?.("فشل الحفظ", `(${res.status}) ${errMsg}`, "error");
       }
     } catch (err) {
       console.error("[SettingsTab] Network error during save:", err);
       addToast?.("خطأ في الاتصال", "تعذّر الاتصال بالخادم. تحقق من اتصالك بالإنترنت.", "error");
     } finally {
       setIsSaving(false);
+      // حفظ تفضيلات الإشعارات محلياً فقط
+      localStorage.setItem('aswaq_user_prefs', JSON.stringify({ priceDropAlerts, newAdAlerts, alertCity }));
     }
-
-    // احفظ تفضيلات الإشعارات محلياً فقط (لا ترسلها للسيرفر)
-    const localPrefs = {
-      priceDropAlerts,
-      newAdAlerts,
-      alertCity,
-    };
-    localStorage.setItem('aswaq_user_prefs', JSON.stringify(localPrefs));
   };
+
 
   // KYC Camera methods
   const startKycCamera = async () => {
