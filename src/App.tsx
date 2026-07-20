@@ -437,13 +437,20 @@ useEffect(() => {
       const pathname = location.pathname;
       if (!pathname || pathname === '/') return;
 
-      // Handle /profile
-      if (pathname === '/profile') {
+      // Handle /profile & /account
+      if (pathname === '/profile' || pathname === '/account') {
+        setCurrentTab('profile');
         if (currentUser) {
           setSelectedUserPreview(currentUser);
         }
+        document.title = 'ملفي الشخصي | أسواق';
         return;
       }
+
+      if (pathname === '/messages') { setCurrentTab('messages'); document.title = 'الرسائل والمحادثات | أسواق'; return; }
+      if (pathname === '/notifications') { setCurrentTab('notifications'); document.title = 'الإشعارات والتنبيهات | أسواق'; return; }
+      if (pathname === '/my-ads') { setCurrentTab('my-ads'); document.title = 'إعلاناتي | أسواق'; return; }
+      if (pathname === '/analytics') { setCurrentTab('analytics'); document.title = 'تحليلات الأداء | أسواق'; return; }
 
       // Handle /profile/:id
       if (pathname.startsWith('/profile/')) {
@@ -986,6 +993,46 @@ useEffect(() => {
       return;
     }
 
+    if (currentTab === 'profile' || currentTab === 'account') {
+      if (location.pathname !== '/profile') {
+        navigate('/profile');
+      }
+      document.title = 'إعدادات الحساب والبروفايل | أسواق';
+      return;
+    }
+
+    if (currentTab === 'messages') {
+      if (location.pathname !== '/messages') {
+        navigate('/messages');
+      }
+      document.title = 'الرسائل والمحادثات | أسواق';
+      return;
+    }
+
+    if (currentTab === 'notifications') {
+      if (location.pathname !== '/notifications') {
+        navigate('/notifications');
+      }
+      document.title = 'الإشعارات والتنبيهات | أسواق';
+      return;
+    }
+
+    if (currentTab === 'my-ads') {
+      if (location.pathname !== '/my-ads') {
+        navigate('/my-ads');
+      }
+      document.title = 'إعلاناتي | أسواق';
+      return;
+    }
+
+    if (currentTab === 'analytics') {
+      if (location.pathname !== '/analytics') {
+        navigate('/analytics');
+      }
+      document.title = 'تحليلات الأداء | أسواق';
+      return;
+    }
+
     if (platformMode === 'spotlight' && location.pathname !== '/reels') {
       navigate('/reels');
       document.title = 'شورتس وسواري أسواق | فيديوهات الإعلانات';
@@ -1036,7 +1083,7 @@ useEffect(() => {
       }
       document.title = 'أسواق | منصة الإعلانات المجانية في الوطن العربي — بيع، شراء، تأجير';
     }
-  }, [selectedUserPreview, platformMode, currentMarket.countryCode, selectedCategory, selectedCity]);
+  }, [selectedUserPreview, currentTab, platformMode, currentMarket.countryCode, selectedCategory, selectedCity]);
 
   // 3. Synchronize selectedAd state reset to parent URL pathname
   useEffect(() => {
