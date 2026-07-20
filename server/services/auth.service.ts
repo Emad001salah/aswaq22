@@ -15,15 +15,18 @@ export class AuthService {
   async generateTokens(userId: string, email: string, role: string, sessionId?: string, oldTokenId?: string) {
     const currentSessionId = sessionId || crypto.randomUUID();
 
+    const secret = process.env.JWT_SECRET || 'aswaq_jwt_secret_dev_key_2026_super_secure_998231';
+    const refreshSecret = process.env.JWT_REFRESH_SECRET || 'aswaq_jwt_refresh_secret_key_2026';
+
     const accessToken = jwt.sign(
       { sub: userId, email, role },
-      JWT_SECRET,
+      secret,
       { expiresIn: '7d' }
     );
 
     const refreshToken = jwt.sign(
       { sub: userId, email, role, sid: currentSessionId },
-      JWT_REFRESH_SECRET,
+      refreshSecret,
       { expiresIn: '30d' }
     );
 
