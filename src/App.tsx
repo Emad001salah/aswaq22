@@ -370,12 +370,27 @@ useEffect(() => {
 
 
 
-    // Fallback: if redirect result is null but Firebase auth state has a user, sync it.
     const unsubscribeAuth = onAuthStateChanged(auth, async (fbUser) => {
       if (!fbUser) return;
 
-      const hasSession = !!localStorage.getItem('aswaq_access_token');
-      if (hasSession && !cancelled) return;
+      const storedUserStr = localStorage.getItem('aswaq_current_user');
+      const hasToken = !!localStorage.getItem('aswaq_access_token');
+      
+      // Prevent Firebase Auth from auto-overwriting current user session with a different account
+      if (hasToken && storedUserStr) {
+        try {
+          const storedUser = JSON.parse(storedUserStr);
+          if (storedUser && (
+            (storedUser.email && fbUser.email && storedUser.email.toLowerCase() !== fbUser.email.toLowerCase()) ||
+            (storedUser.phone && fbUser.phoneNumber && storedUser.phone !== fbUser.phoneNumber)
+          )) {
+            console.warn('[App] Firebase auth user differs from logged-in user. Skipping auto-sync.');
+            return;
+          }
+        } catch (_) {}
+      }
+
+      if (hasToken && !cancelled) return;
 
       await syncFirebaseUserToBackend(fbUser);
     });
@@ -2765,6 +2780,9 @@ useEffect(() => {
           } catch (e) {
             console.error('Logout API error', e);
           }
+          try {
+            await signOut(auth);
+          } catch (_) {}
           localStorage.removeItem('aswaq_access_token');
           localStorage.removeItem('aswaq_refresh_token');
           localStorage.removeItem('aswaq_current_user');
