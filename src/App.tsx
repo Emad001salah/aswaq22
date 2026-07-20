@@ -459,6 +459,38 @@ useEffect(() => {
       if (pathname === '/my-ads') { setCurrentTab('my-ads'); document.title = 'إعلاناتي | أسواق'; return; }
       if (pathname === '/analytics') { setCurrentTab('analytics'); document.title = 'تحليلات الأداء | أسواق'; return; }
 
+      // 0. Parse Query Parameters & Hash for Shared Links (?adId=..., ?userId=..., ?ad=..., #ad-...)
+      const searchParams = new URLSearchParams(window.location.search);
+      const sharedAdId = searchParams.get('adId') || searchParams.get('ad') || searchParams.get('post');
+      const sharedUserId = searchParams.get('userId') || searchParams.get('user');
+      const hash = window.location.hash || '';
+      const hashAdId = (hash.startsWith('#ad-') || hash.startsWith('#post-')) ? hash.replace(/^#(ad|post)-/, '') : null;
+
+      const targetAdId = sharedAdId || hashAdId;
+      if (targetAdId && selectedAd?.id !== targetAdId) {
+        try {
+          const res = await fetch(`/api/ads/${targetAdId}`);
+          if (res.ok) {
+            const adData = await res.json();
+            setSelectedAd(adData);
+          }
+        } catch (e) {
+          console.error('Failed to fetch shared ad from query parameter', e);
+        }
+      }
+
+      if (sharedUserId && selectedUserPreview?.id !== sharedUserId) {
+        try {
+          const res = await fetch(`/api/v1/users/${sharedUserId}`);
+          if (res.ok) {
+            const u = await res.json();
+            setSelectedUserPreview(u);
+          }
+        } catch (e) {
+          console.error('Failed to fetch shared user profile from query parameter', e);
+        }
+      }
+
       // Handle /profile/:id
       if (pathname.startsWith('/profile/')) {
         const uid = pathname.replace('/profile/', '');

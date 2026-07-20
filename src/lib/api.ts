@@ -66,6 +66,10 @@ export async function refreshAccessToken(): Promise<string | null> {
 export async function apiFetch(url: string, options: RequestInit = {}): Promise<Response> {
   const method = (options.method || 'GET').toUpperCase();
   const headers = new Headers(options.headers || {});
+  if (options.body instanceof FormData) {
+    headers.delete('Content-Type');
+    headers.delete('content-type');
+  }
   const token = localStorage.getItem('aswaq_access_token') || localStorage.getItem('auth_token');
 
   if (token && !headers.has('Authorization')) {

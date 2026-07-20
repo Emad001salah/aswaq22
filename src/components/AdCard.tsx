@@ -171,7 +171,7 @@ export default React.memo(function AdCard({ ad, onClick, onLikeToggle, isFavorit
 
   const handleShareClick = (e: MouseEvent) => {
     e.stopPropagation();
-    const shareUrl = `${window.location.origin}/?adId=${ad.id}`;
+    const shareUrl = `${window.location.origin}/ad/${ad.id}`;
     const shareText = `${isRtl ? 'عروض أسواق' : 'Aswaq Deals'}: ${ad.title} - ${(ad.price || 0).toLocaleString()} ${isRtl ? getCurrencyAr(ad.currency) : ad.currency}`;
 
     if (navigator.share) {

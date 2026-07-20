@@ -984,7 +984,7 @@ export default function AdModal({
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  const shareUrl = `${window.location.origin}/?adId=${ad.id}`;
+                  const shareUrl = `${window.location.origin}/ad/${ad.id}`;
                   if (navigator.share) {
                     navigator.share({ title: ad.title, url: shareUrl }).catch(() => {});
                   } else {
