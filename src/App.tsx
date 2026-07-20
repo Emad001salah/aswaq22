@@ -91,12 +91,13 @@ const LocationMapPicker = React.lazy(() => import("./modules/maps/LocationMapPic
 const IdentityVerificationModal = React.lazy(() => import("./components/IdentityVerificationModal.tsx"));
 const OtpVerification = React.lazy(() => import("./components/OtpVerification.tsx").then(m => ({ default: m.OtpVerification })));
 
+import JobPortal from "./components/JobPortal.tsx";
+
 // Heavy pages — lazy loaded since they only appear on user navigation
 const Dashboard = React.lazy(() => import("./components/Dashboard.tsx"));
 const AdminPanel = React.lazy(() => import("./components/AdminPanel.tsx"));
 const AdMap = React.lazy(() => import("./modules/maps/AdMap.tsx"));
 const SpotlightFeed = React.lazy(() => import("./components/SpotlightFeed.tsx"));
-const JobPortal = React.lazy(() => import("./components/JobPortal.tsx"));
 const DeliveryDashboard = React.lazy(() => import("./modules/shipping/DeliveryDashboard.tsx"));
 // AdModal is large (129 KB) — lazy loaded to remove it from the initial bundle
 const AdModal = React.lazy(() => import("./components/AdModal.tsx"));
@@ -647,6 +648,17 @@ useEffect(() => {
   const { t, i18n } = useTranslation();
   const isRtl = i18n.language === 'ar';
   const isDark = theme === 'dark';
+  
+  const isJobsCategorySelected = (cat: string) => {
+    if (!cat) return false;
+    const lower = cat.toLowerCase();
+    if (lower === 'jobs' || lower === '27a06a9e-3d5e-7f67-eb60-4a39536208c9' || lower.includes('وظائف') || lower.includes('فرص')) return true;
+    const match = categories.find((c: any) => c.id === cat || c.nameAr === cat) || CATEGORIES.find(c => c.id === cat || c.nameAr === cat);
+    if (!match) return false;
+    const matchId = (match.id || '').toLowerCase();
+    const matchNameAr = (match.nameAr || '').toLowerCase();
+    return matchId === 'jobs' || matchNameAr.includes('وظائف') || matchNameAr.includes('فرص');
+  };
   
   const [isInIframe, setIsInIframe] = useState(false);
   useEffect(() => {
@@ -3510,17 +3522,15 @@ useEffect(() => {
                   </AnimatePresence>
 
                   {/* Job Portal integration or standard view */}
-                  {selectedCategory === "jobs" ? (
+                  {isJobsCategorySelected(selectedCategory) ? (
                     <div className="mt-8">
-                       <React.Suspense fallback={<LazyFallback />}>
-                         <JobPortal
-                           currentUser={currentUser || GUEST_USER}
-                           isDark={isDark}
-                           ads={ads}
-                           onSelectAd={setSelectedAd}
-                           addToast={addToast}
-                         />
-                      </React.Suspense>
+                      <JobPortal
+                        currentUser={currentUser || GUEST_USER}
+                        isDark={isDark}
+                        ads={ads}
+                        onSelectAd={setSelectedAd}
+                        addToast={addToast}
+                      />
                     </div>
                   ) : (
                     <>
