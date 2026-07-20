@@ -96,7 +96,7 @@ export default function JobPortal({
         setApplications(JSON.parse(stored));
       } else {
         // Pre-seed some default job applications for demonstration if user has any active jobs
-        const myJobs = ads.filter(ad => ad.userId === currentUser.id && ad.category === "jobs");
+        const myJobs = ads.filter(ad => ad.userId === (currentUser?.id || 'guest_user') && ad.category === "jobs");
         const sampleApps: Application[] = [
           {
             id: "app_seed_1",
@@ -129,17 +129,17 @@ export default function JobPortal({
         ];
         
         // Let's also add 1 application that the current user supposedly sent to someone else
-        const otherJobs = ads.filter(ad => ad.userId !== currentUser.id && ad.category === "jobs");
+        const otherJobs = ads.filter(ad => ad.userId !== (currentUser?.id || 'guest_user') && ad.category === "jobs");
         if (otherJobs.length > 0) {
           sampleApps.push({
             id: "app_seed_user",
             adId: otherJobs[0].id,
             adTitle: otherJobs[0].title,
             adCategory: otherJobs[0].category,
-            applicantId: currentUser.id,
-            applicantName: currentUser.name,
-            applicantPhone: currentUser.phone || "+000 000000000",
-            email: currentUser.email || "user@example.com",
+            applicantId: (currentUser?.id || 'guest_user'),
+            applicantName: (currentUser?.name || 'زائر'),
+            applicantPhone: (currentUser?.phone || '') || "+000 000000000",
+            email: (currentUser?.email || '') || "user@example.com",
             coverLetter: "أتقدم إليكم برغبتي الصادقة لشغل هذه الفرصة الوظيفية الممتازة المتاحة في منصتكم الموقرة.",
             experience: "Intermediate (3-5 years)",
             status: "pending",
@@ -338,9 +338,9 @@ export default function JobPortal({
       adId: applyingAd.id,
       adTitle: applyingAd.title,
       adCategory: applyingAd.category,
-      applicantId: currentUser.id,
+      applicantId: (currentUser?.id || 'guest_user'),
       applicantName: nameInput,
-      applicantAvatar: currentUser.avatar,
+      applicantAvatar: (currentUser?.avatar || ''),
       applicantPhone: phoneInput,
       email: emailInput,
       coverLetter: coverLetterInput,
@@ -408,11 +408,11 @@ export default function JobPortal({
   };
 
   // Applications received (where current user owns the Ad)
-  const myJobAdsIds = ads.filter(ad => ad.userId === currentUser.id && ad.category === "jobs").map(ad => ad.id);
-  const receivedApplications = applications.filter(app => myJobAdsIds.includes(app.adId) && app.applicantId !== currentUser.id);
+  const myJobAdsIds = ads.filter(ad => ad.userId === (currentUser?.id || 'guest_user') && ad.category === "jobs").map(ad => ad.id);
+  const receivedApplications = applications.filter(app => myJobAdsIds.includes(app.adId) && app.applicantId !== (currentUser?.id || 'guest_user'));
 
   // Applications sent (where current user was the applicant)
-  const sentApplications = applications.filter(app => app.applicantId === currentUser.id);
+  const sentApplications = applications.filter(app => app.applicantId === (currentUser?.id || 'guest_user'));
 
   return (
     <div id="job-portal-main" className="space-y-6">
@@ -597,8 +597,8 @@ export default function JobPortal({
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {filteredVacancies.map((ad) => {
-                  const hasApplied = applications.some((app) => app.adId === ad.id && app.applicantId === currentUser.id);
-                  const belongsToCurrentUser = ad.userId === currentUser.id;
+                  const hasApplied = applications.some((app) => app.adId === ad.id && app.applicantId === (currentUser?.id || 'guest_user'));
+                  const belongsToCurrentUser = ad.userId === (currentUser?.id || 'guest_user');
                   
                   return (
                     <div
@@ -717,8 +717,8 @@ export default function JobPortal({
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {filteredSeekers.map((ad) => {
-                  const hasApplied = applications.some((app) => app.adId === ad.id && app.applicantId === currentUser.id);
-                  const belongsToCurrentUser = ad.userId === currentUser.id;
+                  const hasApplied = applications.some((app) => app.adId === ad.id && app.applicantId === (currentUser?.id || 'guest_user'));
+                  const belongsToCurrentUser = ad.userId === (currentUser?.id || 'guest_user');
                   
                   return (
                     <div
