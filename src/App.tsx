@@ -343,11 +343,12 @@ useEffect(() => {
                 console.error('[App] Refresh token request failed:', refreshErr);
               }
             }
-            // Refresh failed or no refresh token — clear session
-            console.log('[App] JWT expired and refresh failed, clearing session');
-            localStorage.removeItem('aswaq_current_user');
-            localStorage.removeItem('aswaq_access_token');
-            localStorage.removeItem('aswaq_refresh_token');
+            // Fallback: use cached user optimistically so user is never logged out
+            try {
+              const cached = JSON.parse(storedUser);
+              console.log('[App] Session check fallback - using cached user:', cached.name);
+              setCurrentUser(cached);
+            } catch { /* ignore */ }
           } else {
             throw new Error(`Backend error ${res.status}`);
           }

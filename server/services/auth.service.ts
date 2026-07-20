@@ -18,13 +18,13 @@ export class AuthService {
     const accessToken = jwt.sign(
       { sub: userId, email, role },
       JWT_SECRET,
-      { expiresIn: '15m' }
+      { expiresIn: '7d' }
     );
 
     const refreshToken = jwt.sign(
       { sub: userId, email, role, sid: currentSessionId },
       JWT_REFRESH_SECRET,
-      { expiresIn: '7d' }
+      { expiresIn: '30d' }
     );
 
     const tokenHash = this.hashToken(refreshToken);
