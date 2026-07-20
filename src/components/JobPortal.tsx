@@ -160,8 +160,121 @@ export default function JobPortal({
     localStorage.setItem("aswaq_job_applications", JSON.stringify(newApps));
   };
 
-  const marketAds = ads.filter(ad => currentMarket?.cities?.some(c => c.id === ad.city || c.nameAr === ad.city || c.nameEn === ad.city) || false);
-  const displayAds = marketAds.length > 0 ? marketAds : ads;
+  const defaultSampleJobs: Ad[] = [
+    {
+      id: "sample_job_1",
+      title: "مطلوب محاسب مالي ومدقق حسابات لشركة تجارية كبرى",
+      description: "تعلن مجموعة تجارية كبرى عن حاجتها إلى محاسب مالي خبرة لا تقل عن 3 سنوات في إعداد القوائم والتقارير المالية وحسابات المبيعات. دوام كامل مع حوافز مجزية وتأمين طبي.",
+      price: 1200,
+      currency: "USD",
+      city: "sanaa_city",
+      category: "jobs",
+      contactNumber: "777123456",
+      status: "active",
+      views: 184,
+      likes: 22,
+      isFeatured: true,
+      createdAt: new Date(Date.now() - 3600000 * 24).toISOString(),
+      userId: "user_1",
+      whatsappLink: "https://wa.me/967777123456",
+      images: ["https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=800&q=80"]
+    },
+    {
+      id: "sample_job_2",
+      title: "مطلوب مطور واجهات إلكترونية (React / TypeScript) — عمل عن بعد",
+      description: "مطلوب مبرمج ومطور واجهات مستخدم للعمل عن بعد مع فريق تقني عالمي. يشترط الخبرة في React و TypeScript و Tailwind CSS. دوام مرن ومكافآت مجزية.",
+      price: 2500,
+      currency: "USD",
+      city: "riyadh",
+      category: "jobs",
+      contactNumber: "0501234567",
+      status: "active",
+      views: 340,
+      likes: 56,
+      isFeatured: true,
+      createdAt: new Date(Date.now() - 3600000 * 48).toISOString(),
+      userId: "user_2",
+      whatsappLink: "https://wa.me/966501234567",
+      images: ["https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=800&q=80"]
+    },
+    {
+      id: "sample_job_3",
+      title: "فرصة عمل: مدير تسويق ومبيعات معارض",
+      description: "مطلوب مدير مبيعات خبرة في التسويق الميداني وإدارة الفرق البيعية والحملات الإعلانية. يشترط اللباقة والقدرة على القيادة وتطوير الأداء.",
+      price: 1500,
+      currency: "USD",
+      city: "amman",
+      category: "jobs",
+      contactNumber: "0791234567",
+      status: "active",
+      views: 210,
+      likes: 31,
+      isFeatured: true,
+      createdAt: new Date(Date.now() - 3600000 * 12).toISOString(),
+      userId: "jo_user_1",
+      whatsappLink: "https://wa.me/962791234567",
+      images: ["https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&w=800&q=80"]
+    },
+    {
+      id: "sample_job_4",
+      title: "مطلوب سائقي توصيل شحنات وطرد بسيارات أو دراجات نارية",
+      description: "فرص عمل فورية لسائقي التوصيل والنقل الخفيف والسريع. عمولات يومية مجزية وبدل وقود وهاتف ذكي وتأمين ضد الحوادث.",
+      price: 800,
+      currency: "USD",
+      city: "jeddah",
+      category: "jobs",
+      contactNumber: "0559876543",
+      status: "active",
+      views: 195,
+      likes: 27,
+      isFeatured: false,
+      createdAt: new Date(Date.now() - 3600000 * 6).toISOString(),
+      userId: "user_3",
+      whatsappLink: "https://wa.me/966559876543",
+      images: ["https://images.unsplash.com/photo-1526367790999-0150786686a2?auto=format&fit=crop&w=800&q=80"]
+    }
+  ];
+
+  const defaultSampleSeekers: Ad[] = [
+    {
+      id: "sample_seeker_1",
+      title: "مهندس مدني وإدارة مشاريع خبرة 6 سنوات يبحث عن عمل",
+      description: "مهندس مدني حاصل على بكالوريوس في الهندسة المدنية وخبرة ممتازة في الإشراف على الموقع، التخطيط، وحساب الكميات واستخدام برامج AutoCAD & Primavera. جاهز للعمل فوراً.",
+      price: 0,
+      currency: "USD",
+      city: "sanaa_city",
+      category: "jobs",
+      jobType: "seeking",
+      contactNumber: "770001122",
+      status: "active",
+      views: 120,
+      likes: 15,
+      isFeatured: true,
+      createdAt: new Date(Date.now() - 3600000 * 18).toISOString(),
+      userId: "user_3",
+      whatsappLink: "https://wa.me/967770001122",
+      images: ["https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=800&q=80"]
+    },
+    {
+      id: "sample_seeker_2",
+      title: "مصممة جرافيك وتسويق محتوى إلكتروني تبحث عن عمل جزئي أو عن بعد",
+      description: "مصممة جرافيك محترفة في تصميم الهويات البصرية، إعلانات السوشيال ميديا، وفيديوهات الموشن جرافيك ببرامج Photoshop, Illustrator, After Effects. متاح البورتفوليو برابط الأعمال.",
+      price: 0,
+      currency: "USD",
+      city: "amman",
+      category: "jobs",
+      jobType: "seeking",
+      contactNumber: "078889900",
+      status: "active",
+      views: 290,
+      likes: 42,
+      isFeatured: true,
+      createdAt: new Date(Date.now() - 3600000 * 30).toISOString(),
+      userId: "jo_user_2",
+      whatsappLink: "https://wa.me/96278889900",
+      images: ["https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=800&q=80"]
+    }
+  ];
 
   const isJobAd = (ad: Ad) => {
     const cat = (ad.category || '').toLowerCase();
@@ -169,9 +282,12 @@ export default function JobPortal({
     return cat === "jobs" || cat.includes("وظائف") || cat.includes("فرص") || cat.includes("job") || catId.length > 0;
   };
 
-  // Lists of Vacant Jobs and Job Seekers based on updated category identifiers
-  const jobVacancies = displayAds.filter(ad => (ad.category === "jobs" || isJobAd(ad)) && ad.jobType !== "seeking");
-  const jobSeekers = displayAds.filter(ad => (ad.category === "jobs" || isJobAd(ad)) && ad.jobType === "seeking");
+  const rawVacancies = ads.filter(ad => isJobAd(ad) && ad.jobType !== "seeking");
+  const rawSeekers = ads.filter(ad => isJobAd(ad) && ad.jobType === "seeking");
+
+  // Fallback to rich sample jobs and seekers if database/state has no matching ads
+  const jobVacancies = rawVacancies.length > 0 ? rawVacancies : defaultSampleJobs;
+  const jobSeekers = rawSeekers.length > 0 ? rawSeekers : defaultSampleSeekers;
 
   // Filter logic
   const filteredVacancies = jobVacancies.filter(ad => {
@@ -329,23 +445,23 @@ export default function JobPortal({
 
         {/* Rapid Overview Stats Grid */}
         <div className="flex flex-wrap gap-4 w-full md:w-auto">
-          <div className={`p-4 rounded-2xl border text-center flex-1 md:flex-initial min-w-[110px] transition-colors ${isDark ? "bg-slate-950/40 border-slate-800/80" : "bg-slate-50 border-slate-100"}`}>
-            <span className="block text-slate-400 text-[10px] font-black uppercase tracking-wide">
+          <div className={`p-4 rounded-2xl border text-center flex-1 md:flex-initial min-w-[110px] transition-colors ${isDark ? "bg-slate-950/60 border-slate-800" : "bg-slate-50 border-slate-200/80 shadow-xs"}`}>
+            <span className="block text-slate-700 dark:text-slate-200 text-xs font-black uppercase tracking-wide mb-1">
               {isRtl ? "الوظائف النشطة" : "Active Jobs"}
             </span>
-            <span className="text-xl font-black text-emerald-500">{jobVacancies.length}</span>
+            <span className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400">{jobVacancies.length}</span>
           </div>
-          <div className={`p-4 rounded-2xl border text-center flex-1 md:flex-initial min-w-[110px] transition-colors ${isDark ? "bg-slate-950/40 border-slate-800/80" : "bg-slate-50 border-slate-100"}`}>
-            <span className="block text-slate-400 text-[10px] font-black uppercase tracking-wide">
+          <div className={`p-4 rounded-2xl border text-center flex-1 md:flex-initial min-w-[110px] transition-colors ${isDark ? "bg-slate-950/60 border-slate-800" : "bg-slate-50 border-slate-200/80 shadow-xs"}`}>
+            <span className="block text-slate-700 dark:text-slate-200 text-xs font-black uppercase tracking-wide mb-1">
               {isRtl ? "الباحثون عن عمل" : "Job Seekers"}
             </span>
-            <span className="text-xl font-black text-purple-500">{jobSeekers.length}</span>
+            <span className="text-2xl font-extrabold text-purple-600 dark:text-purple-400">{jobSeekers.length}</span>
           </div>
-          <div className={`p-4 rounded-2xl border text-center flex-1 md:flex-initial min-w-[110px] transition-colors ${isDark ? "bg-slate-950/40 border-slate-800/80" : "bg-slate-50 border-slate-100"}`}>
-            <span className="block text-slate-400 text-[10px] font-black uppercase tracking-wide">
+          <div className={`p-4 rounded-2xl border text-center flex-1 md:flex-initial min-w-[110px] transition-colors ${isDark ? "bg-slate-950/60 border-slate-800" : "bg-slate-50 border-slate-200/80 shadow-xs"}`}>
+            <span className="block text-slate-700 dark:text-slate-200 text-xs font-black uppercase tracking-wide mb-1">
               {isRtl ? "طلباتي والترشيحات" : "My Applications"}
             </span>
-            <span className="text-xl font-black text-orange-500">
+            <span className="text-2xl font-extrabold text-orange-600 dark:text-orange-400">
               {receivedApplications.length + sentApplications.length}
             </span>
           </div>

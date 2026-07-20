@@ -358,6 +358,86 @@ export const INITIAL_ADS: Ad[] = [
     instagramLink: 'alhamdani_cars'
   },
   {
+    id: 'job_ad_1',
+    title: 'مطلوب محاسب مالي ومدقق حسابات لشركة تجارية كبرى',
+    description: 'تعلن شركة تجارية كبرى عن حاجتها إلى محاسب مالي خبرة لا تقل عن 3 سنوات في إعداد القوائم والتقارير المالية والتحليل المالي. دوام كامل مع حوافز مجزية وتأمين طبي.',
+    price: 1200,
+    currency: 'USD',
+    city: 'amman',
+    category: 'jobs',
+    images: [
+      'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=800&q=80'
+    ],
+    contactNumber: '0791234567',
+    status: 'active',
+    views: 142,
+    likes: 18,
+    isFeatured: true,
+    createdAt: '2026-06-01T10:00:00Z',
+    userId: 'jo_user_1',
+    whatsappLink: 'https://wa.me/962791234567'
+  },
+  {
+    id: 'job_ad_2',
+    title: 'مطلوب مطور واجهات إلكترونية (React/TypeScript) — عمل عن بعد',
+    description: 'مطلوب مبرمج ومطور واجهات مستخدم للعمل عن بعد مع فريق تقني عالمي. يشترط الخبرة في TypeScript و Tailwind CSS والربط مع APIs. دوام مرن ومكافآت مجزية.',
+    price: 2500,
+    currency: 'USD',
+    city: 'riyadh',
+    category: 'jobs',
+    images: [
+      'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=800&q=80'
+    ],
+    contactNumber: '0501234567',
+    status: 'active',
+    views: 310,
+    likes: 45,
+    isFeatured: true,
+    createdAt: '2026-06-05T14:20:00Z',
+    userId: 'user_1',
+    whatsappLink: 'https://wa.me/966501234567'
+  },
+  {
+    id: 'job_ad_3',
+    title: 'فرصة عمل: مدير مبيعات وتطور تسويقي للمعارض',
+    description: 'مطلوب مدير مبيعات ذو خبرة عالية في التسويق الرقمي والميداني وإدارة الفرق البيعية. يشترط اللباقة والقدرة على القيادة وتطوير الأداء.',
+    price: 1500,
+    currency: 'USD',
+    city: 'sanaa_city',
+    category: 'jobs',
+    images: [
+      'https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&w=800&q=80'
+    ],
+    contactNumber: '777123456',
+    status: 'active',
+    views: 215,
+    likes: 29,
+    isFeatured: true,
+    createdAt: '2026-06-08T11:00:00Z',
+    userId: 'user_1',
+    whatsappLink: 'https://wa.me/967777123456'
+  },
+  {
+    id: 'job_ad_4',
+    title: 'مطلوب سائقي توصيل شحنات وطرد بسيارات أو دراجات نارية',
+    description: 'فرص عمل فورية لسائقي التوصيل والنقل الخفيف والسريع. عمولات يومية مجزية وبدل وقود وهاتف ذكي وتأمين ضد الحوادث.',
+    price: 800,
+    currency: 'USD',
+    city: 'jeddah',
+    category: 'jobs',
+    images: [
+      'https://images.unsplash.com/photo-1526367790999-0150786686a2?auto=format&fit=crop&w=800&q=80'
+    ],
+    contactNumber: '0559876543',
+    status: 'active',
+    views: 180,
+    likes: 22,
+    isFeatured: false,
+    createdAt: '2026-06-10T09:30:00Z',
+    userId: 'user_2',
+    whatsappLink: 'https://wa.me/966559876543'
+  },
+  {
     id: 'ad_2',
     title: 'شقة فاخرة للبيع في حي حدة الراقي',
     description: 'شقة سكنية واسعة ومصممة بأحدث الديكورات تقع في قلب حي حدة بصنعاء. تتكون من 4 غرف واسعة، صالة استقبال ضيوف كبيرة، مطبخ مجهز متكامل، 3 حمامات ممتازة، بلكونة مطلة على الشارع الرئيسي مع حراسة ومصعد شغال 24 ساعة ومولد كهرباء طوارئ.',
