@@ -2158,11 +2158,19 @@ ${urls.join('\n')}
 
   public async start(): Promise<void> {
     const getHtmlTemplate = (): string => {
-      const isProd = process.env.NODE_ENV === 'production';
-      const templatePath = isProd 
-        ? path.join(process.cwd(), 'dist', 'index.html')
-        : path.join(process.cwd(), 'index.html');
-      return fs.readFileSync(templatePath, 'utf-8');
+      try {
+        const distTemplate = path.join(process.cwd(), 'dist', 'index.html');
+        if (fs.existsSync(distTemplate)) {
+          return fs.readFileSync(distTemplate, 'utf-8');
+        }
+        const rootTemplate = path.join(process.cwd(), 'index.html');
+        if (fs.existsSync(rootTemplate)) {
+          return fs.readFileSync(rootTemplate, 'utf-8');
+        }
+      } catch (e) {
+        console.error('Error reading index.html template:', e);
+      }
+      return '<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><title>أسواق</title></head><body style="background:#090d16;color:#fff;text-align:center;padding:50px"><h2>أسواق</h2><script type="module" src="/src/main.tsx"></script></body></html>';
     };
 
     // 1. Dynamic SEO Ad Detail Route: /:countryCode(2 letters)/:categoryName/:titleSlug-:id(UUID)

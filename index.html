@@ -112,6 +112,25 @@
       .leaflet-top, .leaflet-bottom { z-index: 10 !important; }
       .leaflet-control { z-index: 10 !important; }
     </style>
+    <script>
+      // Self-healing script: Clear stale Service Worker cache if a legacy JS error occurs
+      window.addEventListener('error', function(e) {
+        if (e.message && (e.message.indexOf('before initialization') !== -1 || e.message.indexOf('Loading chunk') !== -1)) {
+          console.warn('[Aswaq Auto-Recovery] Legacy cached JS error detected. Purging cache storage...');
+          if ('caches' in window) {
+            caches.keys().then(function(names) {
+              for (let name of names) { caches.delete(name); }
+            });
+          }
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+              for (let registration of registrations) { registration.unregister(); }
+            });
+          }
+          setTimeout(function() { window.location.reload(true); }, 300);
+        }
+      });
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -352,7 +352,7 @@ export const AdsController = () => {
             longitude: dto.longitude,
             contactNumber: dto.contactNumber,
             userId: req.user!.id, // Securely mapped from JWT
-            status: (dto as any).status === 'PENDING' ? 'PENDING' : 'ACTIVE',
+            status: (dto as any).status || 'PENDING',
           }
         });
 

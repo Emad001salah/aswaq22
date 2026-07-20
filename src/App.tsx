@@ -79,7 +79,7 @@ import ToastContainer, { ToastMessage } from "./components/Toast.tsx";
 import socket, { joinRoom } from "./lib/socket.ts";
 import MainContentArea from "./components/MainContentArea.tsx";
 import { setupPushNotifications } from "./lib/native";
-import { onAuthStateChanged } from "firebase/auth";
+import { onAuthStateChanged, signOut } from "firebase/auth";
 import { auth } from "./lib/firebase";
 import { API_BASE_URL } from "./lib/config";
 import { loadGoogleMapsScript } from "./modules/maps/googleMaps.ts";
@@ -157,7 +157,8 @@ const formatPrice = (price: any) => {
   return new Intl.NumberFormat("en-US").format(Number(price));
 };
 
-export function slugify(text: string): string {
+export function slugify(text?: string | null): string {
+  if (!text) return '';
   return text
     .toString()
     .toLowerCase()
@@ -182,6 +183,23 @@ export default function App() {
   const [selectedDistrict, setSelectedDistrict] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedSubCategory, setSelectedSubCategory] = useState("");
+  
+  // Top-level App State Declarations (prevents initialization TDZ hoisting errors)
+  const [currentUser, setCurrentUser] = useState<User | null>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('aswaq_current_user');
+        return saved ? JSON.parse(saved) : null;
+      } catch (e) {
+        console.error('Failed to parse current user from localStorage', e);
+        return null;
+      }
+    }
+    return null;
+  });
+  const [selectedUserPreview, setSelectedUserPreview] = useState<User | null>(null);
+  const [platformMode, setPlatformMode] = useState<'marketplace' | 'delivery' | 'social' | 'reels'>('marketplace');
+  const [viewMode, setViewMode] = useState<"split" | "grid" | "map">("split");
   
   // ── Auth Persistence via our own JWT ────────────────────────────────────
   // We use inMemoryPersistence for Firebase (to bypass Edge tracking prevention).
@@ -398,7 +416,7 @@ useEffect(() => {
     const handleAuthRequired = () => {
       console.warn('[App] Authentication required event received. Prompting login...');
       addToast('مطلوب تسجيل الدخول', 'يرجى تسجيل الدخول للوصول لهذه العملية.', 'info');
-      setIsAuthModalOpen(true);
+      triggerLoginFlow('splash');
     };
 
     window.addEventListener('aswaq:auth-required', handleAuthRequired);
@@ -512,89 +530,6 @@ useEffect(() => {
 
     syncRouteToState();
   }, [location.pathname]);
-
-  // 2. Synchronize state to URL pathname & Document Title
-  useEffect(() => {
-    if (selectedUserPreview) {
-      const isOwn = currentUser && (
-        currentUser.id === selectedUserPreview.id || 
-        (currentUser.email && selectedUserPreview.email && currentUser.email.toLowerCase() === selectedUserPreview.email.toLowerCase())
-      );
-      const targetPath = isOwn ? '/profile' : `/profile/${selectedUserPreview.id}`;
-      if (location.pathname !== targetPath) {
-        navigate(targetPath, { replace: false });
-      }
-      document.title = isOwn ? 'ملفي الشخصي | أسواق' : `الملف الشخصي - ${selectedUserPreview.name} | أسواق`;
-      return;
-    }
-
-    if (platformMode === 'spotlight' && location.pathname !== '/reels') {
-      navigate('/reels');
-      document.title = 'شورتس وسواري أسواق | فيديوهات الإعلانات';
-      return;
-    }
-
-    if (platformMode === 'jobs' && location.pathname !== '/jobs') {
-      navigate('/jobs');
-      document.title = 'بوابة الوظائف والفرص | أسواق';
-      return;
-    }
-
-    if (platformMode === 'delivery' && location.pathname !== '/delivery') {
-      navigate('/delivery');
-      document.title = 'خدمات الشحن والتوصيل | أسواق';
-      return;
-    }
-
-    if (platformMode === 'create' && location.pathname !== '/create-ad') {
-      navigate('/create-ad');
-      document.title = 'إضافة إعلان جديد | أسواق';
-      return;
-    }
-
-    // Avoid updating URL if we are currently looking at an ad detail page
-    const uuidRegex = /[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
-    if (location.pathname.match(uuidRegex) || selectedAd) return;
-
-    if (platformMode === 'marketplace') {
-      const countryCode = currentMarket.countryCode.toLowerCase();
-      const categoryObject = CATEGORIES.find(c => c.id === selectedCategory);
-      const cat = categoryObject?.nameEn?.toLowerCase() || '';
-      
-      if (selectedCity) {
-        const market = MARKETS[currentMarket.countryCode];
-        const city = market?.cities.find(c => c.id === selectedCity);
-        if (city && cat) {
-          const citySlug = slugify(city.nameEn);
-          navigate(`/${countryCode}/${citySlug}/${cat}`);
-          return;
-        }
-      }
-      
-      if (cat) {
-        navigate(`/${countryCode}/${cat}`);
-      } else if (location.pathname !== '/') {
-        navigate('/');
-      }
-      document.title = 'أسواق | منصة الإعلانات المجانية في الوطن العربي — بيع، شراء، تأجير';
-    }
-  }, [selectedUserPreview, platformMode, currentMarket.countryCode, selectedCategory, selectedCity]);
-
-  // 3. Synchronize selectedAd state reset to parent URL pathname
-  useEffect(() => {
-    if (!selectedAd && !selectedUserPreview && ['/reels', '/jobs', '/delivery', '/create-ad', '/profile'].includes(location.pathname)) {
-      return;
-    }
-    if (!selectedAd) {
-      const uuidRegex = /[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
-      if (location.pathname.match(uuidRegex)) {
-        const countryCode = currentMarket.countryCode.toLowerCase();
-        const categoryObject = CATEGORIES.find(c => c.id === selectedCategory);
-        const cat = categoryObject?.nameEn?.toLowerCase() || '';
-        navigate(cat ? `/${countryCode}/${cat}` : '/');
-      }
-    }
-  }, [selectedAd]);
 
   // Load Google Maps Script once globally
   useEffect(() => {
@@ -820,18 +755,6 @@ useEffect(() => {
   });
   const [filteredAds, setFilteredAds] = useState<Ad[]>([]);
   const [loading, setLoading] = useState(true);
-  const [currentUser, setCurrentUser] = useState<User | null>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem('aswaq_current_user');
-        return saved ? JSON.parse(saved) : null;
-      } catch (e) {
-        console.error('Failed to parse current user from localStorage', e);
-        return null;
-      }
-    }
-    return null;
-  });
 
   useEffect(() => {
     if (currentUser) {
@@ -922,8 +845,6 @@ useEffect(() => {
     return Object.values(MARKETS).find(market => market.cities.some(city => city.id === cityId))?.countryCode;
   };
 
-  const [viewMode, setViewMode] = useState<"split" | "grid" | "map">("split");
-  const [platformMode, setPlatformMode] = useState<'marketplace' | 'delivery' | 'social' | 'reels'>('marketplace');
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
   useEffect(() => {
@@ -1028,7 +949,6 @@ useEffect(() => {
       }
     }
   };
-  const [selectedUserPreview, setSelectedUserPreview] = useState<User | null>(null);
   const [showAiModal, setShowAiModal] = useState(false);
   const [showDiscovery, setShowDiscovery] = useState(false);
   const mapRef = React.useRef<AdMapHandle>(null);
@@ -1050,6 +970,89 @@ useEffect(() => {
     setWelcomeFlowInitialStep(initialStep);
     setShowWelcomeFlow(true);
   };
+
+  // 2. Synchronize state to URL pathname & Document Title
+  useEffect(() => {
+    if (selectedUserPreview) {
+      const isOwn = currentUser && (
+        currentUser.id === selectedUserPreview.id || 
+        (currentUser.email && selectedUserPreview.email && currentUser.email.toLowerCase() === selectedUserPreview.email.toLowerCase())
+      );
+      const targetPath = isOwn ? '/profile' : `/profile/${selectedUserPreview.id}`;
+      if (location.pathname !== targetPath) {
+        navigate(targetPath, { replace: false });
+      }
+      document.title = isOwn ? 'ملفي الشخصي | أسواق' : `الملف الشخصي - ${selectedUserPreview.name} | أسواق`;
+      return;
+    }
+
+    if (platformMode === 'spotlight' && location.pathname !== '/reels') {
+      navigate('/reels');
+      document.title = 'شورتس وسواري أسواق | فيديوهات الإعلانات';
+      return;
+    }
+
+    if (platformMode === 'jobs' && location.pathname !== '/jobs') {
+      navigate('/jobs');
+      document.title = 'بوابة الوظائف والفرص | أسواق';
+      return;
+    }
+
+    if (platformMode === 'delivery' && location.pathname !== '/delivery') {
+      navigate('/delivery');
+      document.title = 'خدمات الشحن والتوصيل | أسواق';
+      return;
+    }
+
+    if (platformMode === 'create' && location.pathname !== '/create-ad') {
+      navigate('/create-ad');
+      document.title = 'إضافة إعلان جديد | أسواق';
+      return;
+    }
+
+    // Avoid updating URL if we are currently looking at an ad detail page
+    const uuidRegex = /[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+    if (location.pathname.match(uuidRegex) || selectedAd) return;
+
+    if (platformMode === 'marketplace') {
+      const countryCode = currentMarket.countryCode.toLowerCase();
+      const categoryObject = CATEGORIES.find(c => c.id === selectedCategory);
+      const cat = categoryObject?.nameEn?.toLowerCase() || '';
+      
+      if (selectedCity) {
+        const market = MARKETS[currentMarket.countryCode];
+        const city = market?.cities.find(c => c.id === selectedCity);
+        if (city && cat) {
+          const citySlug = slugify(city.nameEn);
+          navigate(`/${countryCode}/${citySlug}/${cat}`);
+          return;
+        }
+      }
+      
+      if (cat) {
+        navigate(`/${countryCode}/${cat}`);
+      } else if (location.pathname !== '/') {
+        navigate('/');
+      }
+      document.title = 'أسواق | منصة الإعلانات المجانية في الوطن العربي — بيع، شراء، تأجير';
+    }
+  }, [selectedUserPreview, platformMode, currentMarket.countryCode, selectedCategory, selectedCity]);
+
+  // 3. Synchronize selectedAd state reset to parent URL pathname
+  useEffect(() => {
+    if (!selectedAd && !selectedUserPreview && ['/reels', '/jobs', '/delivery', '/create-ad', '/profile'].includes(location.pathname)) {
+      return;
+    }
+    if (!selectedAd) {
+      const uuidRegex = /[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+      if (location.pathname.match(uuidRegex)) {
+        const countryCode = currentMarket.countryCode.toLowerCase();
+        const categoryObject = CATEGORIES.find(c => c.id === selectedCategory);
+        const cat = categoryObject?.nameEn?.toLowerCase() || '';
+        navigate(cat ? `/${countryCode}/${cat}` : '/');
+      }
+    }
+  }, [selectedAd]);
   const [showIdentityModal, setShowIdentityModal] = useState(false);
   const [targetUpgradeRole, setTargetUpgradeRole] = useState<'merchant' | 'driver' | 'subscriber'>('merchant');
   const [pendingAd, setPendingAd] = useState<Ad | null>(null);

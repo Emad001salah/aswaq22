@@ -3,9 +3,9 @@ import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { prisma } from '../../src/lib/prisma.ts';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'change-me-in-production';
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'your-refresh-secret-key';
-const PEPPER_SECRET = process.env.PEPPER_SECRET || 'fallback_pepper_secret_key';
+const JWT_SECRET = process.env.JWT_SECRET || 'aswaq_jwt_secret_dev_key_2026_super_secure_998231';
+const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'aswaq_jwt_refresh_secret_key_2026';
+const PEPPER_SECRET = process.env.PEPPER_SECRET || 'aswaq-pepper-secret-2026';
 
 export class AuthService {
   private hashToken(token: string): string {
@@ -15,18 +15,15 @@ export class AuthService {
   async generateTokens(userId: string, email: string, role: string, sessionId?: string, oldTokenId?: string) {
     const currentSessionId = sessionId || crypto.randomUUID();
 
-    const secret = process.env.JWT_SECRET || 'aswaq_jwt_secret_dev_key_2026_super_secure_998231';
-    const refreshSecret = process.env.JWT_REFRESH_SECRET || 'aswaq_jwt_refresh_secret_key_2026';
-
     const accessToken = jwt.sign(
       { sub: userId, email, role },
-      secret,
+      JWT_SECRET,
       { expiresIn: '365d' }
     );
 
     const refreshToken = jwt.sign(
       { sub: userId, email, role, sid: currentSessionId },
-      refreshSecret,
+      JWT_REFRESH_SECRET,
       { expiresIn: '30d' }
     );
 
@@ -66,7 +63,7 @@ export class AuthService {
         where: { tokenHash },
       });
 
-      // Token Replay Attack Detection: If token is revoked, invalidate the ENTIRE token family (all tokens under this sessionId)
+      // Token Replay Attack Detection: If token is revoked, invalidate the ENTIRE token family
       if (storedToken && storedToken.revokedAt) {
         console.warn(`[Auth Service] Replay attack detected for Session ID: ${decoded.sid}. Revoking all family tokens.`);
         if (decoded.sid) {
@@ -76,6 +73,10 @@ export class AuthService {
           });
         }
         throw new Error('REPLAY_ATTACK_DETECTED');
+      }
+
+      if (storedToken && storedToken.expiresAt < new Date()) {
+        throw new Error('TOKEN_EXPIRED');
       }
 
       const user = await prisma.user.findUnique({

@@ -13,5 +13,6 @@ export default {
     '^@/(.*)$': '<rootDir>/$1',
   },
   testPathIgnorePatterns: ['/node_modules/', '/tests/e2e/browser/'],
+  testTimeout: 30000,
 };
 

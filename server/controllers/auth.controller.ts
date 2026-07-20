@@ -326,14 +326,21 @@ export function AuthController() {
       return res.status(400).json({ error: 'Missing Refresh Token' });
     }
     try {
-      const decoded = jwt.verify(refreshToken, JWT_REFRESH_SECRET) as { sub: string; email: string; role: string; sid: string };
+      const decoded = jwt.verify(refreshToken, JWT_REFRESH_SECRET) as any;
+      const sid = decoded.sid;
+      const tokenHash = crypto.createHmac('sha256', process.env.PEPPER_SECRET || process.env.PEPPER || 'aswaq-pepper-secret-2026').update(refreshToken).digest('hex');
       await prisma.refreshToken.updateMany({
-        where: { sessionId: decoded.sid },
+        where: { OR: [{ tokenHash }, { sessionId: sid || undefined }] },
         data: { revokedAt: new Date() }
       });
-      res.json({ success: true });
+      return res.json({ success: true, message: 'تم تسجيل الخروج بنجاح.' });
     } catch (e: any) {
-      res.status(400).json({ error: 'Invalid Token', message: 'رمز الجلسة غير صالح.' });
+      const tokenHash = crypto.createHmac('sha256', process.env.PEPPER_SECRET || process.env.PEPPER || 'aswaq-pepper-secret-2026').update(refreshToken).digest('hex');
+      await prisma.refreshToken.updateMany({
+        where: { tokenHash },
+        data: { revokedAt: new Date() }
+      });
+      return res.json({ success: true, message: 'تم تسجيل الخروج.' });
     }
   });
 

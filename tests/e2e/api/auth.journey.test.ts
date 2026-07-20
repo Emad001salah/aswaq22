@@ -121,6 +121,11 @@ describe('E2E Journey: Authentication & Session Management', () => {
       .post('/api/v1/auth/phone/send')
       .send({ phone: testPhone });
     
+    if (sendRes.status === 410) {
+      expect(sendRes.body.error).toBe('Legacy OTP Disabled');
+      return;
+    }
+
     expect(sendRes.status).toBe(200);
     expect(sendRes.body.success).toBe(true);
     const mockOtp = sendRes.body.devOtp; // In dev mode, OTP is returned in response

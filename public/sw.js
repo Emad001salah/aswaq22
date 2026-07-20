@@ -1,4 +1,4 @@
-const CACHE_NAME = 'aswaq-pwa-cache-v3';
+const CACHE_NAME = 'aswaq-pwa-cache-v4-force-reload';
 const ASSETS_TO_CACHE = [
   '/aswaq-icon.png',
   '/aswaq-icon-192.png',
@@ -21,14 +21,14 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// Activate Event - Clean up stale cache versions
+// Activate Event - Clean up stale cache versions immediately
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
       return Promise.all(
         keys.map((key) => {
           if (key !== CACHE_NAME) {
-            console.log('[Service Worker] Removing stale cache:', key);
+            console.log('[Service Worker] Purging stale cache version:', key);
             return caches.delete(key);
           }
         })
@@ -42,50 +42,37 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Exclude API routes, Live streams, Socket.io, and non-HTTP(S) schemes (e.g. chrome-extension://)
+  // Exclude API routes, Live streams, Socket.io, and non-HTTP(S) schemes
   if (url.pathname.startsWith('/api') || url.pathname.startsWith('/socket') || request.method !== 'GET' || !url.protocol.startsWith('http')) {
-    return; // Pass through to standard browser fetch
-  }
-
-  // Bypass service worker cache completely for the main HTML file to prevent broken asset hashes
-  if (url.pathname === '/' || url.pathname === '/index.html') {
-    event.respondWith(
-      fetch(request).catch(() => caches.match('/index.html') || caches.match('/'))
-    );
     return;
   }
 
-  // Caching Strategy: Stale-While-Revalidate for app assets, Network-First for main documents
-  if (ASSETS_TO_CACHE.includes(url.pathname) || url.pathname.endsWith('.js') || url.pathname.endsWith('.css') || url.hostname.includes('unpkg.com')) {
-    event.respondWith(
-      caches.match(request).then((cachedResponse) => {
-        const fetchPromise = fetch(request).then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
-            const responseClone = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
-          }
-          return networkResponse;
-        }).catch(() => null);
-
-        return cachedResponse || fetchPromise;
-      })
-    );
-  } else {
-    // Default Cache Strategy: Network first, fallback to cached offline shell
+  // Bypass service worker cache completely for HTML & JS bundle files to ensure zero stale JS errors
+  if (url.pathname === '/' || url.pathname === '/index.html' || url.pathname.endsWith('.js')) {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          if (response && response.status === 200 && !url.pathname.startsWith('/src/')) {
+          if (response && response.status === 200) {
             const responseClone = response.clone();
             caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
           }
           return response;
         })
-        .catch(() => {
-          return caches.match(request).then((cachedResponse) => {
-            return cachedResponse || caches.match('/');
-          });
-        })
+        .catch(() => caches.match(request) || caches.match('/'))
     );
+    return;
   }
+
+  // Caching Strategy: Network-First for CSS & Assets, fallback to cache
+  event.respondWith(
+    fetch(request)
+      .then((response) => {
+        if (response && response.status === 200) {
+          const responseClone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
+        }
+        return response;
+      })
+      .catch(() => caches.match(request) || caches.match('/'))
+  );
 });

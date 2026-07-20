@@ -13,7 +13,7 @@ export interface FileData {
 }
 
 export interface StorageStrategy {
-  uploadFile(file: FileData): Promise<string>;
+  uploadFile(file: FileData, customFolder?: string): Promise<string>;
   deleteFile(fileUrl: string): Promise<void>;
   uploadFileByKey(key: string, buffer: Buffer, mimeType: string): Promise<void>;
   deleteFileByKey(key: string): Promise<void>;
@@ -283,7 +283,7 @@ export class StorageService {
     return StorageService.instance;
   }
 
-  public async uploadFile(file: FileData): Promise<string> {
+  public async uploadFile(file: FileData, customFolder?: string): Promise<string> {
     let processedFile = { ...file };
 
     if (file.mimetype.startsWith('image/')) {
@@ -306,7 +306,7 @@ export class StorageService {
       }
     }
 
-    return this.strategy.uploadFile(processedFile);
+    return this.strategy.uploadFile(processedFile, customFolder);
   }
 
   public async deleteFile(fileUrl: string): Promise<void> {
