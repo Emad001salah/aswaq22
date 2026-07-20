@@ -183,6 +183,12 @@ export default function App() {
   const [selectedCity, setSelectedCity] = useState("");
   const [selectedDistrict, setSelectedDistrict] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
+
+  useEffect(() => {
+    if (selectedCategory && isJobsCategorySelected(selectedCategory)) {
+      setPlatformMode('jobs');
+    }
+  }, [selectedCategory]);
   const [selectedSubCategory, setSelectedSubCategory] = useState("");
   
   // Top-level App State Declarations (prevents initialization TDZ hoisting errors)
@@ -3569,6 +3575,24 @@ useEffect(() => {
         )}
 
 
+
+              {platformMode === "jobs" && (
+                <motion.div
+                  key="jobs-platform-view"
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -15 }}
+                  className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"
+                >
+                  <JobPortal
+                    currentUser={currentUser || GUEST_USER}
+                    isDark={isDark}
+                    ads={ads}
+                    onSelectAd={setSelectedAd}
+                    addToast={addToast}
+                  />
+                </motion.div>
+              )}
 
               {platformMode === "delivery" && (
                 <React.Suspense fallback={<LazyFallback />}>
