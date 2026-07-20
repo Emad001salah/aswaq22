@@ -53,7 +53,10 @@ export class AuthService {
 
   async refresh(token: string) {
     try {
-      const decoded = jwt.verify(token, JWT_REFRESH_SECRET) as { sub: string; email: string; role: string; sid: string };
+      const decoded = jwt.verify(token, JWT_REFRESH_SECRET) as { sub?: string; id?: string; email: string; role: string; sid?: string };
+      const userId = decoded.sub || decoded.id;
+      if (!userId) throw new Error('INVALID_TOKEN');
+
       const tokenHash = this.hashToken(token);
 
       const storedToken = await prisma.refreshToken.findUnique({
@@ -63,19 +66,28 @@ export class AuthService {
       // Token Replay Attack Detection: If token is revoked, invalidate the ENTIRE token family (all tokens under this sessionId)
       if (storedToken && storedToken.revokedAt) {
         console.warn(`[Auth Service] Replay attack detected for Session ID: ${decoded.sid}. Revoking all family tokens.`);
-        await prisma.refreshToken.updateMany({
-          where: { sessionId: decoded.sid },
-          data: { revokedAt: new Date() },
-        });
+        if (decoded.sid) {
+          await prisma.refreshToken.updateMany({
+            where: { sessionId: decoded.sid },
+            data: { revokedAt: new Date() },
+          });
+        }
         throw new Error('REPLAY_ATTACK_DETECTED');
       }
 
-      if (!storedToken || new Date() > storedToken.expiresAt) {
-        throw new Error('INVALID_TOKEN');
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, email: true, role: true }
+      });
+      if (!user) {
+        throw new Error('USER_NOT_FOUND');
       }
 
+      const sid = decoded.sid || crypto.randomUUID();
+      const oldTokenId = storedToken ? storedToken.id : undefined;
+
       // Generate new pair and revoke old one
-      return this.generateTokens(decoded.sub, decoded.email, decoded.role, decoded.sid, storedToken.id);
+      return this.generateTokens(user.id, user.email, user.role, sid, oldTokenId);
     } catch (err: any) {
       throw err;
     }

@@ -50,10 +50,8 @@ export async function refreshAccessToken(): Promise<string | null> {
     console.error('[API] Token refresh request failed:', err);
   }
 
-  // Refresh failed -> clear stale credentials
-  localStorage.removeItem('aswaq_current_user');
+  // Refresh failed -> clear expired access token only (do NOT force logout)
   localStorage.removeItem('aswaq_access_token');
-  localStorage.removeItem('aswaq_refresh_token');
   return null;
 }
 
