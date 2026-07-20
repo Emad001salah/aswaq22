@@ -2149,6 +2149,9 @@ useEffect(() => {
         };
         setCurrentUser(formattedUser);
         localStorage.setItem('aswaq_current_user', JSON.stringify(formattedUser));
+        if (selectedUserPreview && selectedUserPreview.id === formattedUser.id) {
+          setSelectedUserPreview(formattedUser);
+        }
         addToast("تم التحديث", "تم تحديث بيانات ملفك الشخصي بنجاح", "success");
       } else {
         const responseText = await response.text();

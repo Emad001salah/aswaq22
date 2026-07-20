@@ -55,6 +55,16 @@ export default function UserProfileModal({
    const [uploadingAvatar, setUploadingAvatar] = React.useState(false);
    const [uploadingCover, setUploadingCover] = React.useState(false);
 
+  React.useEffect(() => {
+    setEditForm({
+      name: user.name,
+      phone: user.phone || '',
+      bio: user.bio || '',
+      avatar: user.avatar || '',
+      coverPhoto: user.coverPhoto || ''
+    });
+  }, [user]);
+
   const handleSave = async () => {
     if (!onUpdateProfile) return;
     setIsSaving(true);
@@ -86,10 +96,14 @@ export default function UserProfileModal({
 
       if (res.ok) {
         const data = await res.json();
+        const fieldKey = type === 'avatar' ? 'avatar' : 'coverPhoto';
         setEditForm(prev => ({
           ...prev,
-          [type === 'avatar' ? 'avatar' : 'coverPhoto']: data.url
+          [fieldKey]: data.url
         }));
+        if (onUpdateProfile) {
+          await onUpdateProfile({ [fieldKey]: data.url });
+        }
       } else {
         console.error('Upload failed');
       }
