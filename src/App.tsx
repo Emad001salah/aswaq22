@@ -199,6 +199,7 @@ export default function App() {
         try {
           const user = JSON.parse(decodeURIComponent(userStr));
           localStorage.setItem('aswaq_access_token', accessToken);
+          localStorage.setItem('auth_token', accessToken);
           localStorage.setItem('aswaq_refresh_token', refreshToken);
           localStorage.setItem('aswaq_current_user', JSON.stringify(user));
           setCurrentUser(user);
@@ -222,6 +223,7 @@ useEffect(() => {
       try {
         const user = JSON.parse(decodeURIComponent(userStr));
         localStorage.setItem('aswaq_access_token', accessToken);
+        localStorage.setItem('auth_token', accessToken);
         localStorage.setItem('aswaq_refresh_token', refreshToken);
         localStorage.setItem('aswaq_current_user', JSON.stringify(user));
         setCurrentUser(user);
@@ -323,6 +325,7 @@ useEffect(() => {
                 if (refreshRes.ok) {
                   const newTokens = await refreshRes.json();
                   localStorage.setItem('aswaq_access_token', newTokens.accessToken);
+                  localStorage.setItem('auth_token', newTokens.accessToken);
                   if (newTokens.refreshToken) {
                     localStorage.setItem('aswaq_refresh_token', newTokens.refreshToken);
                   }

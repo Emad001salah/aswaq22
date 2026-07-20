@@ -264,7 +264,10 @@ export default function AuthModal({ isOpen, onClose, onSuccess, isDark }: AuthMo
         });
         const d = await r.json();
         if (!r.ok) throw new Error(d.message || 'البريد أو كلمة المرور غير صحيحة');
-        if (d.accessToken) localStorage.setItem('aswaq_access_token', d.accessToken);
+        if (d.accessToken) {
+          localStorage.setItem('aswaq_access_token', d.accessToken);
+          localStorage.setItem('auth_token', d.accessToken);
+        }
         if (d.refreshToken) localStorage.setItem('aswaq_refresh_token', d.refreshToken);
         if (d.user) { localStorage.setItem('aswaq_current_user', JSON.stringify(d.user)); onSuccess(d.user); onClose(); }
       } else {
@@ -275,7 +278,10 @@ export default function AuthModal({ isOpen, onClose, onSuccess, isDark }: AuthMo
         });
         const d = await r.json();
         if (!r.ok) throw new Error(d.message || 'فشل إنشاء الحساب');
-        if (d.accessToken) localStorage.setItem('aswaq_access_token', d.accessToken);
+        if (d.accessToken) {
+          localStorage.setItem('aswaq_access_token', d.accessToken);
+          localStorage.setItem('auth_token', d.accessToken);
+        }
         if (d.refreshToken) localStorage.setItem('aswaq_refresh_token', d.refreshToken);
         if (d.user) { localStorage.setItem('aswaq_current_user', JSON.stringify(d.user)); onSuccess(d.user); onClose(); }
       }

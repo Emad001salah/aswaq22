@@ -40,6 +40,7 @@ export async function refreshAccessToken(): Promise<string | null> {
       const newToken = data.accessToken;
       if (newToken) {
         localStorage.setItem('aswaq_access_token', newToken);
+        localStorage.setItem('auth_token', newToken);
         if (data.refreshToken) {
           localStorage.setItem('aswaq_refresh_token', data.refreshToken);
         }
@@ -52,6 +53,7 @@ export async function refreshAccessToken(): Promise<string | null> {
 
   // Refresh failed -> clear expired access token only (do NOT force logout)
   localStorage.removeItem('aswaq_access_token');
+  localStorage.removeItem('auth_token');
   return null;
 }
 
