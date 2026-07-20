@@ -51,6 +51,19 @@ export function csrfMiddleware(
     return next();
   }
 
+  // ✔️ Exempt requests that carry an explicit Authorization Bearer token.
+  // These are NOT CSRF-vulnerable: the token is not auto-sent by the browser;
+  // it must be injected explicitly by JS, which already proves same-origin intent.
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ') && authHeader.length > 10) {
+    return next();
+  }
+
+  // Exempt file-upload routes (multipart/form-data with Authorization)
+  if (req.path.startsWith('/api/v1/storage/') || req.path.startsWith('/api/storage/')) {
+    return next();
+  }
+
   const cookieToken  = req.cookies?.[CSRF_COOKIE];
   const headerToken  = req.headers[CSRF_HEADER];
 

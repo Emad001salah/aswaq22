@@ -76,18 +76,20 @@ export async function apiFetch(url: string, options: RequestInit = {}): Promise<
     headers.set('Authorization', `Bearer ${token}`);
   }
 
-  // Attach CSRF token for mutating requests
-  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method) && !headers.has('x-csrf-token')) {
+  // Requests authenticated with a Bearer token are already CSRF-exempt on the server
+  // (browsers cannot auto-send Authorization headers cross-origin, so no CSRF risk).
+  // Only fetch a CSRF token for unauthenticated mutating requests.
+  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method) && !token && !headers.has('x-csrf-token')) {
     let csrfToken = getCookie('csrf_token');
     if (!csrfToken) {
       try {
-        const csrfRes = await fetch(`${API_BASE_URL}/csrf-token`, { credentials: 'include' });
+        const csrfRes = await fetch(`${API_BASE_URL}/api/csrf-token`, { credentials: 'include' });
         if (csrfRes.ok) {
           const csrfData = await csrfRes.json();
           csrfToken = csrfData.csrfToken;
         }
       } catch (e) {
-        console.error('[API] Failed to pre-fetch CSRF token:', e);
+        console.warn('[API] CSRF pre-fetch skipped (non-fatal):', e);
       }
     }
     if (csrfToken) {
