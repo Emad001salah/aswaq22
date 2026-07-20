@@ -663,10 +663,13 @@ useEffect(() => {
   const [promoVideos, setPromoVideos] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>(() => {
     try {
-      const cached = localStorage.getItem('aswaq_cached_categories');
+      localStorage.removeItem('aswaq_cached_categories'); // Purge legacy cache
+      const cached = localStorage.getItem('aswaq_cached_categories_v3');
       if (cached) {
         const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
       }
     } catch (_) {}
     return CATEGORIES;
@@ -679,9 +682,36 @@ useEffect(() => {
         const result = await res.json();
         const categoriesList = Array.isArray(result) ? result : (result.data && Array.isArray(result.data) ? result.data : []);
         if (categoriesList && categoriesList.length > 0) {
+          // Strict deduplication for Cars & Electronics and removal of "General"
+          const seen = new Set<string>();
+          const deduplicatedList = categoriesList.filter((cat: any) => {
+            const normName = (cat.nameAr || '').trim();
+            if (normName === 'عام' || normName === 'General') return false;
+
+            // Merge "سيارات" and "سيارات ومركبات" into single "سيارات ومركبات"
+            if (normName === 'سيارات' || normName === 'سيارات ومركبات') {
+              if (seen.has('cars_vehicle_group')) return false;
+              seen.add('cars_vehicle_group');
+              cat.nameAr = 'سيارات ومركبات';
+              return true;
+            }
+
+            // Merge "إلكترونيات" and "إلكترونيات وأجهزة منزلية" into single "إلكترونيات وأجهزة منزلية"
+            if (normName === 'إلكترونيات' || normName === 'إلكترونيات وأجهزة منزلية') {
+              if (seen.has('electronics_appliances_group')) return false;
+              seen.add('electronics_appliances_group');
+              cat.nameAr = 'إلكترونيات وأجهزة منزلية';
+              return true;
+            }
+
+            const key = cat.id || normName;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+          });
+
           const getCuratedOrderIndex = (cat: any) => {
             if (!cat) return 999;
-            // 1. Direct match by ID or exact Arabic name
             const directIndex = CATEGORIES.findIndex(c => c.id === cat.id || c.nameAr === cat.nameAr);
             if (directIndex !== -1) return directIndex;
 
@@ -690,7 +720,6 @@ useEffect(() => {
             const icon = (cat.icon || '').toLowerCase();
             const id = (cat.id || '').toLowerCase();
 
-            // 2. Fallback keyword matching (ensure specific keywords like car_rental/تأجير سيارات match before generic ones like سيارات)
             if (id === 'jobs' || nameAr.includes('وظائف') || nameAr.includes('فرص') || nameEn.toLowerCase().includes('job') || icon === 'briefcase') return 0;
             if (id === 'car_rental' || nameAr.includes('تأجير سيارات') || nameEn.toLowerCase().includes('car rental') || icon === 'carfront') return 6;
             if (id === 'cars' || (nameAr.includes('سيارات') && !nameAr.includes('تأجير')) || nameEn.toLowerCase().includes('car') || icon === 'car') return 1;
@@ -699,24 +728,10 @@ useEffect(() => {
             if (id === 'hotels' || nameAr.includes('فنادق') || nameEn.toLowerCase().includes('hotel') || icon === 'hotel') return 4;
             if (id === 'resorts' || nameAr.includes('منتجعات') || nameEn.toLowerCase().includes('resort') || icon === 'palmtree') return 5;
             if (id === 'electronics' || nameAr.includes('إلكترونيات') || nameEn.toLowerCase().includes('electronic') || icon === 'tv') return 7;
-            if (id === 'phones' || nameAr.includes('هواتف') || nameAr.includes('جوالات') || nameEn.toLowerCase().includes('phone') || icon === 'smartphone') return 8;
-            if (id === 'laptops' || nameAr.includes('كمبيوتر') || nameAr.includes('لابتوب') || nameEn.toLowerCase().includes('laptop') || icon === 'laptop') return 9;
-            if (id === 'furniture' || nameAr.includes('أثاث') || nameEn.toLowerCase().includes('furniture') || icon === 'sofa') return 10;
-            if (id === 'clothing' || nameAr.includes('ملابس') || nameAr.includes('موضة') || nameEn.toLowerCase().includes('clothing') || icon === 'shirt') return 11;
-            if (id === 'services' || nameAr.includes('خدمات') || nameAr.includes('صيانة') || nameEn.toLowerCase().includes('service') || icon === 'wrench') return 12;
-            if (id === 'livestock' || nameAr.includes('مواشي') || nameAr.includes('حيوانات') || nameEn.toLowerCase().includes('livestock') || icon === 'beef' || icon === 'leaf') return 13;
-            if (id === 'bicycles' || nameAr.includes('دراجات') || nameEn.toLowerCase().includes('bike') || icon === 'bike') return 14;
-            if (id === 'trucks' || nameAr.includes('شاحنات') || nameAr.includes('معدات') || nameEn.toLowerCase().includes('truck') || icon === 'truck') return 15;
-            if (id === 'educational' || nameAr.includes('كتب') || nameAr.includes('تعليم') || nameEn.toLowerCase().includes('education') || icon === 'bookopen') return 16;
-            if (id === 'food' || nameAr.includes('أغذية') || nameAr.includes('مأكولات') || nameEn.toLowerCase().includes('food') || icon === 'utensils') return 17;
-            if (id === 'medical' || nameAr.includes('طبية') || nameAr.includes('صحة') || nameEn.toLowerCase().includes('medical') || icon === 'heartpulse') return 18;
-            if (id === 'perfumes' || nameAr.includes('عطور') || nameAr.includes('تجميل') || nameEn.toLowerCase().includes('perfume') || icon === 'gem') return 19;
-            if (id === 'construction' || nameAr.includes('بناء') || nameAr.includes('مقاولات') || nameEn.toLowerCase().includes('construction') || icon === 'hammer') return 20;
-            if (id === 'custom_work' || nameAr.includes('يدوية') || nameAr.includes('حرف') || nameEn.toLowerCase().includes('craft') || icon === 'palette') return 21;
             return 99;
           };
 
-          const sortedData = [...categoriesList].sort((a: any, b: any) => {
+          const sortedData = [...deduplicatedList].sort((a: any, b: any) => {
             const indexA = getCuratedOrderIndex(a);
             const indexB = getCuratedOrderIndex(b);
             if (indexA !== indexB) return indexA - indexB;
