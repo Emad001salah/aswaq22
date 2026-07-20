@@ -421,6 +421,14 @@ useEffect(() => {
     });
 
     const handleAuthRequired = () => {
+      // Only prompt login if the user truly has no valid token in storage.
+      // If a token still exists, this is a transient 401 (e.g. server restart)
+      // and we should NOT kick the user out of their session.
+      const hasToken = !!(localStorage.getItem('aswaq_access_token') || localStorage.getItem('auth_token'));
+      if (hasToken) {
+        console.warn('[App] auth-required fired but token still exists — suppressing login modal (transient 401).');
+        return;
+      }
       console.warn('[App] Authentication required event received. Prompting login...');
       addToast('مطلوب تسجيل الدخول', 'يرجى تسجيل الدخول للوصول لهذه العملية.', 'info');
       triggerLoginFlow('splash');
