@@ -404,6 +404,37 @@ useEffect(() => {
       const pathname = location.pathname;
       if (!pathname || pathname === '/') return;
 
+      // Handle /profile
+      if (pathname === '/profile') {
+        if (currentUser) {
+          setSelectedUserPreview(currentUser);
+        }
+        return;
+      }
+
+      // Handle /profile/:id
+      if (pathname.startsWith('/profile/')) {
+        const uid = pathname.replace('/profile/', '');
+        if (uid && selectedUserPreview?.id !== uid) {
+          try {
+            const res = await fetch(`/api/v1/users/${uid}`);
+            if (res.ok) {
+              const u = await res.json();
+              setSelectedUserPreview(u);
+            }
+          } catch (e) {
+            console.error('Failed to fetch profile from URL', e);
+          }
+        }
+        return;
+      }
+
+      // Handle section routes
+      if (pathname === '/reels') { setPlatformMode('spotlight'); document.title = 'شورتس وسواري أسواق | فيديوهات الإعلانات'; return; }
+      if (pathname === '/jobs') { setPlatformMode('jobs'); document.title = 'بوابة الوظائف والفرص | أسواق'; return; }
+      if (pathname === '/delivery') { setPlatformMode('delivery'); document.title = 'خدمات الشحن والتوصيل | أسواق'; return; }
+      if (pathname === '/create-ad') { setPlatformMode('create'); document.title = 'إضافة إعلان جديد | أسواق'; return; }
+
       // Skip sync if it's dynamic search page
       if (pathname.startsWith('/search/')) {
         const query = decodeURIComponent(pathname.substring(8));
@@ -467,35 +498,78 @@ useEffect(() => {
     syncRouteToState();
   }, [location.pathname]);
 
-  // 2. Synchronize state to URL pathname (for country, city, and category)
+  // 2. Synchronize state to URL pathname & Document Title
   useEffect(() => {
+    if (selectedUserPreview) {
+      const isOwn = currentUser && (
+        currentUser.id === selectedUserPreview.id || 
+        (currentUser.email && selectedUserPreview.email && currentUser.email.toLowerCase() === selectedUserPreview.email.toLowerCase())
+      );
+      const targetPath = isOwn ? '/profile' : `/profile/${selectedUserPreview.id}`;
+      if (location.pathname !== targetPath) {
+        navigate(targetPath, { replace: false });
+      }
+      document.title = isOwn ? 'ملفي الشخصي | أسواق' : `الملف الشخصي - ${selectedUserPreview.name} | أسواق`;
+      return;
+    }
+
+    if (platformMode === 'spotlight' && location.pathname !== '/reels') {
+      navigate('/reels');
+      document.title = 'شورتس وسواري أسواق | فيديوهات الإعلانات';
+      return;
+    }
+
+    if (platformMode === 'jobs' && location.pathname !== '/jobs') {
+      navigate('/jobs');
+      document.title = 'بوابة الوظائف والفرص | أسواق';
+      return;
+    }
+
+    if (platformMode === 'delivery' && location.pathname !== '/delivery') {
+      navigate('/delivery');
+      document.title = 'خدمات الشحن والتوصيل | أسواق';
+      return;
+    }
+
+    if (platformMode === 'create' && location.pathname !== '/create-ad') {
+      navigate('/create-ad');
+      document.title = 'إضافة إعلان جديد | أسواق';
+      return;
+    }
+
     // Avoid updating URL if we are currently looking at an ad detail page
     const uuidRegex = /[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
-    if (location.pathname.match(uuidRegex)) return;
+    if (location.pathname.match(uuidRegex) || selectedAd) return;
 
-    const countryCode = currentMarket.countryCode.toLowerCase();
-    const categoryObject = CATEGORIES.find(c => c.id === selectedCategory);
-    const cat = categoryObject?.nameEn?.toLowerCase() || '';
-    
-    if (selectedCity) {
-      const market = MARKETS[currentMarket.countryCode];
-      const city = market?.cities.find(c => c.id === selectedCity);
-      if (city && cat) {
-        const citySlug = slugify(city.nameEn);
-        navigate(`/${countryCode}/${citySlug}/${cat}`);
-        return;
+    if (platformMode === 'marketplace') {
+      const countryCode = currentMarket.countryCode.toLowerCase();
+      const categoryObject = CATEGORIES.find(c => c.id === selectedCategory);
+      const cat = categoryObject?.nameEn?.toLowerCase() || '';
+      
+      if (selectedCity) {
+        const market = MARKETS[currentMarket.countryCode];
+        const city = market?.cities.find(c => c.id === selectedCity);
+        if (city && cat) {
+          const citySlug = slugify(city.nameEn);
+          navigate(`/${countryCode}/${citySlug}/${cat}`);
+          return;
+        }
       }
+      
+      if (cat) {
+        navigate(`/${countryCode}/${cat}`);
+      } else if (location.pathname !== '/') {
+        navigate('/');
+      }
+      document.title = 'أسواق | منصة الإعلانات المجانية في الوطن العربي — بيع، شراء، تأجير';
     }
-    
-    if (cat) {
-      navigate(`/${countryCode}/${cat}`);
-    } else {
-      navigate('/');
-    }
-  }, [currentMarket.countryCode, selectedCategory, selectedCity]);
+  }, [selectedUserPreview, platformMode, currentMarket.countryCode, selectedCategory, selectedCity]);
 
   // 3. Synchronize selectedAd state reset to parent URL pathname
   useEffect(() => {
+    if (!selectedAd && !selectedUserPreview && ['/reels', '/jobs', '/delivery', '/create-ad', '/profile'].includes(location.pathname)) {
+      return;
+    }
     if (!selectedAd) {
       const uuidRegex = /[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
       if (location.pathname.match(uuidRegex)) {
