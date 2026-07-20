@@ -70,7 +70,7 @@ export default function JobPortal({
   const isRtl = i18n.language === "ar";
   const { market: currentMarket } = useMarket();
 
-  const [activeTab, setActiveTab] = useState<"vacancies" | "seekers" | "management">("vacancies");
+  const [activeTab, setActiveTab] = useState<"vacancies" | "craftsmen" | "seekers" | "management">("vacancies");
   
   // Search & Filter states
   const [searchTerm, setSearchTerm] = useState("");
@@ -276,6 +276,136 @@ export default function JobPortal({
     }
   ];
 
+  
+  const defaultSampleCraftsmen: Ad[] = [
+    {
+      id: "craft_1",
+      title: "معلم سباكة وصيانة تمديدات مياه وصرف صحي — خدمة فورية 24 ساعة",
+      description: "معلم سباك خبرة 8 سنوات في تأسيس وشبكات التمديدات وصيانة تسريبات المياه، تركيب الأدوات الصحية، السخانات الشمسية والكهربائية. متواجد طوال اليوم في منطقتك.",
+      price: 15,
+      currency: "USD",
+      city: "sanaa_city",
+      category: "jobs",
+      subCategory: "سباكة وتمديدات",
+      jobType: "craftsman",
+      contactNumber: "771234567",
+      status: "active",
+      views: 310,
+      likes: 45,
+      isFeatured: true,
+      createdAt: new Date(Date.now() - 3600000 * 10).toISOString(),
+      userId: "craft_user_1",
+      userName: "معلم أبو فهد للسباكة",
+      whatsappLink: "https://wa.me/967771234567",
+      images: ["https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=800&q=80"]
+    },
+    {
+      id: "craft_2",
+      title: "معلم كهربائي منازل ومبانٍ — صيانة أعطال وتمديدات لوحات وكاميرات",
+      description: "فني كهربائي محترف لتنفيذ كافة أعمال التمديدات الكهربائية، صيانة الشورت والأعطال المنزلية، تركيب الشواحن وإضاءات الديكور وكاميرات المراقبة.",
+      price: 20,
+      currency: "USD",
+      city: "amman",
+      category: "jobs",
+      subCategory: "كهرباء وتمديدات",
+      jobType: "craftsman",
+      contactNumber: "0798765432",
+      status: "active",
+      views: 420,
+      likes: 68,
+      isFeatured: true,
+      createdAt: new Date(Date.now() - 3600000 * 14).toISOString(),
+      userId: "craft_user_2",
+      userName: "المهندس الكهروميكانيكي خالد",
+      whatsappLink: "https://wa.me/962798765432",
+      images: ["https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=800&q=80"]
+    },
+    {
+      id: "craft_3",
+      title: "فني تكييف وتبريد — صيانة مكيفات سبليت وشحن فريون وتنظيف شامل",
+      description: "فني تكييف ذو خبرة عالية في غسيل وتنظيف المكيفات بأحدث الأجهزة، كشف التسريب وشحن فريون أصلي، تركيب ونقل المكيفات وضمان العمل.",
+      price: 25,
+      currency: "USD",
+      city: "riyadh",
+      category: "jobs",
+      subCategory: "تكييف وتبريد",
+      jobType: "craftsman",
+      contactNumber: "0501122334",
+      status: "active",
+      views: 280,
+      likes: 39,
+      isFeatured: true,
+      createdAt: new Date(Date.now() - 3600000 * 8).toISOString(),
+      userId: "craft_user_3",
+      userName: "ورشة النسر للتكييف والتبريد",
+      whatsappLink: "https://wa.me/966501122334",
+      images: ["https://images.unsplash.com/photo-1621905252507-b35492cc74b4?auto=format&fit=crop&w=800&q=80"]
+    },
+    {
+      id: "craft_4",
+      title: "عمال يومية ونقل عفش وتحميل وتنزيل البضائع بأمان وسرعة",
+      description: "فريق عمالة يومية نشيطة لنقل العفش والأثاث المنزلي، تحميل وتنزيل الشحنات والديانات، تنظيف المستودعات والعمل بنظام الساعة أو اليومية.",
+      price: 15,
+      currency: "USD",
+      city: "sanaa_city",
+      category: "jobs",
+      subCategory: "عمالة يومية ونقل",
+      jobType: "craftsman",
+      contactNumber: "770998877",
+      status: "active",
+      views: 510,
+      likes: 82,
+      isFeatured: false,
+      createdAt: new Date(Date.now() - 3600000 * 5).toISOString(),
+      userId: "craft_user_4",
+      userName: "مجموعة الإنجاز للعمالة الفورية",
+      whatsappLink: "https://wa.me/967770998877",
+      images: ["https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=800&q=80"]
+    },
+    {
+      id: "craft_5",
+      title: "معلم نجار أثاث ومطابخ — تفصيل وصيانة وتجميع إيكيا",
+      description: "فني نجارة صيانة وتجميع غرف النوم، المطابخ، الأبواب، والديكورات الخشبية. دقة وسرعة في العمل وأسعار مناسبة للجميع.",
+      price: 30,
+      currency: "USD",
+      city: "amman",
+      category: "jobs",
+      subCategory: "نجارة وديكور",
+      jobType: "craftsman",
+      contactNumber: "0785566778",
+      status: "active",
+      views: 230,
+      likes: 34,
+      isFeatured: false,
+      createdAt: new Date(Date.now() - 3600000 * 20).toISOString(),
+      userId: "craft_user_5",
+      userName: "الورشة السريعة للنجارة",
+      whatsappLink: "https://wa.me/962785566778",
+      images: ["https://images.unsplash.com/photo-1538688525198-9b88f6f53126?auto=format&fit=crop&w=800&q=80"]
+    },
+    {
+      id: "craft_6",
+      title: "معلم ميكانيكي وكهربائي سيارات متنقل — كشف أعطال وصيانة طرقات 24/7",
+      description: "خدمة صيانة السيارات عند البيت أو على الطريق، فحص كمبيوتر وتأكد من الأعطال الكهروميكانيكية وتغيير الزيوت والبطاريات فورياً.",
+      price: 35,
+      currency: "USD",
+      city: "jeddah",
+      category: "jobs",
+      subCategory: "ميكانيك سيارات",
+      jobType: "craftsman",
+      contactNumber: "0556677889",
+      status: "active",
+      views: 390,
+      likes: 54,
+      isFeatured: true,
+      createdAt: new Date(Date.now() - 3600000 * 16).toISOString(),
+      userId: "craft_user_6",
+      userName: "خدمة الميكانيك المتنقل السريع",
+      whatsappLink: "https://wa.me/966556677889",
+      images: ["https://images.unsplash.com/photo-1617814076367-b759c7d7e738?auto=format&fit=crop&w=800&q=80"]
+    }
+  ];
+
   const isJobAd = (ad: Ad) => {
     if (!ad) return false;
     const cat = (ad.category || '').toLowerCase();
@@ -294,12 +424,28 @@ export default function JobPortal({
     );
   };
 
-  const rawVacancies = ads.filter(ad => isJobAd(ad) && ad.jobType !== "seeking");
+  
+  const rawVacancies = ads.filter(ad => isJobAd(ad) && ad.jobType !== "seeking" && ad.jobType !== "craftsman");
+  const rawCraftsmen = ads.filter(ad => isJobAd(ad) && (ad.jobType === "craftsman" || (ad.subCategory || '').includes("سباكة") || (ad.subCategory || '').includes("كهرباء") || (ad.subCategory || '').includes("نجارة") || (ad.subCategory || '').includes("يومية")));
   const rawSeekers = ads.filter(ad => isJobAd(ad) && ad.jobType === "seeking");
 
-  // Fallback to rich sample jobs and seekers if database/state has no matching ads
+  // Fallback to rich sample jobs, craftsmen and seekers if database/state has no matching ads
   const jobVacancies = rawVacancies.length > 0 ? rawVacancies : defaultSampleJobs;
+  const jobCraftsmen = rawCraftsmen.length > 0 ? rawCraftsmen : defaultSampleCraftsmen;
   const jobSeekers = rawSeekers.length > 0 ? rawSeekers : defaultSampleSeekers;
+
+  const filteredCraftsmen = jobCraftsmen.filter(ad => {
+    if (!ad) return false;
+    const title = ad.title || '';
+    const desc = ad.description || '';
+    const matchesSearch = !searchTerm || 
+                          title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          desc.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCity = !selectedCity || ad.city === selectedCity;
+    const matchesSpecialty = !selectedSpecialty || ad.subCategory === selectedSpecialty;
+    return matchesSearch && matchesCity && matchesSpecialty;
+  });
+
 
   // Filter logic
   const filteredVacancies = jobVacancies.filter(ad => {
@@ -502,6 +648,18 @@ export default function JobPortal({
           >
             <Briefcase className={`w-4 h-4 ${activeTab === "vacancies" ? "text-emerald-500" : ""}`} />
             {isRtl ? "💼 بوابة الوظائف والفرص المتاحة" : "Vacancies & Opportunities"}
+          </button>
+
+          <button
+            onClick={() => setActiveTab("craftsmen")}
+            className={`flex-1 py-3 px-6 text-xs font-black rounded-xl transition-all flex items-center justify-center gap-2 whitespace-nowrap cursor-pointer ${
+              activeTab === "craftsmen"
+                ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-lg"
+                : "text-slate-500 hover:text-slate-850 dark:hover:text-slate-350"
+            }`}
+          >
+            <Building className={`w-4 h-4 ${activeTab === "craftsmen" ? "text-amber-500" : ""}`} />
+            {isRtl ? "🔨 المهنيين وعمال اليومية" : "Craftsmen & Daily Workers"}
           </button>
           
           <button
@@ -713,6 +871,149 @@ export default function JobPortal({
             )}
           </motion.div>
         )}
+
+        
+        {/* Tab 1.5: Craftsmen & Daily Wage Workers */}
+        {activeTab === "craftsmen" && (
+          <motion.div
+            key="craftsmen"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.25 }}
+            className="space-y-4"
+          >
+            {/* Quick Craft Specialties Filter Badges */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar">
+              {[
+                { name: "الكل", value: "" },
+                { name: "🚰 سباكة وتمديدات", value: "سباكة وتمديدات" },
+                { name: "⚡ كهرباء وتمديدات", value: "كهرباء وتمديدات" },
+                { name: "❄️ تكييف وتبريد", value: "تكييف وتبريد" },
+                { name: "🔨 عمالة يومية ونقل", value: "عمالة يومية ونقل" },
+                { name: "🪚 نجارة وديكور", value: "نجارة وديكور" },
+                { name: "🚗 ميكانيك سيارات", value: "ميكانيك سيارات" },
+              ].map(badge => (
+                <button
+                  key={badge.value}
+                  onClick={() => setSelectedSpecialty(selectedSpecialty === badge.value ? "" : badge.value)}
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap cursor-pointer border ${
+                    selectedSpecialty === badge.value
+                      ? "bg-amber-500 text-white border-amber-500 shadow-md"
+                      : isDark
+                        ? "bg-slate-900 border-slate-800 text-slate-300 hover:border-amber-500/50"
+                        : "bg-white border-slate-200 text-slate-700 hover:border-amber-400"
+                  }`}
+                >
+                  {badge.name}
+                </button>
+              ))}
+            </div>
+
+            {filteredCraftsmen.length === 0 ? (
+              <div className={`p-12 rounded-3xl border text-center ${isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100"}`}>
+                <AlertCircle className="w-12 h-12 text-amber-500 mx-auto mb-3" />
+                <h3 className={`text-sm font-black ${isDark ? "text-slate-300" : "text-slate-700"}`}>
+                  {isRtl ? "لا يوجد حرفيين أو عمال يومية يطابقون خيارات البحث حالياً" : "No craftsmen match your search filters."}
+                </h3>
+                <p className="text-xs text-slate-500/80 mt-1">
+                  {isRtl ? "حاول تغيير المدينة المختارة أو استكشاف التخصصات المهنية الأخرى." : "Try expanding city or craft filters."}
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {filteredCraftsmen.map((ad) => {
+                  return (
+                    <div
+                      key={ad.id}
+                      className={`p-5 rounded-3xl border hover:shadow-lg transition-all relative flex flex-col justify-between ${isDark ? "bg-slate-900 border-slate-800/80 hover:border-amber-500/40" : "bg-white border-slate-200 hover:border-slate-300 shadow-sm"}`}
+                    >
+                      <div>
+                        {/* Title & Badge */}
+                        <div className="flex justify-between items-start mb-3 gap-2">
+                          <span className="text-[10px] bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400 px-2.5 py-1 rounded-full font-extrabold flex items-center gap-1">
+                            <Building className="w-3 h-3" />
+                            {ad.subCategory || (isRtl ? "فني / حرفي" : "Craftsman")}
+                          </span>
+                          <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded ${isDark ? "bg-slate-800 text-slate-300" : "bg-slate-100 text-slate-600"}`}>
+                            {(currentMarket?.cities || CITIES).find(c => c.id === ad.city)?.nameAr || ad.city}
+                          </span>
+                        </div>
+
+                        {/* Title */}
+                        <h3 className={`text-sm font-black transition-colors hover:text-amber-500 cursor-pointer ${isDark ? "text-white" : "text-slate-900"}`} onClick={() => onSelectAd(ad)}>
+                          {ad.title}
+                        </h3>
+
+                        {/* Description */}
+                        <p className={`text-xs mt-2 line-clamp-3 leading-relaxed ${isDark ? "text-slate-400" : "text-slate-600"}`}>
+                          {ad.description}
+                        </p>
+
+                        {/* Fee indicator */}
+                        <div className="mt-4 flex items-center gap-2">
+                          <span className="text-slate-400 text-[10px]">{isRtl ? 'أجر الزيارة / اليومية:' : 'Rate:'}</span>
+                          <span className="text-xs font-black text-amber-500">
+                            {ad.price > 0 ? `${ad.price.toLocaleString()} ${ad.currency}` : (isRtl ? 'حسب الاتفاق' : 'Negotiable')}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800/60 flex items-center justify-between gap-3 flex-wrap">
+                        {/* Craftsman summary */}
+                        <div className="flex items-center gap-2">
+                          <Avatar
+                            src={ad.userAvatar}
+                            name={ad.userName || (isRtl ? "فني مهني" : "Tradesperson")}
+                            sizeClassName="w-6 h-6"
+                            className="rounded-full"
+                          />
+                          <span className="text-[10px] font-bold text-slate-400 max-w-[120px] truncate">
+                            {ad.userName || (isRtl ? "فني مهني" : "Tradesperson")}
+                          </span>
+                        </div>
+
+                        {/* Instant Contact CTAs */}
+                        <div className="flex items-center gap-2">
+                          {ad.contactNumber && (
+                            <a
+                              href={`tel:${ad.contactNumber}`}
+                              className="bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] font-black px-3 py-1.5 rounded-xl transition-all flex items-center gap-1 cursor-pointer"
+                            >
+                              <Phone className="w-3 h-3" />
+                              {isRtl ? "اتصال فوري" : "Call Now"}
+                            </a>
+                          )}
+
+                          {ad.whatsappLink && (
+                            <a
+                              href={ad.whatsappLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="bg-green-600 hover:bg-green-700 text-white text-[10px] font-black px-3 py-1.5 rounded-xl transition-all flex items-center gap-1 cursor-pointer"
+                            >
+                              <MessageSquare className="w-3 h-3" />
+                              {isRtl ? "واتساب" : "WhatsApp"}
+                            </a>
+                          )}
+
+                          <button
+                            onClick={() => onSelectAd(ad)}
+                            className="bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-750 text-slate-600 dark:text-slate-300 p-2 rounded-xl transition-all"
+                            title={isRtl ? "التفاصيل" : "Details"}
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </motion.div>
+        )}
+
 
         {/* Tab 2: Job Seekers CV / Resume Listings */}
         {activeTab === "seekers" && (
