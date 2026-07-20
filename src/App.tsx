@@ -618,7 +618,16 @@ useEffect(() => {
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [promoVideos, setPromoVideos] = useState<any[]>([]);
-  const [categories, setCategories] = useState<any[]>(CATEGORIES);
+  const [categories, setCategories] = useState<any[]>(() => {
+    try {
+      const cached = localStorage.getItem('aswaq_cached_categories');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (_) {}
+    return CATEGORIES;
+  });
 
   const fetchLiveCategories = async () => {
     try {
@@ -672,6 +681,9 @@ useEffect(() => {
           });
 
           setCategories(sortedData);
+          try {
+            localStorage.setItem('aswaq_cached_categories', JSON.stringify(sortedData));
+          } catch (_) {}
         }
       }
     } catch (e) {
