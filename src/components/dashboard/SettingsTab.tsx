@@ -40,6 +40,7 @@ export default function SettingsTab({
   const [profileBio, setProfileBio] = useState(cleanBio(currentUser.bio));
   const [profileAvatar, setProfileAvatar] = useState(cleanAvatar(currentUser.avatar));
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (currentUser) {
@@ -98,54 +99,62 @@ export default function SettingsTab({
 
   const handleSaveSettings = async (e: FormEvent) => {
     e.preventDefault();
-    currentUser.name = profileName;
-    currentUser.phone = profilePhone;
-    currentUser.bio = profileBio;
-    currentUser.avatar = profileAvatar;
-    
-    // Persist internally
-    (currentUser as any).priceDropAlerts = priceDropAlerts;
-    (currentUser as any).newAdAlerts = newAdAlerts;
-    (currentUser as any).alertCity = alertCity;
-    
-    setSettingsSaved(true);
+    if (isSaving) return; // منع الإرسال المتكرر
+    setIsSaving(true);
 
     try {
-      // Sync on backend using the real PATCH /api/v1/users/me endpoint with auto-refreshing apiFetch!
+      // أرسل فقط الحقول الموجودة فعلاً في قاعدة البيانات
+      const payload: Record<string, any> = {
+        name: profileName,
+        phone: profilePhone || null,
+        bio: profileBio || null,
+        avatar: profileAvatar || null,
+      };
+
       const res = await apiFetch(`/api/v1/users/me`, {
         method: "PATCH",
-        headers: { 
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          name: profileName,
-          phone: profilePhone || null,
-          bio: profileBio || null,
-          avatar: profileAvatar || null,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (res.ok) {
+        const updatedUser = await res.json();
+        const mergedUser = {
+          ...currentUser,
+          ...updatedUser,
+          // احتفظ بالتفضيلات المحلية (غير موجودة في DB)
           priceDropAlerts,
           newAdAlerts,
           alertCity,
-        }),
-      });
-      if (res.ok) {
-        const updatedUser = await res.json();
-        const mergedUser = { ...currentUser, ...updatedUser };
+        };
         localStorage.setItem('aswaq_current_user', JSON.stringify(mergedUser));
         onUpdateUser?.(mergedUser);
-        console.log('[SettingsTab] Profile synced successfully:', mergedUser);
+        setSettingsSaved(true);
         addToast?.("تم حفظ التغييرات", "تم حفظ إعدادات حسابك وتحديثها بنجاح.", "success");
+        setTimeout(() => setSettingsSaved(false), 3000);
       } else {
-        console.error('[SettingsTab] Failed to sync profile. Status:', res.status);
-        addToast?.("فشل الحفظ", "حدث خطأ أثناء مزامنة البيانات مع الخادم.", "error");
+        let errMsg = 'حدث خطأ أثناء الحفظ.';
+        try {
+          const errData = await res.json();
+          errMsg = errData.message || errMsg;
+        } catch (_) {}
+        console.error('[SettingsTab] Save failed. Status:', res.status, errMsg);
+        addToast?.("فشل الحفظ", errMsg, "error");
       }
     } catch (err) {
-      console.error("Failed to sync settings on backend", err);
-      addToast?.("خطأ اتصال", "فشل الاتصال بالخادم لحفظ التعديلات.", "error");
+      console.error("[SettingsTab] Network error during save:", err);
+      addToast?.("خطأ في الاتصال", "تعذّر الاتصال بالخادم. تحقق من اتصالك بالإنترنت.", "error");
+    } finally {
+      setIsSaving(false);
     }
 
-    setTimeout(() => {
-      setSettingsSaved(false);
-    }, 2000);
+    // احفظ تفضيلات الإشعارات محلياً فقط (لا ترسلها للسيرفر)
+    const localPrefs = {
+      priceDropAlerts,
+      newAdAlerts,
+      alertCity,
+    };
+    localStorage.setItem('aswaq_user_prefs', JSON.stringify(localPrefs));
   };
 
   // KYC Camera methods
@@ -443,10 +452,25 @@ export default function SettingsTab({
 
         <button
           type="submit"
-          className="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black h-11 rounded-xl text-xs transition-transform active:scale-95 cursor-pointer mt-4"
+          disabled={isSaving || isUploadingAvatar}
+          className={`w-full text-slate-950 font-black h-11 rounded-xl text-xs transition-all cursor-pointer mt-4 flex items-center justify-center gap-2 ${
+            isSaving || isUploadingAvatar
+              ? 'bg-emerald-700 opacity-60 cursor-not-allowed'
+              : 'bg-emerald-500 hover:bg-emerald-400 active:scale-95'
+          }`}
           id="setting-save-btn"
         >
-          حفظ وتثبيت إعدادات الحساب وتفضيلات التنبيهات
+          {isSaving ? (
+            <>
+              <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+              </svg>
+              جاري الحفظ...
+            </>
+          ) : (
+            'حفظ وتثبيت إعدادات الحساب'
+          )}
         </button>
 
         {settingsSaved && (

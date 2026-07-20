@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { prisma } from '../../src/lib/prisma.ts';
@@ -209,13 +209,20 @@ export const UsersController = () => {
         }
       }
 
+      // Build update object with only known Prisma schema fields
+      // (ignore client-side fields like priceDropAlerts, newAdAlerts, alertCity)
       const updateData: any = {};
-      if (req.body.name !== undefined) updateData.name = req.body.name;
-      if (req.body.phone !== undefined) updateData.phone = req.body.phone ? req.body.phone.trim() : null;
-      if (avatarUrl !== undefined) updateData.avatar = avatarUrl;
-      if (req.body.bio !== undefined) updateData.bio = req.body.bio;
-      if (req.body.city !== undefined) updateData.city = req.body.city;
-      if (coverUrl !== undefined) updateData.coverPhoto = coverUrl;
+      if (req.body.name !== undefined) updateData.name = String(req.body.name).trim();
+      if (req.body.phone !== undefined) updateData.phone = req.body.phone ? String(req.body.phone).trim() : null;
+      if (avatarUrl !== undefined) updateData.avatar = avatarUrl || null;
+      if (req.body.bio !== undefined) updateData.bio = req.body.bio || null;
+      if (req.body.city !== undefined) updateData.city = req.body.city || null;
+      if (coverUrl !== undefined) updateData.coverPhoto = coverUrl || null;
+
+      // Reject empty updates early to avoid unnecessary DB writes
+      if (Object.keys(updateData).length === 0) {
+        return res.status(400).json({ error: 'No valid fields to update', message: 'لا توجد بيانات صحيحة للتحديث.' });
+      }
 
       const updated = await prisma.user.update({
         where: { id: userIdToUpdate },
