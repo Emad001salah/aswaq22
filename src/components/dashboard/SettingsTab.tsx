@@ -147,17 +147,26 @@ export default function SettingsTab({
         addToast?.("تم حفظ التغييرات", "تم حفظ إعدادات حسابك وتحديثها بنجاح.", "success");
         setTimeout(() => setSettingsSaved(false), 3000);
       } else {
-        let errMsg = 'حدث خطأ أثناء الحفظ.';
+        let errMsg = 'حدث خطأ غير معروف.';
+        let rawBody = '';
         try {
-          const errData = await res.json();
-          errMsg = errData.message || errMsg;
-          console.error('[SettingsTab] Save failed:', res.status, errData);
-        } catch (_) {}
-        addToast?.("فشل الحفظ", `(${res.status}) ${errMsg}`, "error");
+          rawBody = await res.text();
+          const errData = JSON.parse(rawBody);
+          errMsg = errData.message || errData.error || errMsg;
+        } catch (_) {
+          errMsg = rawBody || errMsg;
+        }
+        
+        const tok1 = localStorage.getItem('aswaq_access_token');
+        const tok2 = localStorage.getItem('auth_token');
+        const diagInfo = `Status: ${res.status} | Token1: ${tok1 ? tok1.substring(0, 8) + '...' + tok1.substring(tok1.length - 8) + ' (' + tok1.length + ')' : 'null'} | Token2: ${tok2 ? tok2.substring(0, 8) + '...' + tok2.substring(tok2.length - 8) + ' (' + tok2.length + ')' : 'null'}`;
+        
+        console.error('[SettingsTab] Save failed:', res.status, errMsg, diagInfo);
+        addToast?.("فشل الحفظ", `${errMsg} [${diagInfo}]`, "error");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("[SettingsTab] Network error during save:", err);
-      addToast?.("خطأ في الاتصال", "تعذّر الاتصال بالخادم. تحقق من اتصالك بالإنترنت.", "error");
+      addToast?.("خطأ في الاتصال", `تعذّر الاتصال بالخادم: ${err.message || err}`, "error");
     } finally {
       setIsSaving(false);
       // حفظ تفضيلات الإشعارات محلياً فقط
