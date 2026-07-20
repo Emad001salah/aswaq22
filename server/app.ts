@@ -2558,12 +2558,23 @@ ${urls.join('\n')}
       this.app.use(vite.middlewares);
     } else {
       const distPath = path.join(process.cwd(), 'dist');
-      this.app.use(express.static(distPath));
+      this.app.use(express.static(distPath, {
+        setHeaders: (res, filePath) => {
+          if (filePath.endsWith('.html')) {
+            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+            res.setHeader('Pragma', 'no-cache');
+            res.setHeader('Expires', '0');
+          } else {
+            res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+          }
+        }
+      }));
       // SPA fallback — skip for server-generated files
       this.app.get('*', (req, res) => {
         if (req.path === '/sitemap.xml' || req.path === '/robots.txt') {
           return res.status(404).end();
         }
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
         res.sendFile(path.join(distPath, 'index.html'));
       });
     }

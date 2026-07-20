@@ -1,4 +1,4 @@
-const CACHE_NAME = 'aswaq-pwa-cache-v2';
+const CACHE_NAME = 'aswaq-pwa-cache-v3';
 const ASSETS_TO_CACHE = [
   '/aswaq-icon.png',
   '/aswaq-icon-192.png',

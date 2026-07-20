@@ -43,14 +43,16 @@ export class LocalStorageStrategy implements StorageStrategy {
     return path.join(this.uploadDir, path.basename(key));
   }
 
-  async uploadFile(file: FileData): Promise<string> {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    const ext = path.extname(file.originalname) || (file.mimetype === 'video/webm' ? '.webm' : '.jpg');
-    const filename = `file-${uniqueSuffix}${ext}`;
-    const filePath = path.join(this.uploadDir, filename);
+  async uploadFile(file: FileData, customFolder?: string): Promise<string> {
+    const uniqueUuid = crypto.randomUUID();
+    const ext = path.extname(file.originalname) || (file.mimetype === 'image/webp' ? '.webp' : '.jpg');
+    const folder = customFolder || 'uploads';
+    const filename = `${uniqueUuid}${ext}`;
+    const key = `${folder}/${filename}`;
+    const filePath = this.resolveKeyToPath(key);
 
     await fs.promises.writeFile(filePath, file.buffer);
-    logger.info(`[Storage] File uploaded locally: ${filename}`);
+    logger.info(`[Storage] File uploaded locally: ${key}`);
     return `/uploads/${filename}`;
   }
 
@@ -142,10 +144,11 @@ export class S3StorageStrategy implements StorageStrategy {
     }
   }
 
-  async uploadFile(file: FileData): Promise<string> {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    const ext = path.extname(file.originalname) || (file.mimetype === 'video/webm' ? '.webm' : '.jpg');
-    const key = `uploads/file-${uniqueSuffix}${ext}`;
+  async uploadFile(file: FileData, customFolder?: string): Promise<string> {
+    const uniqueUuid = crypto.randomUUID();
+    const ext = path.extname(file.originalname) || (file.mimetype === 'image/webp' ? '.webp' : '.jpg');
+    const folder = customFolder || 'uploads';
+    const key = `${folder}/${uniqueUuid}${ext}`;
 
     const upload = new Upload({
       client: this.s3Client,
