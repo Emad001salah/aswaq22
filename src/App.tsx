@@ -3714,12 +3714,22 @@ useEffect(() => {
                                 <img 
                                   src={currentUser.avatar} 
                                   className="w-11 h-11 rounded-2xl object-cover shrink-0 cursor-pointer hover:opacity-90 hover:scale-105 transition-all ring-2 ring-white/10" 
-                                  onClick={() => currentUser && setSelectedUserPreview(currentUser)}
+                                  onClick={() => {
+                                    if (currentUser) {
+                                      setSelectedUserPreview(currentUser);
+                                      navigate('/profile');
+                                    }
+                                  }}
                                 />
                           ) : (
                             <div 
                               className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-fuchsia-600 to-indigo-650 flex items-center justify-center text-white text-sm font-black shrink-0 cursor-pointer hover:scale-105 transition-all ring-2 ring-white/10"
-                              onClick={() => currentUser && setSelectedUserPreview(currentUser)}
+                              onClick={() => {
+                                if (currentUser) {
+                                  setSelectedUserPreview(currentUser);
+                                  navigate('/profile');
+                                }
+                              }}
                             >
                               {currentUser?.name?.charAt(0) || 'U'}
                             </div>
