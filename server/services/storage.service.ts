@@ -53,7 +53,9 @@ export class LocalStorageStrategy implements StorageStrategy {
 
     await fs.promises.writeFile(filePath, file.buffer);
     logger.info(`[Storage] File uploaded locally: ${key}`);
-    return `/uploads/${filename}`;
+    const publicDomain = process.env.MEDIA_PUBLIC_BASE_URL || process.env.R2_PUBLIC_URL || 'https://www.aswaq22.com';
+    const base = publicDomain.endsWith('/') ? publicDomain.slice(0, -1) : publicDomain;
+    return `${base}/uploads/${filename}`;
   }
 
   async deleteFile(fileUrl: string): Promise<void> {
@@ -163,12 +165,9 @@ export class S3StorageStrategy implements StorageStrategy {
     await upload.done();
     logger.info(`[Storage] File uploaded to S3/R2: ${key}`);
 
-    if (this.publicUrl) {
-      const base = this.publicUrl.endsWith('/') ? this.publicUrl.slice(0, -1) : this.publicUrl;
-      return `${base}/${key}`;
-    }
-
-    return `https://${this.bucket}.s3.amazonaws.com/${key}`;
+    const publicDomain = this.publicUrl || process.env.R2_PUBLIC_URL || process.env.MEDIA_PUBLIC_BASE_URL || process.env.S3_PUBLIC_URL || 'https://media.aswaq22.com';
+    const base = publicDomain.endsWith('/') ? publicDomain.slice(0, -1) : publicDomain;
+    return `${base}/${key}`;
   }
 
   async deleteFile(fileUrl: string): Promise<void> {
