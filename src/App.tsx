@@ -2032,7 +2032,7 @@ useEffect(() => {
       };
       const csrfToken = getCookie('csrf_token');
 
-      const response = await apiFetch(`/api/users/${currentUser.id}`, {
+      const response = await apiFetch(`/api/v1/users/me`, {
         method: "PUT",
         headers: { 
           "Content-Type": "application/json",

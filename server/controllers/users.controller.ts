@@ -162,11 +162,14 @@ export const UsersController = () => {
    *         description: Forbidden
    */
   router.put('/:id', authMiddleware, async (req: AuthenticatedRequest, res) => {
-    if (req.user?.id !== req.params.id && req.user?.role !== 'ADMIN') {
-      return res.status(403).json({ error: 'Forbidden' });
+    const targetUserId = req.params.id === 'me' ? req.user?.id : req.params.id;
+
+    if (req.user?.id !== targetUserId && req.user?.role !== 'ADMIN') {
+      return res.status(403).json({ success: false, message: 'مطلوب تسجيل الدخول بحساب صاحب الملف لتحديثه.' });
     }
 
     try {
+      const userIdToUpdate = targetUserId!;
       let avatarUrl = req.body.avatar;
       let coverUrl = req.body.coverPhoto;
 
@@ -207,7 +210,7 @@ export const UsersController = () => {
       }
 
       const updated = await prisma.user.update({
-        where: { id: req.params.id },
+        where: { id: userIdToUpdate },
         data: {
           name: req.body.name,
           phone: req.body.phone ? req.body.phone.trim() : null,
