@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -681,7 +681,7 @@ export default function CreateAdTab({
                       type="number"
                       required
                       placeholder={t("dashboard.pricePlaceholder")}
-                      className="w-full h-11 bg-slate-950 border border-slate-800 rounded-xl px-4 text-slate-200 outline-none focus:border-emerald-500 text-xs font-bold text-right"
+                      className={`w-full h-11 border rounded-xl px-4 outline-none focus:border-emerald-500 text-xs font-bold text-right transition-colors ${isDark ? "bg-slate-950 border-slate-800 text-slate-200" : "bg-white border-slate-200 text-slate-900"}`}
                       value={price}
                       onChange={(e) => setPrice(e.target.value)}
                       id="ad-input-price"
@@ -693,7 +693,7 @@ export default function CreateAdTab({
                       العملة
                     </label>
                     <select
-                      className="w-full h-11 bg-slate-950 border border-slate-800 rounded-xl px-4 text-slate-300 outline-none focus:border-emerald-500 text-xs text-right font-medium cursor-pointer"
+                      className={`w-full h-11 border rounded-xl px-4 outline-none focus:border-emerald-500 text-xs text-right font-medium cursor-pointer transition-colors ${isDark ? "bg-slate-950 border-slate-800 text-slate-300" : "bg-white border-slate-200 text-slate-900"}`}
                       value={currency}
                       onChange={(e) => setCurrency(e.target.value)}
                       id="ad-input-currency"
@@ -738,7 +738,7 @@ export default function CreateAdTab({
                       <button
                         type="button"
                         onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
-                        className={`w-full h-11 bg-slate-950 border rounded-xl px-4 text-slate-300 outline-none transition-all text-xs text-right font-medium flex items-center justify-between cursor-pointer ${isCategoryDropdownOpen ? "border-emerald-500 ring-2 ring-emerald-500/10" : "border-slate-800"}`}
+                        className={`w-full h-11 border rounded-xl px-4 outline-none transition-all text-xs text-right font-medium flex items-center justify-between cursor-pointer ${isCategoryDropdownOpen ? "border-emerald-500 ring-2 ring-emerald-500/10" : isDark ? "bg-slate-950 border-slate-800 text-slate-300" : "bg-white border-slate-200 text-slate-900"}`}
                       >
                         <Sliders className={`w-3.5 h-3.5 text-slate-500 transition-transform duration-300 ${isCategoryDropdownOpen ? "rotate-180 text-emerald-400" : ""}`} />
                         <span>{categories.find((c) => c.id === category)?.nameAr || "اختر القسم / الفئة..."}</span>
@@ -812,7 +812,7 @@ export default function CreateAdTab({
                           <button
                             type="button"
                             onClick={() => setIsSubCategoryDropdownOpen(!isSubCategoryDropdownOpen)}
-                            className={`w-full h-11 bg-slate-950 border rounded-xl px-4 text-slate-300 outline-none transition-all text-xs text-right font-medium flex items-center justify-between cursor-pointer ${isSubCategoryDropdownOpen ? "border-emerald-500 ring-2 ring-emerald-500/10" : "border-slate-800"}`}
+                            className={`w-full h-11 border rounded-xl px-4 outline-none transition-all text-xs text-right font-medium flex items-center justify-between cursor-pointer ${isSubCategoryDropdownOpen ? "border-emerald-500 ring-2 ring-emerald-500/10" : isDark ? "bg-slate-950 border-slate-800 text-slate-300" : "bg-white border-slate-200 text-slate-900"}`}
                           >
                             <Sliders className={`w-3.5 h-3.5 text-slate-500 transition-transform duration-300 ${isSubCategoryDropdownOpen ? "rotate-180 text-emerald-400" : ""}`} />
                             <span>{currentSubCategories.find((s: any) => s.id === subCategory)?.nameAr || "اختر تصنيفاً فرعياً"}</span>
@@ -1374,7 +1374,7 @@ export default function CreateAdTab({
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-slate-400">مدينة العرض</label>
                     <select
-                      className="w-full h-11 bg-slate-950 border border-slate-800 rounded-xl px-4 text-slate-300 outline-none focus:border-emerald-500 text-xs text-right font-medium cursor-pointer"
+                      className={`w-full h-11 border rounded-xl px-4 outline-none focus:border-emerald-500 text-xs text-right font-medium cursor-pointer transition-colors ${isDark ? "bg-slate-950 border-slate-800 text-slate-300" : "bg-white border-slate-200 text-slate-900"}`}
                       value={city}
                       onChange={(e) => {
                         setCity(e.target.value);
@@ -1393,7 +1393,7 @@ export default function CreateAdTab({
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-slate-400">المنطقة (المديرية)</label>
                     <select
-                      className="w-full h-11 bg-slate-950 border border-slate-800 rounded-xl px-4 text-slate-300 outline-none focus:border-emerald-500 text-xs text-right font-medium cursor-pointer"
+                      className={`w-full h-11 border rounded-xl px-4 outline-none focus:border-emerald-500 text-xs text-right font-medium cursor-pointer transition-colors ${isDark ? "bg-slate-950 border-slate-800 text-slate-300" : "bg-white border-slate-200 text-slate-900"}`}
                       value={district}
                       onChange={(e) => setDistrict(e.target.value)}
                       id="ad-input-district"
@@ -1623,3 +1623,4 @@ export default function CreateAdTab({
     </div>
   );
 }
+

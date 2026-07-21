@@ -32,6 +32,7 @@ interface DeliveryDashboardProps {
   ads: any[];
   setAds: React.Dispatch<React.SetStateAction<any[]>>;
   setFilteredAds: React.Dispatch<React.SetStateAction<any[]>>;
+  isDark?: boolean;
 }
 
 const getCleanAddressName = (address: string): string => {
@@ -62,7 +63,8 @@ export default function DeliveryDashboard({
   addToast,
   ads,
   setAds,
-  setFilteredAds
+  setFilteredAds,
+  isDark = true,
 }: DeliveryDashboardProps) {
   const { t } = useTranslation();
 
@@ -439,20 +441,20 @@ export default function DeliveryDashboard({
         />
       )}
 
-      {/* Main Delivery Layout - Sleek Dark Glassmorphism */}
-      <div className="bg-[#0b0f1a]/80 backdrop-blur-xl border border-white/5 p-6 sm:p-8 rounded-[2.5rem] shadow-2xl space-y-8 my-6 relative overflow-hidden">
+      {/* Main Delivery Layout */}
+      <div className={`backdrop-blur-xl border p-6 sm:p-8 rounded-[2.5rem] shadow-2xl space-y-8 my-6 relative overflow-hidden transition-colors ${isDark ? 'bg-[#0b0f1a]/80 border-white/5 text-slate-100' : 'bg-white border-slate-200 text-slate-900 shadow-xl'}`}>
         {/* Soft background ambient glows */}
         <div className="absolute -top-40 -right-40 w-96 h-96 bg-cyan-500/10 rounded-full blur-[100px] pointer-events-none"></div>
         <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-emerald-500/10 rounded-full blur-[100px] pointer-events-none"></div>
 
         {/* Header Title with Dev Mode Toggle */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-white/5 pb-6 gap-4 relative z-10">
+        <div className={`flex flex-col sm:flex-row sm:items-center justify-between border-b pb-6 gap-4 relative z-10 ${isDark ? 'border-white/5' : 'border-slate-200'}`}>
           <div>
-            <h3 className="text-2xl font-black text-white tracking-tight flex items-center gap-3">
-              <span className="p-2.5 bg-cyan-500/10 text-cyan-400 rounded-2xl border border-cyan-500/20 shadow-inner">🚚</span>
+            <h3 className={`text-2xl font-black tracking-tight flex items-center gap-3 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+              <span className="p-2.5 bg-cyan-500/10 text-cyan-500 rounded-2xl border border-cyan-500/20 shadow-inner">🚚</span>
               {t('app.delivery.deliveryTitle') || (isRtl ? 'خدمة الشحن والتوصيل الفوري' : 'Express Cargo & Delivery')}
             </h3>
-            <p className="text-xs text-slate-400 mt-2 font-medium">
+            <p className={`text-xs mt-2 font-medium ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
               {t('app.delivery.deliverySubtitle') || (isRtl ? 'احجز مندوباً لتوصيل طرودك وتتبع حركته مباشرة خطوة بخطوة.' : 'Book a courier to ship your packages and track them live on the map.')}
             </p>
           </div>
@@ -461,14 +463,14 @@ export default function DeliveryDashboard({
               onClick={() => setDevModeEnabled(!devModeEnabled)}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl border text-xs font-black transition-all cursor-pointer ${
                 devModeEnabled 
-                  ? 'bg-amber-500/15 text-amber-400 border-amber-500/30 shadow-lg shadow-amber-500/5' 
-                  : 'bg-white/5 text-slate-400 border-white/5 hover:bg-white/10 hover:text-white'
+                  ? 'bg-amber-500/15 text-amber-500 border-amber-500/30 shadow-lg shadow-amber-500/5' 
+                  : isDark ? 'bg-white/5 text-slate-400 border-white/5 hover:bg-white/10 hover:text-white' : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
               }`}
             >
               <Settings size={14} className={devModeEnabled ? 'animate-spin' : ''} />
               <span>{isRtl ? 'أدوات المحاكاة (QA)' : 'QA Simulator'}</span>
             </button>
-            <span className="text-[10px] font-black bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-3.5 py-1.5 rounded-2xl font-mono tracking-wider uppercase">
+            <span className="text-[10px] font-black bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 px-3.5 py-1.5 rounded-2xl font-mono tracking-wider uppercase">
               GPS Active
             </span>
           </div>
@@ -478,7 +480,7 @@ export default function DeliveryDashboard({
         <div className="max-w-2xl mx-auto py-2 relative z-10">
           <div className="flex items-center justify-between relative px-2">
             {/* Step lines backdrops */}
-            <div className="absolute left-6 right-6 top-5 h-0.5 bg-slate-800/80 rounded-full -z-10"></div>
+            <div className={`absolute left-6 right-6 top-5 h-0.5 rounded-full -z-10 ${isDark ? 'bg-slate-800/80' : 'bg-slate-200'}`}></div>
             <div 
               className="absolute left-6 top-5 h-0.5 bg-gradient-to-r from-cyan-500 to-emerald-500 rounded-full -z-10 transition-all duration-500"
               style={{ width: `${(wizardStep / 3) * 92}%` }}
@@ -491,12 +493,12 @@ export default function DeliveryDashboard({
                 className={`w-10 h-10 rounded-2xl flex items-center justify-center font-black text-xs border transition-all cursor-pointer ${
                   wizardStep >= 0 
                     ? 'bg-cyan-500 border-cyan-400 text-slate-950 shadow-lg shadow-cyan-500/35 scale-105' 
-                    : 'bg-slate-900 border-slate-800 text-slate-500'
+                    : isDark ? 'bg-slate-900 border-slate-800 text-slate-500' : 'bg-slate-100 border-slate-200 text-slate-400'
                 }`}
               >
                 {wizardStep > 0 ? '✓' : '1'}
               </button>
-              <span className={`text-[10px] font-black tracking-tight ${wizardStep >= 0 ? 'text-white' : 'text-slate-500'}`}>
+              <span className={`text-[10px] font-black tracking-tight ${wizardStep >= 0 ? (isDark ? 'text-white' : 'text-slate-900') : 'text-slate-500'}`}>
                 {isRtl ? 'الموقع' : 'Location'}
               </span>
             </div>
@@ -509,12 +511,12 @@ export default function DeliveryDashboard({
                 className={`w-10 h-10 rounded-2xl flex items-center justify-center font-black text-xs border transition-all ${
                   wizardStep >= 1 
                     ? 'bg-cyan-500 border-cyan-400 text-slate-950 shadow-lg shadow-cyan-500/35 scale-105 cursor-pointer' 
-                    : 'bg-slate-900 border-slate-800 text-slate-500 cursor-not-allowed'
+                    : isDark ? 'bg-slate-900 border-slate-800 text-slate-500 cursor-not-allowed' : 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
                 }`}
               >
                 {wizardStep > 1 ? '✓' : '2'}
               </button>
-              <span className={`text-[10px] font-black tracking-tight ${wizardStep >= 1 ? 'text-white' : 'text-slate-500'}`}>
+              <span className={`text-[10px] font-black tracking-tight ${wizardStep >= 1 ? (isDark ? 'text-white' : 'text-slate-900') : 'text-slate-500'}`}>
                 {isRtl ? 'الحمولة' : 'Details'}
               </span>
             </div>
@@ -527,12 +529,12 @@ export default function DeliveryDashboard({
                 className={`w-10 h-10 rounded-2xl flex items-center justify-center font-black text-xs border transition-all ${
                   wizardStep >= 2 
                     ? 'bg-cyan-500 border-cyan-400 text-slate-950 shadow-lg shadow-cyan-500/35 scale-105 cursor-pointer' 
-                    : 'bg-slate-900 border-slate-800 text-slate-500 cursor-not-allowed'
+                    : isDark ? 'bg-slate-900 border-slate-800 text-slate-500 cursor-not-allowed' : 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
                 }`}
               >
                 {wizardStep > 2 ? '✓' : '3'}
               </button>
-            <span className={`text-[10px] font-black tracking-tight ${wizardStep >= 2 ? 'text-white' : 'text-slate-500'}`}>
+            <span className={`text-[10px] font-black tracking-tight ${wizardStep >= 2 ? (isDark ? 'text-white' : 'text-slate-900') : 'text-slate-500'}`}>
               {isRtl ? 'التسعير' : 'Vehicle'}
             </span>
           </div>
@@ -543,12 +545,12 @@ export default function DeliveryDashboard({
               className={`w-10 h-10 rounded-2xl flex items-center justify-center font-black text-xs border transition-all ${
                 wizardStep >= 3 
                   ? 'bg-cyan-500 border-cyan-400 text-slate-950 shadow-lg shadow-cyan-500/35 scale-105' 
-                  : 'bg-slate-900 border-slate-800 text-slate-500'
+                  : isDark ? 'bg-slate-900 border-slate-800 text-slate-500' : 'bg-slate-100 border-slate-200 text-slate-400'
               }`}
             >
               4
             </div>
-            <span className={`text-[10px] font-black tracking-tight ${wizardStep >= 3 ? 'text-white' : 'text-slate-500'}`}>
+            <span className={`text-[10px] font-black tracking-tight ${wizardStep >= 3 ? (isDark ? 'text-white' : 'text-slate-900') : 'text-slate-500'}`}>
               {isRtl ? 'التتبع' : 'Tracking'}
             </span>
           </div>
@@ -559,19 +561,19 @@ export default function DeliveryDashboard({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 pt-4 relative z-10">
         
         {/* Left Column: Form & Stepper Contents */}
-        <div className="bg-[#0f1422]/90 backdrop-blur-md p-4 sm:p-6 rounded-3xl border border-white/5 flex flex-col justify-between min-h-[420px] shadow-xl">
+        <div className={`backdrop-blur-md p-4 sm:p-6 rounded-3xl border flex flex-col justify-between min-h-[420px] shadow-xl transition-colors ${isDark ? 'bg-[#0f1422]/90 border-white/5' : 'bg-slate-50 border-slate-200'}`}>
           
           {/* Step 0: Locations Selection */}
           {wizardStep === 0 && (
             <div className="space-y-6 animate-fadeIn flex-grow flex flex-col justify-between">
               <div className="space-y-4">
-                <div className="flex items-center justify-between border-b border-white/5 pb-2">
-                  <h4 className="text-[11px] font-black text-cyan-400 uppercase tracking-widest">{isRtl ? 'الخطوة 1: مسار التوصيل' : 'Step 1: Route Setup'}</h4>
-                  <span className="text-[9px] bg-cyan-500/10 text-cyan-400 px-2 py-0.5 rounded-full font-bold">Address</span>
+                <div className={`flex items-center justify-between border-b pb-2 ${isDark ? 'border-white/5' : 'border-slate-200'}`}>
+                  <h4 className="text-[11px] font-black text-cyan-500 uppercase tracking-widest">{isRtl ? 'الخطوة 1: مسار التوصيل' : 'Step 1: Route Setup'}</h4>
+                  <span className="text-[9px] bg-cyan-500/10 text-cyan-500 px-2 py-0.5 rounded-full font-bold">Address</span>
                 </div>
                 
                 {/* Uber-Style Route Selector Box */}
-                <div className="relative bg-[#080b12] border border-white/5 p-3 sm:p-4 rounded-2xl flex flex-col gap-4">
+                <div className={`relative border p-3 sm:p-4 rounded-2xl flex flex-col gap-4 ${isDark ? 'bg-[#080b12] border-white/5' : 'bg-white border-slate-200 shadow-sm'}`}>
                   {/* Vertical line indicator */}
                   <div className="absolute right-6 sm:right-7 top-10 bottom-10 w-0.5 bg-gradient-to-b from-emerald-500 to-rose-500 pointer-events-none"></div>
  
@@ -581,16 +583,16 @@ export default function DeliveryDashboard({
                       ●
                     </div>
                     <div className="flex-1 text-right">
-                      <label className="block text-[9px] text-slate-500 font-black mb-1">{isRtl ? 'نقطة الاستلام (Pickup):' : 'Pickup Address:'}</label>
+                      <label className={`block text-[9px] font-black mb-1 ${isDark ? 'text-slate-500' : 'text-slate-600'}`}>{isRtl ? 'نقطة الاستلام (Pickup):' : 'Pickup Address:'}</label>
                       <button
                         type="button"
                         onClick={() => setIsPickingLocation('pickup')}
-                        className={`w-full flex items-center justify-between bg-slate-900/50 border rounded-xl px-3 py-2.5 text-[11px] sm:text-xs text-right cursor-pointer transition-all ${
-                          pickupCoords ? 'border-emerald-500/30 text-emerald-400 bg-emerald-500/5' : 'border-slate-800 text-slate-500 hover:border-slate-700 hover:bg-slate-850'
+                        className={`w-full flex items-center justify-between border rounded-xl px-3 py-2.5 text-[11px] sm:text-xs text-right cursor-pointer transition-all ${
+                          pickupCoords ? 'border-emerald-500/30 text-emerald-500 bg-emerald-500/5 font-bold' : isDark ? 'bg-slate-900/50 border-slate-800 text-slate-500 hover:border-slate-700' : 'bg-slate-50 border-slate-200 text-slate-600 hover:border-slate-300'
                         }`}
                       >
                         <span className="truncate font-medium text-right dir-rtl">{pickupCoords ? shipFrom : (isRtl ? 'انقر لتحديد موقع الاستلام على الخريطة...' : 'Choose pickup...')}</span>
-                        <MapPin size={14} className={pickupCoords ? 'text-emerald-400 animate-pulse shrink-0 ml-2' : 'text-slate-500 shrink-0 ml-2'} />
+                        <MapPin size={14} className={pickupCoords ? 'text-emerald-500 animate-pulse shrink-0 ml-2' : 'text-slate-500 shrink-0 ml-2'} />
                       </button>
                     </div>
                   </div>
@@ -601,16 +603,16 @@ export default function DeliveryDashboard({
                       ■
                     </div>
                     <div className="flex-1 text-right">
-                      <label className="block text-[9px] text-slate-500 font-black mb-1">{isRtl ? 'وجهة التسليم (Destination):' : 'Drop-off Address:'}</label>
+                      <label className={`block text-[9px] font-black mb-1 ${isDark ? 'text-slate-500' : 'text-slate-600'}`}>{isRtl ? 'وجهة التسليم (Destination):' : 'Drop-off Address:'}</label>
                       <button
                         type="button"
                         onClick={() => setIsPickingLocation('delivery')}
-                        className={`w-full flex items-center justify-between bg-slate-900/50 border rounded-xl px-3 py-2.5 text-[11px] sm:text-xs text-right cursor-pointer transition-all ${
-                          deliveryCoords ? 'border-rose-500/30 text-rose-400 bg-rose-500/5' : 'border-slate-800 text-slate-500 hover:border-slate-700 hover:bg-slate-850'
+                        className={`w-full flex items-center justify-between border rounded-xl px-3 py-2.5 text-[11px] sm:text-xs text-right cursor-pointer transition-all ${
+                          deliveryCoords ? 'border-rose-500/30 text-rose-500 bg-rose-500/5 font-bold' : isDark ? 'bg-slate-900/50 border-slate-800 text-slate-500 hover:border-slate-700' : 'bg-slate-50 border-slate-200 text-slate-600 hover:border-slate-300'
                         }`}
                       >
                         <span className="truncate font-medium text-right dir-rtl">{deliveryCoords ? shipTo : (isRtl ? 'انقر لتحديد وجهة التوصيل على الخريطة...' : 'Choose destination...')}</span>
-                        <MapPin size={14} className={deliveryCoords ? 'text-rose-400 animate-pulse shrink-0 ml-2' : 'text-slate-500 shrink-0 ml-2'} />
+                        <MapPin size={14} className={deliveryCoords ? 'text-rose-500 animate-pulse shrink-0 ml-2' : 'text-slate-500 shrink-0 ml-2'} />
                       </button>
                     </div>
                   </div>
@@ -989,8 +991,8 @@ export default function DeliveryDashboard({
           {/* Right Column: Active Map Tracker */}
           <div className="space-y-4 flex flex-col">
             
-            {/* Live Track Map Frame - Highly polished borderless frame */}
-            <div className="bg-[#0f1422]/90 border border-white/5 rounded-3xl h-[330px] overflow-hidden relative shadow-2xl p-1.5">
+            {/* Live Track Map Frame */}
+            <div className={`border rounded-3xl h-[330px] overflow-hidden relative shadow-2xl p-1.5 transition-colors ${isDark ? 'bg-[#0f1422]/90 border-white/5' : 'bg-white border-slate-200'}`}>
               <div className="absolute inset-x-0 bottom-0 z-10 p-4 bg-gradient-to-t from-black/90 to-transparent flex items-center justify-between text-[10px] text-white/80 font-black">
                 <span>{isRtl ? 'رادار تتبع الشحنات الحي' : 'Live Shipment Dispatch Radar'}</span>
                 {calculatedDistanceKm > 0 && <span className="font-sans text-cyan-400 bg-cyan-500/10 px-2.5 py-0.5 rounded-full border border-cyan-500/25">{calculatedDistanceKm.toFixed(1)} km</span>}
@@ -1016,17 +1018,17 @@ export default function DeliveryDashboard({
 
             {/* Quick Route Info Overlay Widget under Map */}
             {pickupCoords && (
-              <div className="bg-[#0f1422]/85 border border-white/5 p-4 rounded-2xl flex items-center justify-between text-xs animate-fadeIn shadow-lg">
+              <div className={`border p-4 rounded-2xl flex items-center justify-between text-xs animate-fadeIn shadow-lg transition-colors ${isDark ? 'bg-[#0f1422]/85 border-white/5 text-slate-200' : 'bg-slate-50 border-slate-200 text-slate-800'}`}>
                 <div className="text-right">
                   <span className="text-[9px] text-slate-500 font-bold block">{isRtl ? 'من:' : 'From:'}</span>
-                  <span className="text-[10px] font-black text-white block truncate max-w-[140px]">{shipFrom ? (currentMarket.cityCoordinates[shipFrom]?.ar || shipFrom) : ''}</span>
+                  <span className={`text-[10px] font-black block truncate max-w-[140px] ${isDark ? 'text-white' : 'text-slate-900'}`}>{shipFrom ? (currentMarket.cityCoordinates[shipFrom]?.ar || shipFrom) : ''}</span>
                 </div>
-                <div className="text-center font-bold text-slate-650 px-2 shrink-0">
+                <div className="text-center font-bold text-slate-400 px-2 shrink-0">
                   ⟶
                 </div>
                 <div className="text-right">
                   <span className="text-[9px] text-slate-500 font-bold block">{isRtl ? 'إلى:' : 'To:'}</span>
-                  <span className="text-[10px] font-black text-white block truncate max-w-[140px]">{shipTo ? (currentMarket.cityCoordinates[shipTo]?.ar || shipTo) : ''}</span>
+                  <span className={`text-[10px] font-black block truncate max-w-[140px] ${isDark ? 'text-white' : 'text-slate-900'}`}>{shipTo ? (currentMarket.cityCoordinates[shipTo]?.ar || shipTo) : ''}</span>
                 </div>
               </div>
             )}

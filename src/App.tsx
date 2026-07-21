@@ -3697,6 +3697,7 @@ useEffect(() => {
                     ads={ads}
                     setAds={setAds}
                     setFilteredAds={setFilteredAds}
+                    isDark={isDark}
                   />
                 </React.Suspense>
               )}
