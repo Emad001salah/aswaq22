@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -748,11 +748,11 @@ export default function CreateAdTab({
                         <>
                           <div className="fixed inset-0 z-[1050]" onClick={() => setIsCategoryDropdownOpen(false)} />
                           <div className="absolute top-full left-0 right-0 mt-2 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl z-[1051] overflow-hidden animate-in fade-in zoom-in-95 duration-200 origin-top">
-                            <div className="p-2 border-b border-slate-800 bg-slate-950/50">
+                            <div className={`p-2 border-b ${isDark ? "border-slate-800 bg-slate-950/50" : "border-slate-200 bg-slate-100"}`}>
                               <input
                                 type="text"
                                 placeholder="بحث عن قسم..."
-                                className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-[10px] text-right outline-none focus:border-emerald-500 transition-colors"
+                                className={`w-full border rounded-lg px-3 py-1.5 text-[10px] text-right outline-none focus:border-emerald-500 transition-colors ${isDark ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-200 text-slate-900"}`}
                                 value={categorySearch}
                                 onChange={(e) => setCategorySearch(e.target.value)}
                                 onClick={(e) => e.stopPropagation()}
@@ -822,11 +822,11 @@ export default function CreateAdTab({
                             <>
                               <div className="fixed inset-0 z-[1052]" onClick={() => setIsSubCategoryDropdownOpen(false)} />
                               <div className="absolute top-full left-0 right-0 mt-2 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl z-[1053] overflow-hidden animate-in fade-in zoom-in-95 duration-200 origin-top">
-                                <div className="p-2 border-b border-slate-800 bg-slate-950/50">
+                                <div className={`p-2 border-b ${isDark ? "border-slate-800 bg-slate-950/50" : "border-slate-200 bg-slate-100"}`}>
                                   <input
                                     type="text"
                                     placeholder="بحث عن تصنيف فرعي..."
-                                    className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-[10px] text-right outline-none focus:border-emerald-500 transition-colors"
+                                    className={`w-full border rounded-lg px-3 py-1.5 text-[10px] text-right outline-none focus:border-emerald-500 transition-colors ${isDark ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-200 text-slate-900"}`}
                                     value={subCategorySearch}
                                     onChange={(e) => setSubCategorySearch(e.target.value)}
                                     onClick={(e) => e.stopPropagation()}
@@ -879,7 +879,7 @@ export default function CreateAdTab({
                     <input
                       type="text"
                       placeholder="مثال: خناجر وعقيق يماني، مستلزمات طبية، أدوات طاقة شمسية..."
-                      className="w-full h-11 bg-slate-950 border border-emerald-500/30 focus:border-emerald-400 rounded-xl px-4 text-slate-200 outline-none text-xs text-right font-medium"
+                      className={`w-full h-11 border rounded-xl px-4 outline-none text-xs text-right font-medium transition-colors ${isDark ? "bg-slate-950 border-emerald-500/30 focus:border-emerald-400 text-slate-200" : "bg-white border-slate-200 focus:border-emerald-500 text-slate-900"}`}
                       value={customCategoryName}
                       onChange={(e) => setCustomCategoryName(e.target.value)}
                       required
@@ -892,7 +892,7 @@ export default function CreateAdTab({
 
                 {/* Real Estate Specific Advanced Fields */}
                 {category === "realestate" && (
-                  <div className="bg-slate-950/50 border border-slate-800 p-6 rounded-2xl space-y-6 text-right">
+                  <div className={`p-6 rounded-2xl space-y-6 text-right border transition-colors ${isDark ? "bg-slate-950/50 border-slate-800" : "bg-slate-50 border-slate-200 shadow-sm"}`}>
                     <div className="flex items-center gap-2 justify-end">
                       <Sliders className="w-4 h-4 text-emerald-400" />
                       <h4 className="text-xs font-black text-white">تفاصيل العقار المتقدمة</h4>
@@ -974,7 +974,7 @@ export default function CreateAdTab({
 
                 {/* Cars Specific Advanced Fields */}
                 {category === "cars" && (
-                  <div className="bg-slate-950/50 border border-slate-800 p-6 rounded-2xl space-y-6 text-right">
+                  <div className={`p-6 rounded-2xl space-y-6 text-right border transition-colors ${isDark ? "bg-slate-950/50 border-slate-800" : "bg-slate-50 border-slate-200 shadow-sm"}`}>
                     <div className="flex items-center gap-2 justify-end">
                       <Sliders className="w-4 h-4 text-yellow-400" />
                       <h4 className="text-xs font-black text-white">تفاصيل السيارة المتقدمة</h4>
@@ -984,7 +984,7 @@ export default function CreateAdTab({
                       <div className="space-y-1.5">
                         <label className="text-xs font-bold text-slate-400 block">ماركة السيارة</label>
                         <select
-                          className="w-full h-11 bg-slate-950 border border-slate-800 rounded-xl px-4 text-slate-300 outline-none focus:border-yellow-500 text-xs text-right cursor-pointer"
+                          className={`w-full h-11 border rounded-xl px-4 outline-none text-xs text-right cursor-pointer transition-colors ${isDark ? "bg-slate-950 border-slate-800 text-slate-300 focus:border-yellow-500" : "bg-white border-slate-200 text-slate-900 focus:border-yellow-500"}`}
                           value={make}
                           onChange={(e) => setMake(e.target.value)}
                         >
@@ -1000,7 +1000,7 @@ export default function CreateAdTab({
                       <div className="space-y-1.5">
                         <label className="text-xs font-bold text-slate-400 block">سنة الصنع</label>
                         <select
-                          className="w-full h-11 bg-slate-950 border border-slate-800 rounded-xl px-4 text-slate-300 outline-none focus:border-yellow-500 text-xs text-right cursor-pointer"
+                          className={`w-full h-11 border rounded-xl px-4 outline-none text-xs text-right cursor-pointer transition-colors ${isDark ? "bg-slate-950 border-slate-800 text-slate-300 focus:border-yellow-500" : "bg-white border-slate-200 text-slate-900 focus:border-yellow-500"}`}
                           value={modelYear}
                           onChange={(e) => setModelYear(e.target.value ? parseInt(e.target.value) : "")}
                         >
@@ -1060,7 +1060,7 @@ export default function CreateAdTab({
 
                 {/* Electronics Specific Advanced Fields */}
                 {["electronics", "phones", "laptops"].includes(category) && (
-                  <div className="bg-slate-950/50 border border-slate-800 p-6 rounded-2xl space-y-6 text-right">
+                  <div className={`p-6 rounded-2xl space-y-6 text-right border transition-colors ${isDark ? "bg-slate-950/50 border-slate-800" : "bg-slate-50 border-slate-200 shadow-sm"}`}>
                     <div className="flex items-center gap-2 justify-end">
                       <Sliders className="w-4 h-4 text-blue-400" />
                       <h4 className="text-xs font-black text-white">تفاصيل الجهاز المتقدمة</h4>
@@ -1070,7 +1070,7 @@ export default function CreateAdTab({
                       <div className="space-y-1.5">
                         <label className="text-xs font-bold text-slate-400 block">حالة الجهاز</label>
                         <select
-                          className="w-full h-11 bg-slate-950 border border-slate-800 rounded-xl px-4 text-slate-300 outline-none focus:border-blue-500 text-xs text-right cursor-pointer"
+                          className={`w-full h-11 border rounded-xl px-4 outline-none text-xs text-right cursor-pointer transition-colors ${isDark ? "bg-slate-950 border-slate-800 text-slate-300 focus:border-blue-500" : "bg-white border-slate-200 text-slate-900 focus:border-blue-500"}`}
                           value={condition}
                           onChange={(e) => setCondition(e.target.value)}
                         >
@@ -1092,7 +1092,7 @@ export default function CreateAdTab({
                         <input
                           type="text"
                           placeholder="مثلاً: Apple, Samsung, Sony..."
-                          className="w-full h-11 bg-slate-950 border border-slate-800 rounded-xl px-4 text-slate-200 outline-none focus:border-blue-500 text-xs text-right font-medium"
+                          className={`w-full h-11 border rounded-xl px-4 outline-none text-xs text-right font-medium transition-colors ${isDark ? "bg-slate-950 border-slate-800 text-slate-200 focus:border-blue-500" : "bg-white border-slate-200 text-slate-900 focus:border-blue-500"}`}
                           value={brand}
                           onChange={(e) => setBrand(e.target.value)}
                         />
@@ -1103,7 +1103,7 @@ export default function CreateAdTab({
 
                 {/* Jobs Specific Advanced Fields */}
                 {category === "jobs" && (
-                  <div className="bg-slate-950/50 border border-slate-800 p-6 rounded-2xl space-y-6 text-right">
+                  <div className={`p-6 rounded-2xl space-y-6 text-right border transition-colors ${isDark ? "bg-slate-950/50 border-slate-800" : "bg-slate-50 border-slate-200 shadow-sm"}`}>
                     <div className="flex items-center gap-2 justify-end">
                       <Briefcase className="w-4 h-4 text-purple-400" />
                       <h4 className="text-xs font-black text-white">نوع الإعلان الوظيفي</h4>
@@ -1235,7 +1235,7 @@ export default function CreateAdTab({
                       value={videoUrl}
                       onChange={(e) => setVideoUrl(e.target.value)}
                       placeholder="ضع هنا رابط الفيديو (يوتيوب/تيك توك) أو صوّر فيديو واقعياً..."
-                      className="w-full bg-slate-950/70 border border-slate-800 rounded-xl px-4 py-2.5 text-xs focus:border-red-500 outline-none text-white transition-all pl-12 text-right"
+                      className={`w-full border rounded-xl px-4 py-2.5 text-xs outline-none transition-all pl-12 text-right ${isDark ? "bg-slate-950/70 border-slate-800 text-white focus:border-red-500" : "bg-white border-slate-200 text-slate-900 focus:border-red-500"}`}
                     />
                     {uploadingVideo && (
                       <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-2 bg-red-500/10 text-red-400 px-2.5 py-1 rounded-xl text-[9px] font-bold">
@@ -1320,7 +1320,7 @@ export default function CreateAdTab({
                     <input
                       type="text"
                       placeholder="أو اكتب رابط الصورة يدوياً واضغط إضافة..."
-                      className="flex-1 h-9 bg-slate-950 border border-slate-800 rounded-lg px-3 text-slate-350 text-[10px] outline-none text-right placeholder-slate-700"
+                      className={`flex-1 h-9 border rounded-lg px-3 text-[10px] outline-none text-right transition-colors ${isDark ? "bg-slate-950 border-slate-800 text-slate-200 placeholder-slate-700" : "bg-white border-slate-200 text-slate-900 placeholder-slate-400"}`}
                       id="manual-image-url"
                     />
                     <button
@@ -1370,7 +1370,7 @@ export default function CreateAdTab({
             {adStep === 3 && (
               <div className="space-y-6 animate-in fade-in slide-in-from-bottom duration-300">
                 {/* Geolocation selector */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-950/40 border border-slate-850 p-4 rounded-2xl text-right">
+                <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-2xl text-right border transition-colors ${isDark ? "bg-slate-950/40 border-slate-800" : "bg-slate-50 border-slate-200"}`}>
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-slate-400">مدينة العرض</label>
                     <select
@@ -1409,7 +1409,7 @@ export default function CreateAdTab({
                 </div>
 
                 {/* Phone Toggle */}
-                <div className="flex items-center justify-between bg-slate-950 border border-slate-800 p-4 rounded-xl mt-6">
+                <div className={`flex items-center justify-between p-4 rounded-xl mt-6 border transition-colors ${isDark ? "bg-slate-950 border-slate-800" : "bg-slate-50 border-slate-200"}`}>
                   <span className="text-xs font-bold text-slate-300">إظهار رقم الهاتف للتواصل المباشر (واتساب واتصال)</span>
                   <button
                     type="button"
@@ -1426,7 +1426,7 @@ export default function CreateAdTab({
                     <input
                       type="text"
                       required
-                      className="w-full h-11 bg-slate-950 border border-slate-800 rounded-xl px-4 text-slate-200 outline-none focus:border-emerald-500 text-xs font-mono text-right"
+                      className={`w-full h-11 border rounded-xl px-4 outline-none focus:border-emerald-500 text-xs font-mono text-right transition-colors ${isDark ? "bg-slate-950 border-slate-800 text-slate-200" : "bg-white border-slate-200 text-slate-900"}`}
                       value={contactNumber}
                       onChange={(e) => setContactNumber(e.target.value)}
                       id="ad-input-phone"
@@ -1435,7 +1435,7 @@ export default function CreateAdTab({
                 )}
 
                 {/* Toggle Map Visibility */}
-                <div className="flex items-center justify-between bg-slate-950 border border-slate-800 p-4 rounded-xl mt-6">
+                <div className={`flex items-center justify-between p-4 rounded-xl mt-6 border transition-colors ${isDark ? "bg-slate-950 border-slate-800" : "bg-slate-50 border-slate-200"}`}>
                   <span className="text-xs font-bold text-slate-300">ظهور الإعلان على الخريطة</span>
                   <button
                     type="button"
@@ -1447,7 +1447,7 @@ export default function CreateAdTab({
                 </div>
 
                 {showOnMap && (
-                  <div className="bg-slate-950 border border-slate-800 p-4 rounded-xl mt-3 space-y-3 text-right">
+                  <div className={`p-4 rounded-xl mt-3 space-y-3 text-right border transition-colors ${isDark ? "bg-slate-950 border-slate-800" : "bg-slate-50 border-slate-200"}`}>
                     <div className="flex items-center justify-between">
                       <div className="flex flex-col gap-0.5 text-right">
                         <span className="text-xs font-bold text-slate-300">📍 تحديد موقعي الدقيق بالـ GPS</span>
@@ -1533,7 +1533,7 @@ export default function CreateAdTab({
                     {/* Draggable Minimap */}
                     <div className="relative mt-2">
                       <div id="create-ad-minimap" className="w-full h-44 rounded-xl overflow-hidden border border-slate-800 bg-slate-900 shadow-inner z-[50]"></div>
-                      <div className="absolute top-2 right-2 p-1.5 bg-slate-950/90 rounded-lg text-[9px] font-black text-slate-400 z-[60] border border-slate-800">🗺️ اسحب الدبوس لتحديد الموقع الفعلي الدقيق</div>
+                      <div className={`absolute top-2 right-2 p-1.5 rounded-lg text-[9px] font-black z-[60] border transition-colors ${isDark ? "bg-slate-950/90 text-slate-400 border-slate-800" : "bg-white/90 text-slate-700 border-slate-200 shadow-md"}`}>🗺️ اسحب الدبوس لتحديد الموقع الفعلي الدقيق</div>
                     </div>
                   </div>
                 )}
@@ -1576,11 +1576,11 @@ export default function CreateAdTab({
         {/* 1. Live preview card */}
         <div className={`p-6 rounded-[2rem] border transition-colors ${isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200 shadow-sm"}`}>
           <h4 className="text-xs font-black text-slate-400 mb-4 uppercase tracking-wider">👁️ معاينة البث والظهور المباشر</h4>
-          <div className="aspect-video w-full rounded-2xl bg-slate-950 border border-slate-850 overflow-hidden relative group">
+          <div className={`aspect-video w-full rounded-2xl overflow-hidden relative group border transition-colors ${isDark ? "bg-slate-950 border-slate-800" : "bg-slate-100 border-slate-200 shadow-inner"}`}>
             {adImages.length > 0 ? (
               <img src={adImages[0]} className="w-full h-full object-cover" />
             ) : (
-              <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-slate-600">
+              <div className={`w-full h-full flex flex-col items-center justify-center gap-2 ${isDark ? "text-slate-600" : "text-slate-400"}`}>
                 <Camera className="w-8 h-8" />
                 <span className="text-[10px]">بانتظار إرفاق صور السلعة...</span>
               </div>
@@ -1595,10 +1595,10 @@ export default function CreateAdTab({
         </div>
 
         {/* 2. Marketing tips card */}
-        <div className="p-6 rounded-[2rem] bg-emerald-950/20 border border-emerald-500/20 text-slate-300">
+        <div className={`p-6 rounded-[2rem] border transition-colors ${isDark ? "bg-emerald-950/20 border-emerald-500/20 text-slate-300" : "bg-emerald-50/80 border-emerald-200 text-slate-800 shadow-sm"}`}>
           <div className="flex items-center gap-2 mb-3 justify-end">
             <span className="text-lg">💡</span>
-            <h4 className="text-xs font-black text-emerald-400">كيف تبيع سلعتك بأسرع وقت؟</h4>
+            <h4 className={`text-xs font-black ${isDark ? "text-emerald-400" : "text-emerald-700"}`}>كيف تبيع سلعتك بأسرع وقت؟</h4>
           </div>
           <ul className="space-y-3.5 text-[11px] font-medium leading-relaxed">
             <li className="flex items-start gap-2 justify-end">
@@ -1623,4 +1623,5 @@ export default function CreateAdTab({
     </div>
   );
 }
+
 
