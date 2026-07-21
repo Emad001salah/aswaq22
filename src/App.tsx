@@ -4319,39 +4319,40 @@ useEffect(() => {
             )}
           </AnimatePresence>
 
-            <div className="mt-16 border-t border-slate-200 dark:border-zinc-900 pt-12">
+            <div className={`mt-16 border-t pt-12 ${isDark ? 'border-zinc-900 bg-transparent' : 'border-emerald-100 bg-white'}`}>
               <div className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 ${isRtl ? 'text-right dir-rtl' : 'text-left dir-ltr'}`}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
                   <div className="space-y-4">
-                    <div className="inline-block bg-white/5 border border-white/10 px-4 py-2 rounded-2xl">
-                      <span className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest leading-none">
+                    <div className={`inline-block border px-4 py-2 rounded-2xl ${isDark ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-emerald-50 border-emerald-200'}`}>
+                      <span className={`text-[10px] font-bold uppercase tracking-widest leading-none ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>
                         {t('branding.leadingPlatform', { country: isRtl ? (currentMarket.countryCode === 'YE' ? 'يمنية' : currentMarket.countryCode === 'SA' ? 'سعودية' : currentMarket.countryCode === 'EG' ? 'مصرية' : currentMarket.countryCode === 'AE' ? 'إماراتية' : currentMarket.countryCode === 'JO' ? 'أردنية' : 'عربية') : (currentMarket.countryCode === 'YE' ? 'Yemeni' : currentMarket.countryCode === 'SA' ? 'Saudi' : currentMarket.countryCode === 'EG' ? 'Egyptian' : currentMarket.countryCode === 'AE' ? 'Emirati' : currentMarket.countryCode === 'JO' ? 'Jordanian' : 'Arab') })}
                       </span>
                     </div>
-                    <h3 className="text-2xl font-bold leading-tight">
+                    <h3 className={`text-2xl font-black leading-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
                       {t('branding.eraTitle')}
                     </h3>
-                    <p className="text-zinc-400 text-sm leading-relaxed">
+                    <p className={`text-sm leading-relaxed ${isDark ? 'text-zinc-400' : 'text-slate-600'}`}>
                       {t('branding.eraDesc', { l: isRtl ? currentMarket.labelAr : currentMarket.labelEn })}
                     </p>
                   </div>
-                  <div className="bg-gradient-to-br from-zinc-900 to-black p-8 rounded-[2.5rem] border border-zinc-800 text-center flex flex-col items-center justify-center space-y-4">
-                    <div className="w-24 h-24 rounded-3xl flex items-center justify-center overflow-hidden relative z-10 shadow-2xl bg-zinc-900/50 border border-zinc-800 p-1.5">
+                  {/* Green Gradient Branding Box */}
+                  <div className="bg-gradient-to-br from-emerald-950 via-teal-950 to-slate-900 p-8 rounded-[2.5rem] border border-emerald-800/60 shadow-2xl shadow-emerald-950/20 text-center flex flex-col items-center justify-center space-y-4 relative overflow-hidden">
+                    <div className="w-24 h-24 rounded-3xl flex items-center justify-center overflow-hidden relative z-10 shadow-2xl bg-emerald-900/60 border border-emerald-500/30 p-1.5">
                       {platformSettings?.logoUrl ? (
                         <img src={platformSettings.logoUrl} alt="Logo" className="w-full h-full object-contain" />
                       ) : (
-                        <div className="w-full h-full bg-yellow-500 flex items-center justify-center shadow-yellow-500/20">
-                          <span className="text-black font-black text-3xl">
+                        <div className="w-full h-full bg-emerald-500 flex items-center justify-center shadow-emerald-500/20">
+                          <span className="text-slate-950 font-black text-3xl">
                             {platformSettings?.logoLetter || (isRtl ? currentMarket.labelAr[0] : currentMarket.labelEn[0])}
                           </span>
                         </div>
                       )}
                     </div>
-                    <div>
+                    <div className="relative z-10">
                       <h4 className="text-xl font-black mb-1 tracking-tighter text-white">
                         {t('branding.marketTitle', { l: isRtl ? currentMarket.labelAr : currentMarket.labelEn })}
                       </h4>
-                      <p className="text-zinc-500 max-w-sm text-xs leading-relaxed">
+                      <p className="text-emerald-200/80 max-w-sm text-xs leading-relaxed font-medium">
                         {t('branding.marketTagline', { l: isRtl ? currentMarket.labelAr : currentMarket.labelEn })}
                       </p>
                     </div>
@@ -4392,16 +4393,17 @@ useEffect(() => {
         )}
       </div>
 
-      {/* Improved Dynamic Footer */}
-      <footer className="bg-slate-950 border-t border-slate-800 py-10 pb-24 md:pb-10 dir-rtl text-slate-400 text-sm shrink-0">
+      {/* Improved Dynamic Green Gradient Footer */}
+      <footer className="bg-gradient-to-b from-slate-950 via-emerald-950/90 to-slate-950 border-t border-emerald-900/50 py-10 pb-24 md:pb-10 dir-rtl text-slate-300 text-sm shrink-0">
         <div className="max-w-7xl mx-auto px-6 flex flex-col items-center gap-8">
 
           {/* Copyright & Branding */}
           <div className="flex flex-col items-center gap-2">
-            <div className="text-2xl font-black text-slate-100 tracking-tighter">
+            <div className="text-2xl font-black text-white tracking-tighter flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
               {isRtl ? currentMarket.labelAr : currentMarket.labelEn}
             </div>
-            <p className="text-xs text-slate-600 font-medium">
+            <p className="text-xs text-emerald-400/80 font-medium">
               {isRtl ? `أسواق © ${new Date().getFullYear()}` : t('footer.copy', { market: currentMarket.labelEn, year: new Date().getFullYear() })}
             </p>
           </div>
