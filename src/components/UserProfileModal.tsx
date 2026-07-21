@@ -20,6 +20,7 @@ interface UserProfileModalProps {
   onUpdateProfile?: (updatedData: Partial<User>) => Promise<void>;
   onViewStore?: (userId: string) => void;
   onVerifyIdentity?: (role: 'merchant' | 'driver' | 'subscriber') => void;
+  addToast?: (title: string, desc: string, type: 'success' | 'error' | 'info' | 'notification') => void;
 }
 
 export default function UserProfileModal({ 
@@ -31,7 +32,8 @@ export default function UserProfileModal({
   currentUser, 
   onUpdateProfile, 
   onViewStore,
-  onVerifyIdentity
+  onVerifyIdentity,
+  addToast,
 }: UserProfileModalProps) {
   const [isEditing, setIsEditing] = React.useState(false);
   const [editForm, setEditForm] = React.useState({
@@ -82,6 +84,9 @@ export default function UserProfileModal({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Reset input so same file can be re-selected
+    e.target.value = '';
+
     if (type === 'avatar') setUploadingAvatar(true);
     else setUploadingCover(true);
 
@@ -96,6 +101,7 @@ export default function UserProfileModal({
 
       if (res.ok) {
         const data = await res.json();
+        if (!data.url) throw new Error('لم يُرجع الخادم رابط الصورة');
         const fieldKey = type === 'avatar' ? 'avatar' : 'coverPhoto';
         setEditForm(prev => ({
           ...prev,
@@ -104,11 +110,23 @@ export default function UserProfileModal({
         if (onUpdateProfile) {
           await onUpdateProfile({ [fieldKey]: data.url });
         }
+        addToast?.(
+          type === 'avatar' ? 'تم رفع الصورة الشخصية' : 'تم رفع صورة الحائط',
+          'تم الرفع والحفظ بنجاح.',
+          'success'
+        );
       } else {
-        console.error('Upload failed');
+        let errMsg = 'فشل رفع الصورة';
+        try {
+          const errData = await res.json();
+          errMsg = errData.message || errData.error || errMsg;
+        } catch {}
+        console.error('[UserProfileModal] Upload failed:', res.status, errMsg);
+        addToast?.('فشل رفع الصورة', `${errMsg} (${res.status})`, 'error');
       }
-    } catch (err) {
-      console.error('Error uploading profile media:', err);
+    } catch (err: any) {
+      console.error('[UserProfileModal] Error uploading profile media:', err);
+      addToast?.('خطأ في الرفع', `تعذّر رفع الصورة: ${err.message || err}`, 'error');
     } finally {
       if (type === 'avatar') setUploadingAvatar(false);
       else setUploadingCover(false);

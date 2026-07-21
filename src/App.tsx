@@ -4493,6 +4493,7 @@ useEffect(() => {
             setShowIdentityModal(true);
             setSelectedUserPreview(null);
           }}
+          addToast={addToast}
         />
       )}
 

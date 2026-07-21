@@ -23,6 +23,9 @@ const ALLOWED_MIME_TYPES = new Set([
   'image/png',
   'image/webp',
   'image/avif',
+  'image/heic',
+  'image/heif',
+  'image/gif',
 ]);
 
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
@@ -49,6 +52,13 @@ const MAGIC_SIGNATURES: Record<string, number[][]> = {
   'image/webp': [
     [0x52, 0x49, 0x46, 0x46],  // RIFF header (تحقق إضافي: bytes 8-11 = "WEBP")
   ],
+  'image/gif': [
+    [0x47, 0x49, 0x46, 0x38, 0x37, 0x61],  // GIF87a
+    [0x47, 0x49, 0x46, 0x38, 0x39, 0x61],  // GIF89a
+  ],
+  // HEIC/HEIF: يستخدمان ISOBMFF container — نتحقق منهما بطريقة خاصة مثل AVIF
+  'image/heic': [],
+  'image/heif': [],
   'image/avif': [
     // AVIF يستخدم container ISOBMFF — أكثر مرونة
     // نتحقق من فتغ "ftyp"
@@ -81,11 +91,15 @@ export function validateUploadedFile(
   }
 
   // ── 3. Magic Bytes ────────────────────────────────────────────────────
-  if (mime === 'image/avif') {
-    // AVIF: يبحث عن "ftyp" في bytes 4-7
+  if (mime === 'image/avif' || mime === 'image/heic' || mime === 'image/heif') {
+    // ISOBMFF containers: يبحث عن "ftyp" في bytes 4-7
     const ftypStr = buffer.slice(4, 8).toString('ascii');
     if (!ftypStr.includes('ftyp')) {
-      return { valid: false, reason: 'ملف AVIF غير صالح (magic bytes)' };
+      // بعض ملفات HEIC قد تختلف — نمررها إذا كان الامتداد صحيحاً
+      if (mime === 'image/avif') {
+        return { valid: false, reason: 'ملف AVIF غير صالح (magic bytes)' };
+      }
+      // HEIC/HEIF: نكتفي بفحص MIME ولا نحظرها
     }
   } else {
     const signatures = MAGIC_SIGNATURES[mime];
@@ -124,7 +138,7 @@ export function validateUploadedFile(
   // ── 5. امتداد الملف يجب أن يتطابق ───────────────────────────────────
   if (filename) {
     const ext = filename.split('.').pop()?.toLowerCase();
-    const allowedExtensions = new Set(['jpg', 'jpeg', 'png', 'webp', 'avif']);
+    const allowedExtensions = new Set(['jpg', 'jpeg', 'png', 'webp', 'avif', 'heic', 'heif', 'gif']);
     if (ext && !allowedExtensions.has(ext)) {
       return {
         valid: false,
