@@ -29,7 +29,7 @@ if (typeof window !== "undefined") {
 import VideoRecorder from "../VideoRecorder.tsx";
 import { uploadFileWithProgress } from "../../lib/upload.ts";
 import { User, Ad, Category } from "../../types.ts";
-import { Market, getCurrencyNameAr } from "../../markets.ts";
+import { Market, getCurrencyAr, getCurrencyNameAr } from "../../markets.ts";
 import { CITIES, DISTRICTS, SUB_CATEGORIES } from "../../data.ts";
 
 interface CreateAdTabProps {
