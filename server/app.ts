@@ -162,7 +162,7 @@ export class App {
         res.setHeader('Access-Control-Allow-Origin', '*');
       }
       res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-Correlation-ID, X-User-Email, x-user-email');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-Correlation-ID, X-User-Email, x-user-email, x-csrf-token, X-CSRF-Token');
       res.setHeader('Access-Control-Allow-Credentials', 'true');
       
       if (req.method === 'OPTIONS') {

@@ -2243,22 +2243,9 @@ useEffect(() => {
         }
       }
 
-      const token = localStorage.getItem('aswaq_access_token') || localStorage.getItem('auth_token');
-      
-      const getCookie = (name: string): string | undefined => {
-        const value = `; ${document.cookie}`;
-        const parts = value.split(`; ${name}=`);
-        if (parts.length === 2) return parts.pop()?.split(';').shift();
-        return undefined;
-      };
-      const csrfToken = getCookie('csrf_token');
-
       const response = await apiFetch(`/api/v1/users/me`, {
         method: "PATCH",
-        headers: { 
-          "Content-Type": "application/json",
-          ...(csrfToken ? { "x-csrf-token": csrfToken } : {})
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(finalData),
       });
       if (response.ok) {
