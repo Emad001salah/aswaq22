@@ -6,6 +6,7 @@
 import React, { useState, MouseEvent, useEffect } from 'react';
 import { Eye, Heart, MapPin, Calendar, CheckCircle2, User, Share2, ShieldCheck, Video } from 'lucide-react';
 import { motion, PanInfo, AnimatePresence } from 'motion/react';
+import { apiFetch } from '../lib/api';
 import { Ad } from '../types.ts';
 import { Market, getCurrencyAr, getCurrencyNameAr } from '../markets.ts';
 import { useTranslation } from 'react-i18next';
@@ -159,14 +160,10 @@ export default React.memo(function AdCard({ ad, onClick, onLikeToggle, isFavorit
     
     // Fire real endpoint hit in background
     const token = localStorage.getItem('aswaq_access_token') || localStorage.getItem('auth_token');
-    fetch(`/api/ads/${ad.id}/like`, { 
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        ...(token ? { "Authorization": `Bearer ${token}` } : {})
-      },
-      body: JSON.stringify({ action: newLikedState ? 'like' : 'unlike' })
-    }).catch(() => {});
+    apiFetch(`/api/ads/${ad.id}/like`, {
+        method: 'POST',
+        body: JSON.stringify({ action: newLikedState ? 'like' : 'unlike' })
+      }).catch(() => {});
   };
 
   const handleShareClick = (e: MouseEvent) => {

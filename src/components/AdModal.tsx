@@ -42,6 +42,7 @@ import { Ad, User, ChatMessage } from '../types.ts';
 import { Market, getCurrencyAr, getCurrencyNameAr } from '../markets.ts';
 import { INITIAL_USERS, CATEGORIES } from '../data.ts';
 import { Avatar } from './Avatar.tsx';
+import { apiFetch } from '../lib/api';
 
 const getYoutubeEmbedUrl = (url?: string): string | null => {
   if (!url) return null;
@@ -97,7 +98,7 @@ export default function AdModal({
     const fetchSimilar = async () => {
       setLoadingSimilar(true);
       try {
-        const res = await fetch(`/api/ads?category=${ad.category}&limit=10`);
+        const res = await apiFetch(`/api/ads?category=${ad.category}&limit=10`);
         if (res.ok) {
           const data = await res.json();
           const list = data.ads || data || [];
@@ -169,7 +170,7 @@ export default function AdModal({
     
     try {
       const token = localStorage.getItem('aswaq_access_token') || localStorage.getItem('auth_token');
-      const response = await fetch(`/api/ads/${ad.id}`, {
+      const response = await apiFetch(`/api/ads/${ad.id}`, {
         method: "PUT",
         headers: { 
           "Content-Type": "application/json",
@@ -209,7 +210,7 @@ export default function AdModal({
 
   useEffect(() => {
     // Increment view count in backend on API
-    fetch(`/api/ads/${ad.id}/view`, { method: 'POST' })
+    apiFetch(`/api/ads/${ad.id}/view`, { method: 'POST' })
       .then(res => res.json())
       .then(data => {
         if (data && typeof data.views === 'number') {
@@ -235,7 +236,7 @@ export default function AdModal({
     };
 
     try {
-      const response = await fetch('/api/messages', {
+      const response = await apiFetch('/api/messages', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -276,7 +277,7 @@ export default function AdModal({
     setLoadingComment(true);
     try {
       const token = localStorage.getItem('aswaq_access_token') || localStorage.getItem('auth_token');
-      const response = await fetch(`/api/ads/${ad.id}/comments`, {
+      const response = await apiFetch(`/api/ads/${ad.id}/comments`, {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
@@ -309,7 +310,7 @@ export default function AdModal({
 
   const fetchUsers = async () => {
     try {
-      const res = await fetch('/api/users');
+      const res = await apiFetch('/api/users');
       if (res.ok) {
         const data = await res.json();
         setAllUsers(data);
@@ -328,7 +329,7 @@ export default function AdModal({
     if (!ad) return;
     setLoadingTrust(true);
     try {
-      const trustPromise = fetch("/api/ai/trust-check", {
+      const trustPromise = apiFetch("/api/ai/trust-check", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -341,7 +342,7 @@ export default function AdModal({
         })
       });
 
-      const pricePromise = fetch("/api/ai/price-insights", {
+      const pricePromise = apiFetch("/api/ai/price-insights", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -394,7 +395,7 @@ export default function AdModal({
 
   const fetchChats = async () => {
     try {
-      const response = await fetch('/api/messages');
+      const response = await apiFetch('/api/messages');
       const contentType = response.headers.get("content-type");
       if (response.ok && contentType && contentType.includes("application/json")) {
         const data: ChatMessage[] = await response.json();
@@ -430,7 +431,7 @@ export default function AdModal({
     };
 
     try {
-      const response = await fetch('/api/messages', {
+      const response = await apiFetch('/api/messages', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -476,7 +477,7 @@ export default function AdModal({
     setIsAiNegotiating(true);
 
     try {
-      const response = await fetch('/api/ai/negotiate', {
+      const response = await apiFetch('/api/ai/negotiate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -956,7 +957,7 @@ export default function AdModal({
                   const isLiked = favorites.includes(ad.id);
                   const nextLikedState = !isLiked;
                   const token = localStorage.getItem('aswaq_access_token') || localStorage.getItem('auth_token');
-                  fetch(`/api/ads/${ad.id}/like`, { 
+                  apiFetch(`/api/ads/${ad.id}/like`, { 
                     method: 'POST',
                     headers: { 
                       'Content-Type': 'application/json',

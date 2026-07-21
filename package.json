@@ -4,6 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "vite": "vite",
+    "dev:full": "concurrently \"npm run dev\" \"npm run vite\"",
     "dev": "tsx server.ts",
     "build": "cross-env NODE_OPTIONS=--max-old-space-size=4096 vite build",
     "analyze": "cross-env ANALYZE=true NODE_OPTIONS=--max-old-space-size=4096 vite build",

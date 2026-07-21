@@ -3,9 +3,10 @@ import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { prisma } from '../../src/lib/prisma.ts';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'aswaq_jwt_secret_dev_key_2026_super_secure_998231';
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'aswaq_jwt_refresh_secret_key_2026';
-const PEPPER_SECRET = process.env.PEPPER_SECRET || 'aswaq-pepper-secret-2026';
+// Normalise JWT secret: remove surrounding quotes (if any) and ensure it exists
+const JWT_SECRET = process.env.JWT_SECRET?.replace(/^['"]|['"]$/g, '') ?? 'aswaq_jwt_secret_dev_key_2026_super_secure_998231';
+const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET?.replace(/^['"]|['"]$/g, '') ?? 'aswaq_jwt_refresh_secret_key_2026';
+const PEPPER_SECRET = process.env.PEPPER_SECRET?.replace(/^['"]|['"]$/g, '') ?? 'aswaq-pepper-secret-2026';
 
 export class AuthService {
   private hashToken(token: string): string {

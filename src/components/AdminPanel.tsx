@@ -239,7 +239,7 @@ export default function AdminPanel({
       // 2. If token is not present in cookie, fetch it from the server
       if (!csrfToken && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(opts.method || 'GET')) {
         try {
-          const csrfRes = await fetch('/api/csrf-token', { credentials: 'include' });
+            const csrfRes = await apiFetch('/api/csrf-token', { credentials: 'include' });
           if (csrfRes.ok) {
             const data = await csrfRes.json();
             csrfToken = data.csrfToken;
@@ -361,7 +361,7 @@ export default function AdminPanel({
   const fetchCategories = useCallback(async () => {
     setLoadingCategories(true);
     try {
-      const res = await fetch('/api/categories');
+      const res = await apiFetch('/api/categories');
       if (res.ok) {
         const json = await res.json();
         setCategories(json.data || []);
@@ -2315,7 +2315,7 @@ export default function AdminPanel({
                             </div>
                             <div className="flex gap-2">
                               <button
-                                onClick={() => fetch(`/api/admin/polls/${poll.id}/reset`, { method: 'POST', credentials: 'include' }).then(() => fetchPolls())}
+                                onClick={() => adminFetch(`/api/admin/polls/${poll.id}/reset`, { method: 'POST' }).then(() => fetchPolls())}
                                 className="p-1.5 rounded-lg bg-slate-700 text-slate-400 hover:text-white transition-all"
                                 title="إعادة تعيين"
                               >

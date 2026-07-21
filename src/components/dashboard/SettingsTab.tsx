@@ -121,12 +121,9 @@ export default function SettingsTab({
 
       console.log('[SettingsTab] Saving profile... Token length:', token.length);
 
-      const res = await fetch(`/api/v1/users/me`, {
+      const res = await apiFetch(`/api/v1/users/me`, {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
