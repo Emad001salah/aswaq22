@@ -1,4 +1,7 @@
-import { API_BASE_URL } from './config';
+import { API_BASE_URL, API_ORIGIN } from './config';
+
+// Store reference to native fetch before any window.fetch overrides
+const rawFetch = typeof window !== 'undefined' ? window.fetch.bind(window) : fetch;
 
 let isRefreshing = false;
 let refreshSubscribers: ((token: string | null) => void)[] = [];
@@ -32,7 +35,7 @@ export async function refreshAccessToken(): Promise<string | null> {
   if (!refreshToken) return null;
 
   try {
-    const res = await fetch(`${API_BASE_URL}/v1/auth/refresh`, {
+    const res = await rawFetch(`${API_BASE_URL}/v1/auth/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refreshToken }),
@@ -85,6 +88,15 @@ export async function refreshAccessToken(): Promise<string | null> {
  */
 export async function apiFetch(url: string, options: RequestInit = {}): Promise<Response> {
   const method = (options.method || 'GET').toUpperCase();
+
+  // Resolve relative URLs
+  let targetUrl = url;
+  if (targetUrl.startsWith('/')) {
+    targetUrl = targetUrl.startsWith('/api') 
+      ? `${API_ORIGIN}${targetUrl}`
+      : `${API_BASE_URL}${targetUrl}`;
+  }
+
   const headers = new Headers(options.headers || {});
 
   // For FormData, let the browser set the correct multipart/form-data boundary
@@ -108,8 +120,8 @@ export async function apiFetch(url: string, options: RequestInit = {}): Promise<
     }
   }
 
-  // Execute the request
-  let response = await fetch(url, { credentials: 'include', ...options, headers });
+  // Execute the request using native rawFetch
+  let response = await rawFetch(targetUrl, { credentials: 'include', ...options, headers });
 
   // Handle 401 Unauthorized: attempt one refresh cycle then retry
   if (response.status === 401) {
@@ -127,7 +139,7 @@ export async function apiFetch(url: string, options: RequestInit = {}): Promise<
       if (newToken) {
         // Retry original request with new token
         headers.set('Authorization', `Bearer ${newToken}`);
-        return fetch(url, { credentials: 'include', ...options, headers });
+        return rawFetch(targetUrl, { credentials: 'include', ...options, headers });
       }
 
       // Refresh failed — only prompt re-login if refresh token existed
@@ -145,10 +157,11 @@ export async function apiFetch(url: string, options: RequestInit = {}): Promise<
 
       if (newToken) {
         headers.set('Authorization', `Bearer ${newToken}`);
-        return fetch(url, { credentials: 'include', ...options, headers });
+        return rawFetch(targetUrl, { credentials: 'include', ...options, headers });
       }
     }
   }
 
   return response;
 }
+

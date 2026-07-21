@@ -2,6 +2,7 @@ import React, { Component } from 'react';
 import {createRoot} from 'react-dom/client';
 import './i18n.ts';
 import { BrowserRouter, HashRouter } from 'react-router-dom';
+import { apiFetch } from './lib/api.ts';
 import App from './App.tsx';
 import ComingSoon from './components/ComingSoon.tsx';
 import './index.css';
@@ -141,54 +142,14 @@ if (Capacitor.isNativePlatform()) {
       });
   };
 
-  const API_BASE_URL = API_ORIGIN;
-  const originalFetch = window.fetch;
-  window.fetch = function (input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
-    if (typeof input === 'string' && input.startsWith('/')) {
-      input = API_BASE_URL + input;
-    }
-    return originalFetch.call(this, input, init);
-  };
 }
 
-let csrfToken: string | null = null;
-let csrfFetching = false;
-
-async function ensureCsrfToken(): Promise<string | null> {
-  if (csrfToken) return csrfToken;
-  if (csrfFetching) return null;
-  csrfFetching = true;
-  try {
-    const res = await fetch('/api/csrf-token', { method: 'GET' });
-    if (res.ok) {
-      const data = await res.json();
-      csrfToken = data.csrfToken;
-    }
-  } catch (e) {
-    // ignore
-  } finally {
-    csrfFetching = false;
-  }
-  return csrfToken;
-}
-
-const appOriginalFetch = window.fetch;
-window.fetch = async function (input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
-  const method = (init?.method || (typeof input === 'string' ? 'GET' : 'GET')).toUpperCase();
-  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method) && typeof input === 'string' && input.startsWith('/api/')) {
-    const token = await ensureCsrfToken();
-    if (token) {
-      init = {
-        ...init,
-        headers: {
-          ...(init?.headers || {}),
-          'x-csrf-token': token,
-        }
-      } as RequestInit;
-    }
-  }
-  return appOriginalFetch.call(this, input, init);
+// Global window.fetch delegation to unified apiFetch (handles auth, token refresh, and URL resolution)
+window.fetch = function (input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const urlStr = typeof input === 'string' ? input : (input instanceof URL ? input.href : input.url);
+  return apiFetch(urlStr, init);
 };
+
 
 // Register PWA Service Worker
 if (import.meta.env.VITE_MAINTENANCE_MODE !== 'true' && 'serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
