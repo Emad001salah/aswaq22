@@ -352,7 +352,7 @@ export const AdsController = () => {
             longitude: dto.longitude,
             contactNumber: dto.contactNumber,
             userId: req.user!.id, // Securely mapped from JWT
-            status: (dto as any).status || 'PENDING',
+            status: ((dto as any).status ? (dto as any).status.toString().toUpperCase() : 'PENDING') as any,
           }
         });
 
@@ -562,7 +562,7 @@ export const AdsController = () => {
       }
 
       const statusValue = (hasPermission(req.user?.role, 'BYPASS_MODERATION') || (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'test'))
-        ? (req.body.status || ad.status)
+        ? ((req.body.status ? req.body.status.toString().toUpperCase() : null) || ad.status)
         : 'PENDING';
 
       const dataUpdate: any = {
