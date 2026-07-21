@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -123,7 +123,22 @@ export default function CreateAdTab({
   const [transmission, setTransmission] = useState<string>("automatic");
   const [fuelType, setFuelType] = useState<string>("gasoline");
   const [condition, setCondition] = useState<string>("used_mint");
-  const [brand, setBrand] = useState<string>("");
+    const [brand, setBrand] = useState<string>("");
+  const [jobSchedule, setJobSchedule] = useState<string>("full_time");
+  const [jobExperience, setJobExperience] = useState<string>("intermediate");
+  const [jobSalary, setJobSalary] = useState<string>("");
+  const [hotelType, setHotelType] = useState<string>("hotel");
+  const [bookingSystem, setBookingSystem] = useState<string>("daily");
+  const [hotelBeds, setHotelBeds] = useState<number>(1);
+  const [hotelAmenities, setHotelAmenities] = useState<string[]>(["wifi", "ac"]);
+  const [storageCapacity, setStorageCapacity] = useState<string>("128gb");
+  const [ramMemory, setRamMemory] = useState<string>("8gb");
+  const [phoneAccessories, setPhoneAccessories] = useState<string[]>(["box", "charger"]);
+  const [realEstateDeal, setRealEstateDeal] = useState<string>("sale");
+  const [areaSize, setAreaSize] = useState<string>("");
+  const [serviceType, setServiceType] = useState<string>("maintenance");
+  const [pricingModel, setPricingModel] = useState<string>("agreement");
+  const [itemAudience, setItemAudience] = useState<string>("unisex");
   const [jobType, setJobType] = useState<"seeking" | "hiring">("hiring");
 
   // Sync edit values
@@ -1635,5 +1650,7 @@ export default function CreateAdTab({
     </div>
   );
 }
+
+
 
 
