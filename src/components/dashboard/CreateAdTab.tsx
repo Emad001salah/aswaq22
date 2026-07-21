@@ -566,7 +566,7 @@ export default function CreateAdTab({
             ].map((s, idx) => (
               <React.Fragment key={s.step}>
                 {idx > 0 && (
-                  <div className={`flex-grow h-1 mx-2 rounded-full transition-all duration-300 ${adStep >= s.step ? "bg-emerald-500" : "bg-slate-800"}`} />
+                  <div className={`flex-grow h-1 mx-2 rounded-full transition-all duration-300 ${adStep >= s.step ? "bg-emerald-500" : isDark ? "bg-slate-800" : "bg-slate-200"}`} />
                 )}
                 <div
                   className="flex flex-col items-center gap-1.5 cursor-pointer"
@@ -589,7 +589,7 @@ export default function CreateAdTab({
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs transition-all duration-300 ${adStep === s.step ? "bg-emerald-500 text-slate-950 ring-4 ring-emerald-500/20" : adStep > s.step ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "bg-slate-950 text-slate-500 border border-slate-855 border-slate-800"}`}>
                     {s.step}
                   </div>
-                  <span className={`text-[9px] font-black tracking-tighter transition-colors duration-300 ${adStep === s.step ? "text-emerald-400" : "text-slate-500"}`}>{s.label}</span>
+                  <span className={`text-[9px] font-black tracking-tighter transition-colors duration-300 ${adStep === s.step ? "text-emerald-500" : isDark ? "text-slate-500" : "text-slate-400"}`}>{s.label}</span>
                 </div>
               </React.Fragment>
             ))}
@@ -618,7 +618,7 @@ export default function CreateAdTab({
                 {/* Description Box with integrated Enhancer button */}
                 <div className="space-y-1.5 text-right">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold text-slate-500 dark:text-slate-400 block">
+                    <label className={`text-xs font-bold block ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
                       {t("dashboard.description")}
                     </label>
                     <button

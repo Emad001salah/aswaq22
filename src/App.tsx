@@ -2896,7 +2896,7 @@ useEffect(() => {
 
   return (
     <div
-      className={`min-h-screen w-full max-w-full overflow-x-hidden ${isDark ? "dark bg-slate-950 text-slate-100" : "bg-slate-50 text-slate-900"} flex flex-col justify-between font-sans selection:bg-emerald-500 selection:text-white`}
+      className={`min-h-screen w-full max-w-full overflow-x-hidden ${isDark ? "dark bg-slate-950 text-slate-100" : "bg-gradient-to-br from-white via-emerald-50/20 to-slate-50 text-slate-900"} flex flex-col justify-between font-sans selection:bg-emerald-500 selection:text-white`}
     >
       {/* Offline Alert Banner */}
       {!isOnline && (
@@ -3709,13 +3709,13 @@ useEffect(() => {
                   exit={{ opacity: 0, x: -20 }}
                   className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8"
                 >
-                  <div className={`bg-gradient-to-br from-slate-900/90 via-slate-950/80 to-slate-900/90 backdrop-blur-2xl border border-white/5 p-4 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] shadow-[0_24px_60px_-15px_rgba(0,0,0,0.7)] space-y-6 sm:space-y-8 ${isRtl ? 'dir-rtl text-right' : 'dir-ltr text-left'} my-6 sm:my-8`}>
-                      <div className={`flex flex-col md:flex-row md:items-center justify-between border-b border-white/5 pb-6 gap-4 ${isRtl ? 'flex-row' : 'flex-row-reverse'}`}>
+                  <div className={`backdrop-blur-2xl p-4 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] space-y-6 sm:space-y-8 ${isRtl ? 'dir-rtl text-right' : 'dir-ltr text-left'} my-6 sm:my-8 ${isDark ? 'bg-gradient-to-br from-slate-900/90 via-slate-950/80 to-slate-900/90 border border-white/5 shadow-[0_24px_60px_-15px_rgba(0,0,0,0.7)]' : 'bg-white/80 border border-fuchsia-100/80 shadow-xl shadow-fuchsia-100/30 ring-1 ring-fuchsia-500/5'}`}>
+                      <div className={`flex flex-col md:flex-row md:items-center justify-between pb-6 gap-4 ${isRtl ? 'flex-row' : 'flex-row-reverse'} ${isDark ? 'border-b border-white/5' : 'border-b border-fuchsia-100'}`}>
                         <div className={isRtl ? 'text-right' : 'text-left'}>
                           <h3 className="text-xl sm:text-2xl font-black bg-clip-text text-transparent bg-gradient-to-r from-fuchsia-400 via-pink-400 to-indigo-400 flex items-center gap-2">
                              💬 {t('social.communityTitle')}
                           </h3>
-                          <p className="text-xs text-slate-400 mt-1.5 leading-relaxed max-w-xl">
+                          <p className={`text-xs mt-1.5 leading-relaxed max-w-xl ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                              {t('social.communitySubtitle')}
                           </p>
                         </div>
@@ -3728,15 +3728,15 @@ useEffect(() => {
 
 
                       {/* 📊 نبض الأسواق: منبر استطلاعات الرأي والنبض السعري التفاعلي */}
-                      <div className="bg-gradient-to-br from-[#120c1e]/80 to-slate-950/80 p-5 sm:p-6 rounded-[2rem] border border-fuchsia-500/10 shadow-xl space-y-5 relative overflow-hidden group">
+                      <div className={`p-5 sm:p-6 rounded-[2rem] shadow-xl space-y-5 relative overflow-hidden group border ${isDark ? 'bg-gradient-to-br from-[#120c1e]/80 to-slate-950/80 border-fuchsia-500/10' : 'bg-gradient-to-br from-fuchsia-50/70 to-purple-50/50 border-fuchsia-200/60'}`}>
                         <div className="absolute -top-24 -left-24 w-48 h-48 bg-fuchsia-500/10 blur-[80px] rounded-full pointer-events-none transition-all group-hover:bg-fuchsia-500/20" />
-                        <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-white/5 pb-4">
+                        <div className={`relative flex flex-col md:flex-row md:items-center justify-between gap-3 pb-4 border-b ${isDark ? 'border-white/5' : 'border-fuchsia-200/60'}`}>
                           <div>
                             <span className="text-[9px] bg-gradient-to-r from-fuchsia-500 to-indigo-650 text-white font-extrabold px-3 py-1 rounded-full uppercase tracking-wider shadow-md shadow-fuchsia-500/10">جديد تفاعلي</span>
-                            <h4 className="text-sm font-black text-white mt-2.5 flex items-center gap-1.5">
+                            <h4 className={`text-sm font-black mt-2.5 flex items-center gap-1.5 ${isDark ? 'text-white' : 'text-slate-800'}`}>
                               📊 {isRtl ? 'منبر استطلاعات الرأي ونبض الأسعار الإقليمي' : 'Regional Market Polls & Pricing Pulse'}
                             </h4>
-                            <p className="text-[10px] text-slate-400 mt-1 leading-relaxed">
+                            <p className={`text-[10px] mt-1 leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                               {isRtl ? 'شارك برأيك في نقاشات السوق وتبادل التوقعات السعرية والضمانات مع التجار بشكل مباشر!' : 'Share your opinion on market trends, exchange rates and commercial guarantees.'}
                             </p>
                           </div>
@@ -3748,8 +3748,8 @@ useEffect(() => {
                               onClick={() => setActivePollIndex(0)}
                               className={`px-4 py-1.5 text-[9.5px] font-bold rounded-xl transition-all border ${
                                 activePollIndex === 0
-                                  ? 'bg-fuchsia-500/20 text-fuchsia-300 border-fuchsia-500/40 shadow-lg shadow-fuchsia-500/5'
-                                  : 'bg-slate-900/60 text-slate-500 border-white/5 hover:text-slate-400 hover:bg-slate-800/40'
+                                  ? 'bg-fuchsia-500/20 text-fuchsia-600 border-fuchsia-500/40 shadow-lg shadow-fuchsia-500/5'
+                                  : isDark ? 'bg-slate-900/60 text-slate-500 border-white/5 hover:text-slate-400 hover:bg-slate-800/40' : 'bg-white/60 text-slate-400 border-slate-200 hover:text-slate-600 hover:bg-white'
                               }`}
                             >
                               التوقعات العقارية
@@ -3759,8 +3759,8 @@ useEffect(() => {
                               onClick={() => setActivePollIndex(1)}
                               className={`px-4 py-1.5 text-[9.5px] font-bold rounded-xl transition-all border ${
                                 activePollIndex === 1
-                                  ? 'bg-fuchsia-500/20 text-fuchsia-300 border-fuchsia-500/40 shadow-lg shadow-fuchsia-500/5'
-                                  : 'bg-slate-900/60 text-slate-500 border-white/5 hover:text-slate-400 hover:bg-slate-800/40'
+                                  ? 'bg-fuchsia-500/20 text-fuchsia-600 border-fuchsia-500/40 shadow-lg shadow-fuchsia-500/5'
+                                  : isDark ? 'bg-slate-900/60 text-slate-500 border-white/5 hover:text-slate-400 hover:bg-slate-800/40' : 'bg-white/60 text-slate-400 border-slate-200 hover:text-slate-600 hover:bg-white'
                               }`}
                             >
                               ترقية الخدمات والضمان
@@ -3770,7 +3770,7 @@ useEffect(() => {
 
                         {marketPolls.length > 0 && marketPolls[activePollIndex] ? (
                           <div className="space-y-3">
-                            <p className="text-[11px] font-black leading-relaxed text-slate-200">
+                            <p className={`text-[11px] font-black leading-relaxed ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
                               ❓ "{marketPolls[activePollIndex].question}"
                             </p>
                             
@@ -3792,11 +3792,11 @@ useEffect(() => {
                                       handlePollVote(poll.id, idx);
                                     }}
                                     className={`relative p-3 rounded-xl border transition-all duration-300 ${
-                                      hasVoted ? 'cursor-default' : 'cursor-pointer hover:bg-slate-900 hover:border-slate-700'
+                                      hasVoted ? 'cursor-default' : isDark ? 'cursor-pointer hover:bg-slate-900 hover:border-slate-700' : 'cursor-pointer hover:bg-fuchsia-50 hover:border-fuchsia-300'
                                     } ${
                                       isSelected 
                                         ? 'border-fuchsia-500/60 bg-fuchsia-500/5' 
-                                        : 'border-slate-800 bg-slate-950/40'
+                                        : isDark ? 'border-slate-800 bg-slate-950/40' : 'border-slate-200 bg-white/70'
                                     }`}
                                   >
                                     {/* Vote percentage bar indicator behind text */}
@@ -3808,7 +3808,7 @@ useEffect(() => {
                                     )}
 
                                     <div className="relative flex items-center justify-between text-[10.5px]">
-                                      <span className={`font-medium ${isSelected ? 'text-fuchsia-400 font-extrabold' : 'text-slate-300'}`}>{optText}</span>
+                                      <span className={`font-medium ${isSelected ? 'text-fuchsia-600 font-extrabold' : isDark ? 'text-slate-300' : 'text-slate-600'}`}>{optText}</span>
                                       {hasVoted && (
                                         <span className="font-extrabold text-fuchsia-400 ml-2 font-mono">{pct}% ({v} صوت)</span>
                                       )}
@@ -3831,7 +3831,7 @@ useEffect(() => {
                       </div>
 
                       {/* Post Publisher */}
-                      <div className="bg-slate-950/85 p-5 sm:p-6 rounded-[2rem] border border-white/5 shadow-2xl space-y-4">
+                      <div className={`p-5 sm:p-6 rounded-[2rem] shadow-2xl space-y-4 border ${isDark ? 'bg-slate-950/85 border-white/5' : 'bg-white/80 border-slate-200/80'}`}>
                         {!currentUser ? (
                           /* ── Guest Login Prompt ── */
                           <div className="flex flex-col items-center gap-4 py-6 text-center">
@@ -3882,7 +3882,7 @@ useEffect(() => {
                               value={newPostText}
                               onChange={(e) => setNewPostText(e.target.value)}
                               rows={3}
-                              className="w-full bg-[#0a0f1d]/60 border border-white/5 focus:border-fuchsia-500/50 rounded-2xl p-4 text-xs text-white placeholder:text-slate-500 outline-none transition-all resize-none shadow-inner"
+                              className={`w-full rounded-2xl p-4 text-xs outline-none transition-all resize-none shadow-inner border ${isDark ? 'bg-[#0a0f1d]/60 border-white/5 focus:border-fuchsia-500/50 text-white placeholder:text-slate-500' : 'bg-slate-50 border-slate-200 focus:border-fuchsia-400 text-slate-800 placeholder:text-slate-400'}`}
                             />
                             
                             {/* Media upload buttons */}
@@ -3894,7 +3894,7 @@ useEffect(() => {
                                   mediaInputRef.current?.click();
                                 }}
                                 title={t('social.addImage')}
-                                className="w-9 h-9 flex items-center justify-center bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl text-slate-400 hover:text-emerald-400 hover:border-emerald-500/30 transition-all duration-200 cursor-pointer shadow-sm active:scale-95 shrink-0"
+                                className={`w-9 h-9 flex items-center justify-center rounded-xl transition-all duration-200 cursor-pointer shadow-sm active:scale-95 shrink-0 border ${isDark ? 'bg-slate-900 hover:bg-slate-800 border-slate-800 text-slate-400 hover:border-emerald-500/30' : 'bg-white hover:bg-emerald-50 border-slate-200 text-slate-400 hover:border-emerald-300'}`}
                               >
                                 <ImageIcon size={18} className="text-emerald-400" />
                               </button>
@@ -3904,7 +3904,7 @@ useEffect(() => {
                                   mediaInputRef.current?.click();
                                 }}
                                 title={t('social.addVideo')}
-                                className="w-9 h-9 flex items-center justify-center bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl text-slate-400 hover:text-cyan-400 hover:border-cyan-500/30 transition-all duration-200 cursor-pointer shadow-sm active:scale-95 shrink-0"
+                                className={`w-9 h-9 flex items-center justify-center rounded-xl transition-all duration-200 cursor-pointer shadow-sm active:scale-95 shrink-0 border ${isDark ? 'bg-slate-900 hover:bg-slate-800 border-slate-800 text-slate-400 hover:border-cyan-500/30' : 'bg-white hover:bg-cyan-50 border-slate-200 text-slate-400 hover:border-cyan-300'}`}
                               >
                                 <Video size={18} className="text-cyan-400" />
                               </button>
@@ -3914,14 +3914,14 @@ useEffect(() => {
                                   mediaInputRef.current?.click();
                                 }}
                                 title={t('social.addFile')}
-                                className="w-9 h-9 flex items-center justify-center bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl text-slate-400 hover:text-amber-400 hover:border-amber-500/30 transition-all duration-200 cursor-pointer shadow-sm active:scale-95 shrink-0"
+                                className={`w-9 h-9 flex items-center justify-center rounded-xl transition-all duration-200 cursor-pointer shadow-sm active:scale-95 shrink-0 border ${isDark ? 'bg-slate-900 hover:bg-slate-800 border-slate-800 text-slate-400 hover:border-amber-500/30' : 'bg-white hover:bg-amber-50 border-slate-200 text-slate-400 hover:border-amber-300'}`}
                               >
                                 <FileText size={18} className="text-amber-400" />
                               </button>
                               <button 
                                 onClick={() => addToast(t('social.addLocation'), t('social.previewMedia'), "success")}
                                 title={t('social.addLocation')}
-                                className="w-9 h-9 flex items-center justify-center bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl text-slate-400 hover:text-rose-400 hover:border-rose-500/30 transition-all duration-200 cursor-pointer shadow-sm active:scale-95 shrink-0"
+                                className={`w-9 h-9 flex items-center justify-center rounded-xl transition-all duration-200 cursor-pointer shadow-sm active:scale-95 shrink-0 border ${isDark ? 'bg-slate-900 hover:bg-slate-800 border-slate-800 text-slate-400 hover:border-rose-500/30' : 'bg-white hover:bg-rose-50 border-slate-200 text-slate-400 hover:border-rose-300'}`}
                               >
                                 <MapPin size={18} className="text-rose-400" />
                               </button>
@@ -3976,9 +3976,9 @@ useEffect(() => {
                         </div>
                         
                         {/* Visual background preset selects */}
-                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-3 border-t border-slate-800">
+                          <div className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-3 border-t ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
                             <div className="flex items-center gap-1.5 overflow-x-auto pb-1 w-full sm:w-auto">
-                              <span className="text-[10px] text-slate-400 whitespace-nowrap">{t('social.backgroundPreset')}</span>
+                              <span className={`text-[10px] whitespace-nowrap ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t('social.backgroundPreset')}</span>
                             {[
                               { id: "car", url: "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=800&q=80", icon: "🚗" },
                               { id: "building", url: "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=800&q=80", icon: "🏡" },
@@ -3987,7 +3987,7 @@ useEffect(() => {
                               <button
                                 key={opt.id}
                                 onClick={() => setSelectedSocialImage(opt.url)}
-                                className={`px-2 py-0.5 rounded text-[10px] flex items-center gap-1 shrink-0 ${selectedSocialImage === opt.url ? "bg-fuchsia-500/20 text-fuchsia-400 border border-fuchsia-500/30 font-bold" : "bg-slate-900 text-slate-400 border border-slate-850"}`}
+                                className={`px-2 py-0.5 rounded text-[10px] flex items-center gap-1 shrink-0 border ${selectedSocialImage === opt.url ? "bg-fuchsia-500/20 text-fuchsia-600 border-fuchsia-500/30 font-bold" : isDark ? "bg-slate-900 text-slate-400 border-slate-800" : "bg-white text-slate-500 border-slate-200 hover:border-fuchsia-300"}`}
                               >
                                 <span>{opt.icon}</span>
                               </button>
@@ -4042,16 +4042,16 @@ useEffect(() => {
                           .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
                           .map(post => {
                           return (
-                            <div key={post.id} className="bg-slate-950/80 rounded-2xl border border-slate-800 overflow-hidden flex flex-col justify-between">
+                            <div key={post.id} className={`rounded-2xl overflow-hidden flex flex-col justify-between border ${isDark ? 'bg-slate-950/80 border-slate-800' : 'bg-white/90 border-slate-200/80 shadow-sm shadow-slate-100'}`}>
                               {/* Post Header */}
                               <div className="p-4 flex items-center justify-between">
                                 <div className="flex items-center gap-3 cursor-pointer group" onClick={() => {
                                   const usr = INITIAL_USERS.find(u => u.id === post.authorId);
                                   if (usr) setSelectedUserPreview(usr);
                                 }}>
-                                  <img src={post.authorAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=40&q=80'} className="w-9 h-9 rounded-full object-cover ring-2 ring-slate-800 group-hover:ring-fuchsia-500 transition-all" />
+                                  <img src={post.authorAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=40&q=80'} className={`w-9 h-9 rounded-full object-cover ring-2 group-hover:ring-fuchsia-500 transition-all ${isDark ? 'ring-slate-800' : 'ring-slate-200'}`} />
                                   <div className="text-right">
-                                    <span className="text-xs font-extrabold text-white block group-hover:text-fuchsia-400 transition-colors">{post.authorName}</span>
+                                    <span className={`text-xs font-extrabold block group-hover:text-fuchsia-500 transition-colors ${isDark ? 'text-white' : 'text-slate-800'}`}>{post.authorName}</span>
                                     <div className={`flex items-center gap-2 ${isRtl ? 'flex-row' : 'flex-row-reverse'}`}>
                                       {(post.authorHandle === 'تاجر_موثق' || post.authorHandle === 'verified_merchant') && (
                                         <span className="text-[9px] text-fuchsia-400 font-mono font-bold">@{post.authorHandle}</span>
@@ -4084,7 +4084,7 @@ useEffect(() => {
                                              "success"
                                            );
                                         }}
-                                        className={`px-3 py-1 text-[9px] font-black rounded-lg transition-all border-none ${followedSellers.includes(post.authorId) ? "bg-slate-900 text-slate-400" : "bg-fuchsia-500/20 hover:bg-fuchsia-500/30 text-fuchsia-400"}`}
+                                        className={`px-3 py-1 text-[9px] font-black rounded-lg transition-all border-none ${followedSellers.includes(post.authorId) ? isDark ? "bg-slate-900 text-slate-400" : "bg-slate-100 text-slate-500" : "bg-fuchsia-500/20 hover:bg-fuchsia-500/30 text-fuchsia-600"}`}
                                       >
                                         {followedSellers.includes(post.authorId) ? t('social.following') : t('social.followMerchant')}
                                       </button>
@@ -4094,7 +4094,7 @@ useEffect(() => {
 
                               {/* Post Content */}
                               <div className="px-4 pb-3 space-y-3">
-                                {post.content && <p className="text-xs text-slate-200 leading-relaxed font-normal">{post.content}</p>}
+                                {post.content && <p className={`text-xs leading-relaxed font-normal ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{post.content}</p>}
                                 
                                 {post.image && (
                                   <div className="w-full h-44 rounded-xl overflow-hidden relative border border-slate-850">
@@ -4124,7 +4124,7 @@ useEffect(() => {
                               </div>
 
                               {/* Like and comment stats interactive */}
-                              <div className="p-3 bg-slate-900/60 border-t border-slate-850 flex items-center justify-between text-xs text-slate-400">
+                              <div className={`p-3 border-t flex items-center justify-between text-xs ${isDark ? 'bg-slate-900/60 border-slate-800 text-slate-400' : 'bg-slate-50/80 border-slate-100 text-slate-500'}`}>
                                  <div className="flex items-center gap-4">
                                    <button
                                      onClick={() => {
@@ -4163,7 +4163,7 @@ useEffect(() => {
 
                               {/* Live Comment Listing */}
                               {post.comments.length > 0 && (
-                                <div className="bg-slate-950/80 px-4 py-2.5 border-t border-slate-850 text-xs text-right max-h-[160px] overflow-y-auto space-y-3.5 col-span-1">
+                                <div className={`px-4 py-2.5 border-t text-xs text-right max-h-[160px] overflow-y-auto space-y-3.5 col-span-1 ${isDark ? 'bg-slate-950/80 border-slate-800' : 'bg-slate-50/60 border-slate-100'}`}>
                                   {post.comments.map((comm) => {
                                     const commLikes = comm.likes || 0;
                                     const isCommLiked = comm.likedBy?.includes(currentUser?.id || "anon");
@@ -4173,7 +4173,7 @@ useEffect(() => {
                                         <div className="flex items-start justify-between gap-2 text-right">
                                           <div className="flex-1">
                                             <span className="font-extrabold text-fuchsia-400 text-[10px] ml-1.5">{comm.author}:</span>
-                                            <span className="text-slate-300 text-[10px] inline-block">{comm.comment}</span>
+                                            <span className={`text-[10px] inline-block ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>{comm.comment}</span>
                                           </div>
                                         </div>
                                         
