@@ -326,30 +326,30 @@ export default function Hero({
   return (
     <div className={`border-b transition-colors duration-305 ${isRtl ? 'dir-rtl text-right' : 'dir-ltr text-left'} ${isDark ? 'bg-slate-950 border-slate-900' : 'bg-white border-slate-200'}`}>
       {/* Unique Premium Hero Area */}
-      <div className="w-full relative h-[400px] md:h-[450px] overflow-hidden bg-slate-950 flex flex-col items-center justify-center">
+      <div className={`w-full relative h-[400px] md:h-[450px] overflow-hidden flex flex-col items-center justify-center transition-colors ${isDark ? 'bg-slate-950' : 'bg-gradient-to-br from-emerald-500/10 via-teal-500/5 to-white'}`}>
         <div
-          className="absolute inset-0 bg-cover bg-center opacity-30 mix-blend-luminosity"
+          className={`absolute inset-0 bg-cover bg-center mix-blend-luminosity ${isDark ? 'opacity-30' : 'opacity-10'}`}
           style={{
             backgroundImage:
               "url('https://images.unsplash.com/photo-1542459955-44cb294975d0?auto=format&fit=crop&w=1920&q=80')",
           }}
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/70 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-r from-emerald-900/60 to-transparent" />
+        <div className={`absolute inset-0 ${isDark ? 'bg-gradient-to-t from-slate-950 via-slate-950/70 to-transparent' : 'bg-gradient-to-t from-white via-white/40 to-transparent'}`} />
+        <div className={`absolute inset-0 ${isDark ? 'bg-gradient-to-r from-emerald-900/60 to-transparent' : 'bg-gradient-to-r from-emerald-500/10 to-transparent'}`} />
 
         <div className="relative z-10 px-4 text-center max-w-4xl mx-auto flex flex-col items-center -mt-16 sm:-mt-20">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-black mb-6 backdrop-blur-md uppercase tracking-[0.2em] shadow-lg shadow-emerald-500/5">
+          <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full border text-[10px] font-black mb-6 backdrop-blur-md uppercase tracking-[0.2em] shadow-lg ${isDark ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 shadow-emerald-500/5' : 'bg-emerald-50 border-emerald-200 text-emerald-700 shadow-emerald-500/5'}`}>
             <Shield className="w-3.5 h-3.5" />
             <span>{t('hero.safeTrade', { market: isRtl ? currentMarket.labelAr : currentMarket.labelEn })}</span>
           </div>
-          <h1 className="text-4xl md:text-6xl font-black text-white leading-tight mb-4 tracking-tighter drop-shadow-2xl">
+          <h1 className={`text-4xl md:text-6xl font-black leading-tight mb-4 tracking-tighter drop-shadow-2xl ${isDark ? 'text-white' : 'text-slate-900'}`}>
             {isRtl ? (
-              <>أسواق <span className="text-emerald-400">{currentMarket.labelAr}</span></>
+              <>أسواق <span className="text-emerald-500">{currentMarket.labelAr}</span></>
             ) : (
-              <><span className="text-emerald-400">{currentMarket.labelEn}</span> {t('hero.market')}</>
+              <><span className="text-emerald-500">{currentMarket.labelEn}</span> {t('hero.market')}</>
             )}
           </h1>
-          <p className="text-sm md:text-lg text-slate-300 max-w-2xl font-bold leading-relaxed mb-8 opacity-90">
+          <p className={`text-sm md:text-lg max-w-2xl font-bold leading-relaxed mb-8 opacity-90 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
             {t('hero.description')}
           </p>
 

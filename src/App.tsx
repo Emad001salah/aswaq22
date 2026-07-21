@@ -2896,7 +2896,7 @@ useEffect(() => {
 
   return (
     <div
-      className={`min-h-screen w-full max-w-full overflow-x-hidden ${isDark ? "dark bg-slate-950 text-slate-100" : "bg-gradient-to-br from-white via-emerald-50/20 to-slate-50 text-slate-900"} flex flex-col justify-between font-sans selection:bg-emerald-500 selection:text-white`}
+      className={`min-h-screen w-full max-w-full overflow-x-hidden ${isDark ? "dark bg-slate-950 text-slate-100" : "bg-white text-slate-900"} flex flex-col justify-between font-sans selection:bg-emerald-500 selection:text-white`}
     >
       {/* Offline Alert Banner */}
       {!isOnline && (
