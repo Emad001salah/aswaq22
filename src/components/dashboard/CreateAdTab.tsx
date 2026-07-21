@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -68,6 +68,7 @@ export default function CreateAdTab({
   // Form Field States
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [price, setPrice] = useState("");
   const [currency, setCurrency] = useState(currentMarket.currency || "YER");
   const [city, setCity] = useState(currentMarket.cities?.[0]?.id || "");
 
