@@ -6,11 +6,8 @@ let socket: any;
 
 if (typeof window !== 'undefined') {
   const options = { path: '/socket.io', autoConnect: false };
-  if (Capacitor.isNativePlatform()) {
-    socket = io(API_ORIGIN, options);
-  } else {
-    socket = io(options);
-  }
+  const targetUrl = API_ORIGIN || window.location.origin;
+  socket = io(targetUrl, options);
 } else {
   // Safe mock socket object for Node SSR environment
   socket = {

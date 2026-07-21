@@ -49,6 +49,7 @@ import { INITIAL_USERS, CATEGORIES } from '../data.ts';
 import { getCurrencyAr, getCurrencyNameAr, MARKETS } from '../markets.ts';
 import socket from '../lib/socket.ts';
 import { Avatar } from './Avatar.tsx';
+import { apiFetch } from '../lib/api';
 
 const FILTERS = [
   { id: 'none', label: 'طبيعي', labelEn: 'Normal', filter: '' },
@@ -1291,12 +1292,12 @@ export default function SpotlightFeed({
     };
   }, [isRtl]);
 
-  // Real Live Stream Room Effect
   useEffect(() => {
     const activeAd = displayAds[activeIndex];
-    if (activeAd) {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (activeAd && uuidRegex.test(activeAd.id)) {
       // Logic for both live and normal ads: persistent view tracking
-      fetch(`/api/ads/${activeAd.id}/view`, { method: 'POST' }).catch(() => {});
+      apiFetch(`/api/ads/${activeAd.id}/view`, { method: 'POST' }).catch(() => {});
     }
 
     if (activeAd && activeAd.isLive) {
@@ -1440,9 +1441,10 @@ export default function SpotlightFeed({
         };
       });
       
-      // POST view to server (only if it is not a promo ad)
-      if (typeof currentId === 'string' && !currentId.startsWith('promo_')) {
-        fetch(`/api/ads/${currentId}/view`, { method: "POST" })
+      // POST view to server (only if it is a valid UUID ad)
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (typeof currentId === 'string' && uuidRegex.test(currentId)) {
+        apiFetch(`/api/ads/${currentId}/view`, { method: "POST" })
           .then(res => res.json())
           .then(data => {
             if (data && typeof data.views === 'number') {
@@ -1515,17 +1517,15 @@ export default function SpotlightFeed({
       onLikeToggle(adId);
     }
 
-    const token = localStorage.getItem('aswaq_access_token') || localStorage.getItem('auth_token');
-    
-    // Fire real endpoint hit in background to persist to database
-    fetch(`/api/ads/${adId}/like`, { 
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        ...(token ? { "Authorization": `Bearer ${token}` } : {})
-      },
-      body: JSON.stringify({ action: !isLiked ? 'like' : 'unlike' })
-    }).catch(() => {});
+    // Fire real endpoint hit in background to persist to database (only for valid UUID ads)
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (uuidRegex.test(adId)) {
+      apiFetch(`/api/ads/${adId}/like`, { 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: !isLiked ? 'like' : 'unlike' })
+      }).catch(() => {});
+    }
 
     // Emit socket event for real-time sync across all clients
     socket.emit('ad-like', { adId, userId: currentUser.id });
@@ -2484,7 +2484,7 @@ export default function SpotlightFeed({
              const serverComments = (ad as any).comments || [];
              const allComments = serverComments.map((c: any) => ({
                 id: c.id,
-                author: c.author?.name || 'User',
+                author: typeof c.author === 'string' ? c.author : (c.author?.name || (isRtl ? 'مستخدم متفاعل' : 'Active User')),
                 text: c.text,
                 time: new Date(c.createdAt).toLocaleDateString(isRtl ? 'ar-YE' : 'en-US')
              }));
@@ -2533,12 +2533,13 @@ export default function SpotlightFeed({
                 });
               }
 
-              // Post to API if not promo
-              if (typeof currentId === 'string' && !currentId.startsWith('promo_')) {
-                fetch(`/api/ads/${currentId}/comments`, {
+              // Post to API if it is a valid UUID ad
+              const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+              if (typeof currentId === 'string' && uuidRegex.test(currentId)) {
+                apiFetch(`/api/ads/${currentId}/comments`, {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ userId: "user_system", text })
+                  body: JSON.stringify({ text })
                 }).catch(() => {});
               }
 
@@ -2546,7 +2547,7 @@ export default function SpotlightFeed({
                 ...prev,
                 [currentId]: [...(prev[currentId] || []), {
                   id: `c_${Date.now()}`,
-                  author: isRtl ? 'مستخدم متفاعل' : 'Active User',
+                  author: currentUser?.name || (isRtl ? 'مستخدم متفاعل' : 'Active User'),
                   text: text,
                   time: t('spotlight.now')
                 }]
