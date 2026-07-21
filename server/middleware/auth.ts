@@ -29,12 +29,14 @@ export interface AuthenticatedRequest extends Request {
 }
 
 export function getJwtSecret(): string {
-  return process.env.JWT_SECRET || 'aswaq_jwt_secret_dev_key_2026_super_secure_998231';
+  // Normalise JWT secret: remove surrounding quotes and ensure it exists
+  return (process.env.JWT_SECRET?.replace(/^['\"]|['\"]$/g, '') ?? (() => { throw new Error('JWT_SECRET is not defined'); })()) || 'aswaq_jwt_secret_dev_key_2026_super_secure_998231';
 }
 
 export function authMiddleware(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    console.error(`[authMiddleware] Unauthorized on ${req.method} ${req.path}. authHeader: ${authHeader ? (authHeader.substring(0, 15) + '... (' + authHeader.length + ')') : 'undefined'}`);
     return res.status(401).json({ 
       error: 'Unauthorized', 
       message: 'مطلوب تسجيل الدخول للوصول لهذه العملية.' 
@@ -42,9 +44,10 @@ export function authMiddleware(req: AuthenticatedRequest, res: Response, next: N
   }
 
   const token = authHeader.split(' ')[1];
-  
   let decoded: any = null;
+
   const secretsToTry = Array.from(new Set([
+    getJwtSecret(),
     process.env.JWT_SECRET,
     'aswaq_jwt_secret_dev_key_2026_super_secure_998231',
     'change-me-in-production'
