@@ -2361,7 +2361,7 @@ export default function SpotlightFeed({
                         <span className="text-[8.5px] bg-emerald-500/20 text-emerald-400 font-extrabold px-2 py-0.5 rounded-full">📌 معروض الآن</span>
                         <h4 className="text-[10px] sm:text-[11px] font-black text-white truncate mt-1">{pinnedProduct.title}</h4>
                         <p className="text-[9.5px] text-emerald-400 font-black font-mono">
-                          {pinnedProduct.price.toLocaleString()} {getCurrencyAr(ad.currency)}
+                          {(pinnedProduct.price || 0).toLocaleString()} {getCurrencyAr(ad.currency)}
                         </p>
                       </div>
                       <button

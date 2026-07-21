@@ -96,7 +96,7 @@ export class App {
 
     this.io = new Server(this.httpServer, {
       cors: {
-        origin:  process.env.CORS_ORIGIN || '*',
+        origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',').map(o => o.trim()) : '*',
         methods: ['GET', 'POST'],
       },
     });

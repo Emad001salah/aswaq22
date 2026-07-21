@@ -66,8 +66,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
             <button
               onClick={() => {
                 try {
-                  localStorage.clear();
-                  sessionStorage.clear();
+                  const accessToken = localStorage.getItem('aswaq_access_token'); const refreshToken = localStorage.getItem('aswaq_refresh_token'); const currentUser = localStorage.getItem('aswaq_current_user'); const authToken = localStorage.getItem('auth_token'); localStorage.clear(); sessionStorage.clear(); if (accessToken) localStorage.setItem('aswaq_access_token', accessToken); if (refreshToken) localStorage.setItem('aswaq_refresh_token', refreshToken); if (currentUser) localStorage.setItem('aswaq_current_user', currentUser); if (authToken) localStorage.setItem('auth_token', authToken);
                   if ('caches' in window) {
                     caches.keys().then(names => {
                       names.forEach(name => caches.delete(name));
