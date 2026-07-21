@@ -3715,7 +3715,7 @@ useEffect(() => {
                           <h3 className="text-xl sm:text-2xl font-black bg-clip-text text-transparent bg-gradient-to-r from-fuchsia-400 via-pink-400 to-indigo-400 flex items-center gap-2">
                              💬 {t('social.communityTitle')}
                           </h3>
-                          <p className={`text-xs mt-1.5 leading-relaxed max-w-xl ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                          <p className={`text-sm mt-1.5 leading-relaxed max-w-xl ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                              {t('social.communitySubtitle')}
                           </p>
                         </div>
@@ -3732,11 +3732,11 @@ useEffect(() => {
                         <div className="absolute -top-24 -left-24 w-48 h-48 bg-fuchsia-500/10 blur-[80px] rounded-full pointer-events-none transition-all group-hover:bg-fuchsia-500/20" />
                         <div className={`relative flex flex-col md:flex-row md:items-center justify-between gap-3 pb-4 border-b ${isDark ? 'border-white/5' : 'border-fuchsia-200/60'}`}>
                           <div>
-                            <span className="text-[9px] bg-gradient-to-r from-fuchsia-500 to-indigo-650 text-white font-extrabold px-3 py-1 rounded-full uppercase tracking-wider shadow-md shadow-fuchsia-500/10">جديد تفاعلي</span>
-                            <h4 className={`text-sm font-black mt-2.5 flex items-center gap-1.5 ${isDark ? 'text-white' : 'text-slate-800'}`}>
+                            <span className="text-[11px] bg-gradient-to-r from-fuchsia-500 to-indigo-650 text-white font-extrabold px-3 py-1 rounded-full uppercase tracking-wider shadow-md shadow-fuchsia-500/10">جديد تفاعلي</span>
+                            <h4 className={`text-base font-black mt-2.5 flex items-center gap-1.5 ${isDark ? 'text-white' : 'text-slate-800'}`}>
                               📊 {isRtl ? 'منبر استطلاعات الرأي ونبض الأسعار الإقليمي' : 'Regional Market Polls & Pricing Pulse'}
                             </h4>
-                            <p className={`text-[10px] mt-1 leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                            <p className={`text-xs mt-1.5 leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                               {isRtl ? 'شارك برأيك في نقاشات السوق وتبادل التوقعات السعرية والضمانات مع التجار بشكل مباشر!' : 'Share your opinion on market trends, exchange rates and commercial guarantees.'}
                             </p>
                           </div>
@@ -3746,7 +3746,7 @@ useEffect(() => {
                             <button
                               type="button"
                               onClick={() => setActivePollIndex(0)}
-                              className={`px-4 py-1.5 text-[9.5px] font-bold rounded-xl transition-all border ${
+                              className={`px-4 py-1.5 text-xs font-bold rounded-xl transition-all border ${
                                 activePollIndex === 0
                                   ? 'bg-fuchsia-500/20 text-fuchsia-600 border-fuchsia-500/40 shadow-lg shadow-fuchsia-500/5'
                                   : isDark ? 'bg-slate-900/60 text-slate-500 border-white/5 hover:text-slate-400 hover:bg-slate-800/40' : 'bg-white/60 text-slate-400 border-slate-200 hover:text-slate-600 hover:bg-white'
@@ -3757,7 +3757,7 @@ useEffect(() => {
                             <button
                               type="button"
                               onClick={() => setActivePollIndex(1)}
-                              className={`px-4 py-1.5 text-[9.5px] font-bold rounded-xl transition-all border ${
+                              className={`px-4 py-1.5 text-xs font-bold rounded-xl transition-all border ${
                                 activePollIndex === 1
                                   ? 'bg-fuchsia-500/20 text-fuchsia-600 border-fuchsia-500/40 shadow-lg shadow-fuchsia-500/5'
                                   : isDark ? 'bg-slate-900/60 text-slate-500 border-white/5 hover:text-slate-400 hover:bg-slate-800/40' : 'bg-white/60 text-slate-400 border-slate-200 hover:text-slate-600 hover:bg-white'
@@ -3770,7 +3770,7 @@ useEffect(() => {
 
                         {marketPolls.length > 0 && marketPolls[activePollIndex] ? (
                           <div className="space-y-3">
-                            <p className={`text-[11px] font-black leading-relaxed ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
+                            <p className={`text-sm font-black leading-relaxed ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
                               ❓ "{marketPolls[activePollIndex].question}"
                             </p>
                             
@@ -3807,7 +3807,7 @@ useEffect(() => {
                                       />
                                     )}
 
-                                    <div className="relative flex items-center justify-between text-[10.5px]">
+                                    <div className="relative flex items-center justify-between text-sm">
                                       <span className={`font-medium ${isSelected ? 'text-fuchsia-600 font-extrabold' : isDark ? 'text-slate-300' : 'text-slate-600'}`}>{optText}</span>
                                       {hasVoted && (
                                         <span className="font-extrabold text-fuchsia-400 ml-2 font-mono">{pct}% ({v} صوت)</span>
@@ -3818,7 +3818,7 @@ useEffect(() => {
                               })}
                             </div>
 
-                            <div className="flex justify-between items-center text-[8.5px] text-slate-500 pt-1">
+                            <div className="flex justify-between items-center text-xs text-slate-500 pt-1">
                               <span>📅 ينتهي الاستطلاع: قريباً</span>
                               <span>🗳️ إجمالي المشاركات: {marketPolls[activePollIndex].votes?.reduce((acc: number, curr: number) => acc + curr, 0) || 0} صوت</span>
                             </div>
@@ -3882,7 +3882,7 @@ useEffect(() => {
                               value={newPostText}
                               onChange={(e) => setNewPostText(e.target.value)}
                               rows={3}
-                              className={`w-full rounded-2xl p-4 text-xs outline-none transition-all resize-none shadow-inner border ${isDark ? 'bg-[#0a0f1d]/60 border-white/5 focus:border-fuchsia-500/50 text-white placeholder:text-slate-500' : 'bg-slate-50 border-slate-200 focus:border-fuchsia-400 text-slate-800 placeholder:text-slate-400'}`}
+                              className={`w-full rounded-2xl p-4 text-sm outline-none transition-all resize-none shadow-inner border ${isDark ? 'bg-[#0a0f1d]/60 border-white/5 focus:border-fuchsia-500/50 text-white placeholder:text-slate-500' : 'bg-slate-50 border-slate-200 focus:border-fuchsia-400 text-slate-800 placeholder:text-slate-400'}`}
                             />
                             
                             {/* Media upload buttons */}
@@ -4094,7 +4094,7 @@ useEffect(() => {
 
                               {/* Post Content */}
                               <div className="px-4 pb-3 space-y-3">
-                                {post.content && <p className={`text-xs leading-relaxed font-normal ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{post.content}</p>}
+                                {post.content && <p className={`text-sm leading-relaxed font-normal ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{post.content}</p>}
                                 
                                 {post.image && (
                                   <div className="w-full h-44 rounded-xl overflow-hidden relative border border-slate-850">
@@ -4219,7 +4219,7 @@ useEffect(() => {
                                                     <CornerDownLeft className="w-2.5 h-2.5 text-slate-600 mt-0.5 ml-1 flex-shrink-0" />
                                                     <div className="flex-1">
                                                       <span className="font-extrabold text-fuchsia-450 text-[10px] ml-1.5">{rep.author}:</span>
-                                                      <span className="text-slate-300 text-[10px] inline-block">{rep.comment}</span>
+                                                      <span className="text-slate-300 text-xs inline-block">{rep.comment}</span>
                                                     </div>
                                                   </div>
                                                   
@@ -4296,7 +4296,7 @@ useEffect(() => {
                                         handleAddSocialComment(post.id);
                                       }
                                     }}
-                                    className="flex-1 bg-transparent text-xs text-slate-100 outline-none border-none py-1 text-right placeholder-slate-700"
+                                    className={`flex-1 bg-transparent text-sm outline-none border-none py-1 text-right ${isDark ? 'text-slate-100 placeholder-slate-700' : 'text-slate-800 placeholder-slate-400'}`}
                                   />
                                   <button
                                     type="button"
@@ -5108,3 +5108,4 @@ useEffect(() => {
     </div>
   );
 }
+

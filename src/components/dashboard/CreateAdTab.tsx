@@ -608,7 +608,7 @@ export default function CreateAdTab({
                     required
                     maxLength={70}
                     placeholder={t("dashboard.adTitlePlaceholder")}
-                    className={`w-full h-11 border rounded-xl px-4 outline-none focus:border-emerald-500 text-xs text-right font-bold transition-colors ${isDark ? "bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-700" : "bg-slate-55 bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400"}`}
+                    className={`w-full h-12 border rounded-xl px-4 outline-none focus:border-emerald-500 text-sm text-right font-bold transition-colors ${isDark ? "bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600" : "bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400"}`}
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     id="ad-input-title"
@@ -644,7 +644,7 @@ export default function CreateAdTab({
                     rows={8}
                     required
                     placeholder={t("dashboard.descriptionPlaceholder")}
-                    className={`w-full border rounded-xl p-4 outline-none focus:border-emerald-500 text-xs text-right leading-relaxed transition-colors ${isDark ? "bg-slate-950 border-slate-800 text-slate-300" : "bg-slate-55 bg-slate-50 border-slate-200 text-slate-800"}`}
+                    className={`w-full border rounded-xl p-4 outline-none focus:border-emerald-500 text-sm text-right leading-relaxed transition-colors ${isDark ? "bg-slate-950 border-slate-800 text-slate-300" : "bg-slate-50 border-slate-200 text-slate-800"}`}
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     id="ad-input-desc"
