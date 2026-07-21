@@ -162,8 +162,9 @@ function WebcamStreamPlayer({
   const pcRef = useRef<RTCPeerConnection | null>(null);
 
   useEffect(() => {
-    const isCreator = ad && (currentUser?.id === ad.userId || (ad.userId === "guest_user" && !currentUser));
-    setIsBroadcaster(!!isCreator);
+    // Only actual logged-in seller who owns the live stream ad can be a broadcaster. Viewers & guests NEVER open camera!
+    const isCreator = !!(ad && ad.isLive && currentUser && currentUser.id === ad.userId && ad.userId !== "guest_user");
+    setIsBroadcaster(isCreator);
     setIsOffline(false);
 
     if (isCreator) {
@@ -955,7 +956,7 @@ export default function SpotlightFeed({
   const ASWAQ_ADMIN_NAME_EN = "Aswaq Management";
 
   const promoAds = React.useMemo(() => {
-    const currency = countryCode === 'YE' ? 'YER' : 'JOD';
+    const currency = MARKETS[countryCode]?.currency || 'YER';
     const adminAvatar = managerProfile?.avatar || ASWAQ_ADMIN_AVATAR;
     const adminName   = managerProfile?.name || (isRtl ? ASWAQ_ADMIN_NAME_AR : ASWAQ_ADMIN_NAME_EN);
     
@@ -1247,7 +1248,7 @@ export default function SpotlightFeed({
               category: parsed.category || pv.category || (isRtl ? "فيديو ترويجي" : "Promo Video"),
               city: parsed.city || pv.city || (isRtl ? "كافة المناطق" : "All Regions"),
               price: pv.price || 0,
-              currency: pv.currency || (countryCode === 'YE' ? 'YER' : 'JOD'),
+              currency: pv.currency || (MARKETS[countryCode]?.currency || 'YER'),
               description: parsed.description || pv.description || (isRtl ? "مطلب أو بث ترويجي مميز تم نشره من قبل المستخدم" : "Featured promo uploaded by user"),
               createdAt: pv.createdAt || new Date().toISOString(),
               views: pv.views || 0,

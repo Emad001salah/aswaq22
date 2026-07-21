@@ -68,9 +68,18 @@ export default function CreateAdTab({
   // Form Field States
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [price, setPrice] = useState("");
-  const [currency, setCurrency] = useState(currentMarket.currency || "USD");
-  const [city, setCity] = useState(currentMarket.cities?.[0]?.id || "sanaa_city");
+  const [currency, setCurrency] = useState(currentMarket.currency || "YER");
+  const [city, setCity] = useState(currentMarket.cities?.[0]?.id || "");
+
+  // Sync market defaults when user switches market country
+  useEffect(() => {
+    if (!editingAd && currentMarket) {
+      setCurrency(currentMarket.currency || "YER");
+      if (currentMarket.cities && currentMarket.cities.length > 0) {
+        setCity(currentMarket.cities[0].id);
+      }
+    }
+  }, [currentMarket.id, editingAd]);
   const [district, setDistrict] = useState("");
   const [category, setCategory] = useState(categories[0]?.id || "");
   const [subCategory, setSubCategory] = useState("");
@@ -698,11 +707,14 @@ export default function CreateAdTab({
                       onChange={(e) => setCurrency(e.target.value)}
                       id="ad-input-currency"
                     >
-                      <option value="USD">دولار أمريكي (USD)</option>
+                      <option value={currentMarket.currency}>
+                        {getCurrencyNameAr(currentMarket.currency)} ({currentMarket.currency})
+                      </option>
                       {currentMarket.currency !== "USD" && (
-                        <option value={currentMarket.currency}>
-                          {currentMarket.currency === "YER" ? "ريال يمني" : currentMarket.currency === "SAR" ? "ريال سعودي" : currentMarket.currency} ({currentMarket.currency})
-                        </option>
+                        <option value="USD">دولار أمريكي (USD)</option>
+                      )}
+                      {currentMarket.currency !== "SAR" && currentMarket.currency !== "USD" && (
+                        <option value="SAR">ريال سعودي (SAR)</option>
                       )}
                     </select>
                   </div>
@@ -1588,7 +1600,7 @@ export default function CreateAdTab({
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent p-4 flex flex-col justify-end">
               <span className="text-[11px] font-black text-white truncate">{title || "عنوان إعلانك الرائع هنا..."}</span>
               <span className="text-[10px] font-mono text-emerald-400 font-bold mt-1">
-                {price ? `${price} ${currency}` : "0.00 YER"}
+                {price ? `${price} ${getCurrencyAr(currency)}` : `0.00 ${getCurrencyAr(currentMarket.currency)}`}
               </span>
             </div>
           </div>
