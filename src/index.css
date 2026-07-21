@@ -89,6 +89,25 @@
     background-size: 200% 100%;
     animation: shimmer 2s infinite linear;
   }
+
+  /* Native Mobile App Touch & Scroll Enhancements */
+  body, button, input, select, textarea, a {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  .native-scroll {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+
+  .active-press {
+    @apply active:scale-[0.97] transition-transform duration-100 ease-out;
+  }
+
+  .sheet-pull-handle {
+    @apply w-12 h-1.5 bg-slate-400/40 rounded-full mx-auto my-2.5 cursor-grab active:cursor-grabbing;
+  }
 }
 
 .native-platform .pt-safe {

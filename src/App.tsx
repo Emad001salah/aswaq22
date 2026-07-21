@@ -4851,7 +4851,7 @@ useEffect(() => {
       {/* 10. Stunning Mobile Sticky Bottom Navigation */}
       {!showWelcomeFlow && (
         <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md z-[2000] pb-safe px-3 pt-2 md:hidden pointer-events-none">
-          <div className="bg-[#0b0f1a]/95 backdrop-blur-2xl border border-white/10 rounded-3xl p-1.5 flex items-center justify-between shadow-[0_-10px_40px_rgba(0,0,0,0.5)] pointer-events-auto h-[72px] mb-2 relative overflow-visible">
+          <div className={`backdrop-blur-2xl border rounded-3xl p-1.5 flex items-center justify-between pointer-events-auto h-[72px] mb-2 relative overflow-visible transition-colors ${isDark ? 'bg-[#0b0f1a]/95 border-white/10 shadow-[0_-10px_40px_rgba(0,0,0,0.5)]' : 'bg-white/90 border-slate-200 shadow-[0_-10px_30px_rgba(0,0,0,0.12)]'}`}>
             
             {/* Marketplace */}
             <button
@@ -4863,14 +4863,14 @@ useEffect(() => {
               }}
               className={`flex flex-col items-center justify-center w-[20%] h-full transition-all duration-300 relative ${
                 platformMode === "marketplace" && currentTab === "home" && viewMode !== "map"
-                  ? "text-emerald-400"
-                  : "text-slate-500 hover:text-slate-300"
+                  ? "text-emerald-500 font-black"
+                  : isDark ? "text-slate-500 hover:text-slate-300" : "text-slate-600 hover:text-slate-900"
               }`}
             >
               <Home className={`w-[22px] h-[22px] mb-1.5 transition-transform duration-300 ${platformMode === "marketplace" && currentTab === "home" && viewMode !== "map" ? "scale-110" : ""}`} />
               <span className="text-[10px] font-bold tracking-tight">{t('nav.home')}</span>
               {platformMode === "marketplace" && currentTab === "home" && viewMode !== "map" && (
-                <div className="absolute -top-1.5 w-8 h-1 rounded-b-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]" />
+                <div className="absolute -top-1.5 w-8 h-1 rounded-b-full bg-emerald-500 shadow-[0_0_8px_rgba(52,211,153,0.6)]" />
               )}
             </button>
 
@@ -4879,14 +4879,14 @@ useEffect(() => {
               onClick={() => setPlatformMode("reels")}
               className={`flex flex-col items-center justify-center w-[20%] h-full transition-all duration-300 relative ${
                 platformMode === "reels"
-                  ? "text-rose-400"
-                  : "text-slate-500 hover:text-slate-300"
+                  ? "text-rose-500 font-black"
+                  : isDark ? "text-slate-500 hover:text-slate-300" : "text-slate-600 hover:text-slate-900"
               }`}
             >
               <Film className={`w-[22px] h-[22px] mb-1.5 transition-transform duration-300 ${platformMode === "reels" ? "scale-110" : ""}`} />
               <span className="text-[10px] font-bold tracking-tight">{t('nav.reels')}</span>
               {platformMode === "reels" && (
-                <div className="absolute -top-1.5 w-8 h-1 rounded-b-full bg-rose-400 shadow-[0_0_8px_rgba(251,113,133,0.6)]" />
+                <div className="absolute -top-1.5 w-8 h-1 rounded-b-full bg-rose-500 shadow-[0_0_8px_rgba(251,113,133,0.6)]" />
               )}
             </button>
 
@@ -4894,7 +4894,7 @@ useEffect(() => {
             <div className="w-[20%] h-full flex justify-center -mt-10 relative z-50">
               <button
                 onClick={() => handleTabChange("create-ad")}
-                className="w-14 h-14 bg-gradient-to-tr from-emerald-500 to-cyan-500 text-slate-950 rounded-full shadow-[0_8px_25px_rgba(16,185,129,0.5)] flex items-center justify-center active:scale-95 transition-all border-[4px] border-[#0b0f1a] cursor-pointer"
+                className={`w-14 h-14 bg-gradient-to-tr from-emerald-500 to-cyan-500 text-slate-950 rounded-full shadow-[0_8px_25px_rgba(16,185,129,0.5)] flex items-center justify-center active:scale-95 transition-all border-[4px] cursor-pointer ${isDark ? 'border-[#0b0f1a]' : 'border-white'}`}
               >
                 <Plus className="w-6 h-6 stroke-[3.5]" />
               </button>
@@ -4911,14 +4911,14 @@ useEffect(() => {
               }}
               className={`flex flex-col items-center justify-center w-[20%] h-full transition-all duration-300 relative ${
                 currentTab === "home" && viewMode === "map"
-                  ? "text-blue-400"
-                  : "text-slate-500 hover:text-slate-300"
+                  ? "text-blue-500 font-black"
+                  : isDark ? "text-slate-500 hover:text-slate-300" : "text-slate-600 hover:text-slate-900"
               }`}
             >
               <Map className={`w-[22px] h-[22px] mb-1.5 transition-transform duration-300 ${currentTab === "home" && viewMode === "map" ? "scale-110" : ""}`} />
               <span className="text-[10px] font-bold tracking-tight">{t('nav.map')}</span>
               {currentTab === "home" && viewMode === "map" && (
-                <div className="absolute -top-1.5 w-8 h-1 rounded-b-full bg-blue-400 shadow-[0_0_8px_rgba(96,165,250,0.6)]" />
+                <div className="absolute -top-1.5 w-8 h-1 rounded-b-full bg-blue-500 shadow-[0_0_8px_rgba(96,165,250,0.6)]" />
               )}
             </button>
 
@@ -4927,21 +4927,21 @@ useEffect(() => {
               onClick={() => handleTabChange("messages")}
               className={`flex flex-col items-center justify-center w-[20%] h-full transition-all duration-300 relative ${
                 currentTab === "messages"
-                  ? "text-emerald-400"
-                  : "text-slate-500 hover:text-slate-300"
+                  ? "text-emerald-500 font-black"
+                  : isDark ? "text-slate-500 hover:text-slate-300" : "text-slate-600 hover:text-slate-900"
               }`}
             >
               <div className="relative">
                  <MessageSquare className={`w-[22px] h-[22px] mb-1.5 transition-transform duration-300 ${currentTab === "messages" ? "scale-110" : ""}`} />
                  {unreadMessages.length > 0 && (
-                   <span className="absolute -top-1.5 -right-2 bg-rose-500 text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center border-2 border-[#0b0f1a]">
+                   <span className={`absolute -top-1.5 -right-2 bg-rose-500 text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center border-2 ${isDark ? 'border-[#0b0f1a]' : 'border-white'}`}>
                      {unreadMessages.length > 9 ? '+9' : unreadMessages.length}
                    </span>
                  )}
               </div>
               <span className="text-[10px] font-bold tracking-tight">{t('nav.messages')}</span>
               {currentTab === "messages" && (
-                <div className="absolute -top-1.5 w-8 h-1 rounded-b-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]" />
+                <div className="absolute -top-1.5 w-8 h-1 rounded-b-full bg-emerald-500 shadow-[0_0_8px_rgba(52,211,153,0.6)]" />
               )}
             </button>
           </div>
