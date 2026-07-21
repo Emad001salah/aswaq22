@@ -87,7 +87,7 @@ export class App {
   public httpServer: ReturnType<typeof createServer>;
   public io: Server;
   private port: number = parseInt(process.env.PORT || '3000', 10);
-  private activeStreams = new Map<string, { broadcasterId: string; viewers: Set<string> }>();
+  private activeStreams = new Map<string, { broadcasterId: string; viewers: Set<string>; pinnedProduct?: { id: string; title: string; price: number; image: string } | null }>();
 
   constructor() {
     this.app        = express();
@@ -2026,6 +2026,15 @@ ${urls.join('\n')}
           if (stream.broadcasterId) {
             this.io.to(stream.broadcasterId).emit('viewer-joined', { viewerId: socket.id });
           }
+          // Emit currently pinned product if any exists to the newly joined viewer
+          if (stream.pinnedProduct) {
+            socket.emit('product-pinned', {
+              productId: stream.pinnedProduct.id,
+              productTitle: stream.pinnedProduct.title,
+              productPrice: stream.pinnedProduct.price,
+              productImage: stream.pinnedProduct.image
+            });
+          }
           // Broadcast viewer count update to room
           this.io.to(`stream_${streamId}`).emit('viewer-count-update', { count: stream.viewers.size });
         }
@@ -2060,6 +2069,24 @@ ${urls.join('\n')}
           color: data.color,
           left: data.left,
           scale: data.scale
+        });
+      });
+
+      socket.on('pin-product', (data: { streamId: string; productId: string | null; productTitle?: string; productPrice?: number; productImage?: string }) => {
+        const stream = this.activeStreams.get(data.streamId);
+        if (stream) {
+          stream.pinnedProduct = data.productId ? {
+            id: data.productId,
+            title: data.productTitle || '',
+            price: data.productPrice || 0,
+            image: data.productImage || ''
+          } : null;
+        }
+        this.io.to(`stream_${data.streamId}`).emit('product-pinned', {
+          productId: data.productId,
+          productTitle: data.productTitle || '',
+          productPrice: data.productPrice || 0,
+          productImage: data.productImage || ''
         });
       });
 

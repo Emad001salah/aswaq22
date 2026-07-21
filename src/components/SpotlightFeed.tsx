@@ -719,6 +719,16 @@ function WebcamStreamPlayer({
             )}
 
             <button
+              onClick={() => setShowPinProductModal(true)}
+              className={`w-12 h-12 rounded-full flex items-center justify-center shadow-2xl transition-all border group active:scale-90 ${
+                pinnedProduct ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-emerald-500/30' : 'bg-slate-950/60 text-white border-white/10 backdrop-blur-xl'
+              }`}
+              title={isRtl ? 'تثبيت منتج مميز' : 'Pin a Product'}
+            >
+              <MapPin className={`w-5.5 h-5.5 ${pinnedProduct ? 'text-slate-950 animate-bounce' : 'text-emerald-400'}`} />
+            </button>
+
+            <button
               onClick={() => {
                 // End broadcast immediately
                 socket.emit('leave-stream', { streamId: ad.id, role: 'broadcaster' });
@@ -917,6 +927,8 @@ export default function SpotlightFeed({
   const [liveComments, setLiveComments] = useState<{ id: string; user: string; text: string; avatar: string }[]>([]);
   const [showLiveUploadModal, setShowLiveUploadModal] = useState(false);
   const [floatingHearts, setFloatingHearts] = useState<{ id: number; left: number; color: string; scale: number }[]>([]);
+  const [pinnedProduct, setPinnedProduct] = useState<{ id: string; title: string; price: number; image: string } | null>(null);
+  const [showPinProductModal, setShowPinProductModal] = useState<boolean>(false);
 
   // --- Live Stream Custom Audio Upload States ---
   const [audioSourceType, setAudioSourceType] = useState<'none' | 'file' | 'link'>('none');
@@ -1327,22 +1339,39 @@ export default function SpotlightFeed({
         setFloatingHearts(prev => [...prev.slice(-40), { id, color, left, scale }]);
       };
 
+      const handleProductPinned = (data: any) => {
+        if (data.productId) {
+          setPinnedProduct({
+            id: data.productId,
+            title: data.productTitle,
+            price: data.productPrice,
+            image: data.productImage
+          });
+        } else {
+          setPinnedProduct(null);
+        }
+      };
+
       socket.on('viewer-count-update', handleViewerCountUpdate);
       socket.on('chat-message', handleChatMessage);
       socket.on('live-heart', handleLiveHeart);
+      socket.on('product-pinned', handleProductPinned);
 
       return () => {
         socket.emit('leave-stream', { streamId: activeAd.id, role: 'viewer' });
         socket.off('viewer-count-update', handleViewerCountUpdate);
         socket.off('chat-message', handleChatMessage);
         socket.off('live-heart', handleLiveHeart);
+        socket.off('product-pinned', handleProductPinned);
         setLiveComments([]);
         setFloatingHearts([]);
+        setPinnedProduct(null);
       };
     } else {
       setLiveViewerCount(0);
       setLiveComments([]);
       setFloatingHearts([]);
+      setPinnedProduct(null);
     }
   }, [activeIndex, displayAds]);
 
@@ -2317,6 +2346,38 @@ export default function SpotlightFeed({
               {/* Bottom Info Overlay - INCREASED Z-INDEX for visibility over video and rails */}
               <div className={`absolute bottom-0 left-0 right-0 p-4 sm:p-6 pt-32 pb-8 bg-gradient-to-t from-black/95 via-black/45 to-transparent pointer-events-none flex flex-col justify-end z-[120] ${isRtl ? 'pr-14 sm:pr-24 pl-14 sm:pl-24 text-right' : 'pl-14 sm:pl-24 pr-14 sm:pr-24 text-left'}`}>
                 <div className="w-full max-w-xl space-y-2.5 pointer-events-auto">
+                  {/* Pinned Product Card for Live Stream Viewers */}
+                  {ad.isLive && pinnedProduct && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 15 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className={`flex items-center gap-3 p-2.5 bg-slate-950/95 backdrop-blur-xl border border-emerald-500/40 rounded-2xl shadow-xl max-w-xs sm:max-w-sm pointer-events-auto mb-2 ${isRtl ? 'flex-row' : 'flex-row-reverse'}`}
+                    >
+                      <img 
+                        src={pinnedProduct.image || 'https://images.unsplash.com/photo-1540553016722-983e48a2cd10?auto=format&fit=crop&w=120&q=80'} 
+                        className="w-12 h-12 rounded-xl object-cover border border-slate-850 shrink-0" 
+                      />
+                      <div className="flex-1 min-w-0 text-right">
+                        <span className="text-[8.5px] bg-emerald-500/20 text-emerald-400 font-extrabold px-2 py-0.5 rounded-full">📌 معروض الآن</span>
+                        <h4 className="text-[10px] sm:text-[11px] font-black text-white truncate mt-1">{pinnedProduct.title}</h4>
+                        <p className="text-[9.5px] text-emerald-400 font-black font-mono">
+                          {pinnedProduct.price.toLocaleString()} {getCurrencyAr(ad.currency)}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setShowShoppablePanel(true);
+                          setShoppableSuccess(false);
+                          setShoppableOrderId('');
+                          setShoppableBuyerName(currentUser?.name || '');
+                          setShoppableBuyerPhone(currentUser?.phone || '');
+                        }}
+                        className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-lg text-[9.5px] transition-all cursor-pointer border-none shrink-0"
+                      >
+                        {isRtl ? 'شراء' : 'Buy'}
+                      </button>
+                    </motion.div>
+                  )}
                   <div className={`flex items-center gap-1.5 flex-wrap ${isRtl ? 'flex-row' : 'flex-row-reverse'}`}>
                      <span className="px-3.5 py-1 rounded-full bg-slate-950/80 border border-emerald-500/40 text-emerald-400 text-[9px] sm:text-[10px] font-black uppercase tracking-wider backdrop-blur-md shadow-md">
                         {ad.category}
@@ -2596,7 +2657,18 @@ export default function SpotlightFeed({
 
         <div className="flex-1 overflow-y-auto space-y-4 pr-1 scrollbar-hidden pb-12">
           {(() => {
-            const ad = displayAds[activeIndex];
+            const currentAd = displayAds[activeIndex];
+            const ad = pinnedProduct ? {
+              id: pinnedProduct.id,
+              title: pinnedProduct.title,
+              price: pinnedProduct.price,
+              currency: currentAd?.currency || 'YER',
+              images: [pinnedProduct.image],
+              user: currentAd?.user,
+              userName: currentAd?.userName,
+              city: currentAd?.city || 'كافة المناطق'
+            } : currentAd;
+
             if (!ad) return <p className="text-slate-400 text-center text-xs">لا توجد سلعة مرتبطة بهذا المقطع.</p>;
             const safeImages = Array.isArray(ad.images) ? ad.images : [];
 
@@ -3213,6 +3285,117 @@ export default function SpotlightFeed({
                   </button>
                 </div>
               </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Pin Product Modal for Broadcaster */}
+      <AnimatePresence>
+        {showPinProductModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-[5000] flex items-center justify-center p-4 pointer-events-auto text-right"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 30 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 30 }}
+              className="bg-slate-900 border border-white/10 rounded-3xl w-full max-w-md p-6 max-h-[80vh] overflow-y-auto shadow-2xl relative flex flex-col gap-4 text-slate-100"
+            >
+              <div className="flex items-center justify-between border-b border-white/5 pb-3">
+                <h3 className="text-sm font-black text-white">📌 تثبيت منتج مميز للبث</h3>
+                <button
+                  type="button"
+                  onClick={() => setShowPinProductModal(false)}
+                  className="text-slate-500 hover:text-white border-none bg-transparent font-black text-lg cursor-pointer"
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="space-y-3 overflow-y-auto max-h-[50vh] pr-1">
+                {pinnedProduct && (
+                  <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs">📌</span>
+                      <div>
+                        <p className="text-[11px] font-black text-emerald-400">المنتج المثبت حالياً:</p>
+                        <p className="text-[10px] text-white truncate max-w-[200px]">{pinnedProduct.title}</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        const activeAd = displayAds[activeIndex];
+                        if (activeAd) {
+                          socket.emit('pin-product', { streamId: activeAd.id, productId: null });
+                          setPinnedProduct(null);
+                        }
+                        setShowPinProductModal(false);
+                      }}
+                      className="px-2.5 py-1 bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 rounded-lg text-[10px] font-black transition-colors cursor-pointer border-none"
+                    >
+                      إلغاء التثبيت
+                    </button>
+                  </div>
+                )}
+
+                {(() => {
+                  const broadcasterAds = ads.filter(a => a.userId === currentUser?.id || (a.userName === currentUser?.name && currentUser));
+                  if (broadcasterAds.length === 0) {
+                    return <p className="text-slate-400 text-center text-xs py-6">ليس لديك أي إعلانات أو سلع معلنة حالياً لتثبيتها.</p>;
+                  }
+                  return broadcasterAds.map(item => {
+                    const itemImages = Array.isArray(item.images) ? item.images : [];
+                    return (
+                      <div
+                        key={item.id}
+                        className="flex items-center justify-between p-2.5 bg-slate-950/40 border border-white/5 hover:border-emerald-500/30 rounded-xl transition-all"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <img
+                            src={itemImages?.[0] || 'https://images.unsplash.com/photo-1540553016722-983e48a2cd10?auto=format&fit=crop&w=80&q=80'}
+                            className="w-10 h-10 rounded-lg object-cover border border-white/5 shrink-0"
+                          />
+                          <div className="min-w-0 text-right">
+                            <h5 className="text-[11px] font-bold text-slate-200 truncate">{item.title}</h5>
+                            <p className="text-[9.5px] text-emerald-400 font-bold font-mono">
+                              {(item.price || 0).toLocaleString()} {getCurrencyAr(item.currency)}
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => {
+                            const activeAd = displayAds[activeIndex];
+                            if (activeAd) {
+                              socket.emit('pin-product', {
+                                streamId: activeAd.id,
+                                productId: item.id,
+                                productTitle: item.title,
+                                productPrice: item.price,
+                                productImage: itemImages?.[0] || ''
+                              });
+                              setPinnedProduct({
+                                id: item.id,
+                                title: item.title,
+                                price: item.price,
+                                image: itemImages?.[0] || ''
+                              });
+                              showToast(isRtl ? 'تم تثبيت السلعة بنجاح! 📌' : 'Product pinned successfully! 📌');
+                            }
+                            setShowPinProductModal(false);
+                          }}
+                          className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-lg text-[10px] font-black transition-all cursor-pointer border-none"
+                        >
+                          تثبيت البث
+                        </button>
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
             </motion.div>
           </motion.div>
         )}
