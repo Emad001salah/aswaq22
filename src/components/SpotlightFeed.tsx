@@ -121,18 +121,22 @@ function AudioPlayer({ src, isPlaying, isMuted }: { src: string; isPlaying: bool
   return null;
 }
 
-function WebcamStreamPlayer({ 
-  isMuted, 
-  isRtl, 
-  ad, 
+function WebcamStreamPlayer({
+  isMuted,
+  isRtl,
+  ad,
   currentUser,
-  onStreamEnded
-}: { 
-  isMuted: boolean; 
-  isRtl: boolean; 
-  ad: Ad; 
+  onStreamEnded,
+  pinnedProduct,
+  onPinProductClick
+}: {
+  isMuted: boolean;
+  isRtl: boolean;
+  ad: Ad;
   currentUser: User | null;
   onStreamEnded?: (adId: string, archiveUrl: string) => void;
+  pinnedProduct?: { id: string; title: string; price: number; image: string } | null;
+  onPinProductClick?: () => void;
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -719,7 +723,7 @@ function WebcamStreamPlayer({
             )}
 
             <button
-              onClick={() => setShowPinProductModal(true)}
+              onClick={() => onPinProductClick?.()}
               className={`w-12 h-12 rounded-full flex items-center justify-center shadow-2xl transition-all border group active:scale-90 ${
                 pinnedProduct ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-emerald-500/30' : 'bg-slate-950/60 text-white border-white/10 backdrop-blur-xl'
               }`}
@@ -2090,6 +2094,8 @@ export default function SpotlightFeed({
                         isRtl={isRtl} 
                         ad={ad} 
                         currentUser={currentUser} 
+                        pinnedProduct={pinnedProduct} 
+                        onPinProductClick={() => setShowPinProductModal(true)} 
                         onStreamEnded={(adId, archiveUrl) => {
                           const overrideUrl = `${archiveUrl}||none||${ad.description || ''}||${ad.city || ''}||${ad.category || ''}`;
                           setLocalAdOverrides(prev => ({
