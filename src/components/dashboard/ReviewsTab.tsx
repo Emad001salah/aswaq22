@@ -13,6 +13,7 @@ interface ReviewsTabProps {
   ratedConversationIds: string[];
   setRatedConversationIds: React.Dispatch<React.SetStateAction<string[]>>;
   addToast?: (title: string, desc: string, type: "success" | "error" | "info" | "notification") => void;
+  isDark?: boolean;
 }
 
 export default function ReviewsTab({
@@ -21,6 +22,7 @@ export default function ReviewsTab({
   ratedConversationIds,
   setRatedConversationIds,
   addToast,
+  isDark = true,
 }: ReviewsTabProps) {
   const [reviewTarget, setReviewTarget] = useState<string | null>(null);
   const [reviewPartnerName, setReviewPartnerName] = useState("");
@@ -76,10 +78,10 @@ export default function ReviewsTab({
     <div className="mt-8 space-y-6">
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
-          <h3 className="text-lg font-black text-white">
+          <h3 className={`text-lg font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>
             تقييم التجار والمحلات
           </h3>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className={`text-xs mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
             ساهم في بناء مجتمع موثوق من خلال تقييم تجربتك مع البائعين بعد
             التواصل معهم.
           </p>
@@ -89,11 +91,11 @@ export default function ReviewsTab({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* List of sellers to review (based on recent chats/interactions) */}
         <div className="space-y-4">
-          <h4 className="text-sm font-bold text-slate-200">
+          <h4 className={`text-sm font-bold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
             تجار تواصلت معهم مؤخراً
           </h4>
           {chatRooms.length === 0 ? (
-            <div className="p-10 text-center rounded-2xl border border-dashed border-slate-800 bg-slate-900/40 text-slate-500 text-xs">
+            <div className={`p-10 text-center rounded-2xl border border-dashed text-xs ${isDark ? 'border-slate-800 bg-slate-900/40 text-slate-500' : 'border-slate-300 bg-slate-50 text-slate-500'}`}>
               لا توجد محادثات سابقة لتقييمها حالياً. تواصل مع البائعين لظهورهم هنا.
             </div>
           ) : (
@@ -101,7 +103,7 @@ export default function ReviewsTab({
               {chatRooms.map((room) => (
                 <div
                   key={room.id}
-                  className="p-4 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between hover:border-slate-700 transition-all cursor-pointer text-right"
+                  className={`p-4 rounded-xl border flex items-center justify-between transition-all cursor-pointer text-right ${isDark ? 'bg-slate-900 border-slate-800 hover:border-slate-700' : 'bg-white border-slate-200 hover:border-emerald-500 shadow-sm'}`}
                   onClick={() => {
                     if (ratedConversationIds.includes(room.id)) return;
                     setReviewTarget(room.partnerId);
@@ -118,10 +120,10 @@ export default function ReviewsTab({
                       className="w-10 h-10 rounded-lg object-cover"
                     />
                     <div className="text-right">
-                      <p className="text-xs font-bold text-slate-100">
+                      <p className={`text-xs font-bold ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
                         {room.partnerName}
                       </p>
-                      <p className="text-[10px] text-slate-500 mt-0.5">
+                      <p className={`text-[10px] mt-0.5 ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>
                         بخصوص: {room.adTitle}
                       </p>
                     </div>
@@ -140,7 +142,7 @@ export default function ReviewsTab({
                     }}
                     className={`px-3 py-1.5 rounded-lg text-[10px] font-extrabold transition-all shadow-lg cursor-pointer ${
                       ratedConversationIds.includes(room.id)
-                        ? "bg-slate-800 text-slate-500 border border-slate-850 cursor-not-allowed"
+                        ? isDark ? "bg-slate-800 text-slate-500 border border-slate-850 cursor-not-allowed" : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
                         : "bg-emerald-500 text-slate-950 hover:bg-emerald-400"
                     }`}
                   >
@@ -157,14 +159,14 @@ export default function ReviewsTab({
         {/* Review Input Form (Conditional) */}
         <div>
           {reviewTarget ? (
-            <div className="p-6 sm:p-8 rounded-3xl bg-slate-900 border border-emerald-500/30 shadow-xl shadow-emerald-500/5 space-y-6">
+            <div className={`p-6 sm:p-8 rounded-3xl border shadow-xl space-y-6 ${isDark ? 'bg-slate-900 border-emerald-500/30 shadow-emerald-500/5' : 'bg-white border-emerald-500/30 shadow-slate-200/50'}`}>
               <div className="flex items-center justify-between">
-                <h4 className="text-sm font-black text-white flex items-center gap-2">
+                <h4 className={`text-sm font-black flex items-center gap-2 ${isDark ? 'text-white' : 'text-slate-800'}`}>
                   تقييم التاجر: {reviewPartnerName}
                 </h4>
                 <button
                   onClick={() => setReviewTarget(null)}
-                  className="text-slate-500 hover:text-white"
+                  className={`transition-colors ${isDark ? 'text-slate-500 hover:text-white' : 'text-slate-400 hover:text-slate-800'}`}
                 >
                   <MessageSquare className="w-4 h-4" />
                 </button>
@@ -172,7 +174,7 @@ export default function ReviewsTab({
 
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-400 block text-right">
+                  <label className={`text-xs font-bold block text-right ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
                     اختر عدد النجوم (مدى الرضا عن التعامل)
                   </label>
                   <div className="flex flex-row-reverse justify-end gap-2">
@@ -184,7 +186,7 @@ export default function ReviewsTab({
                         className={`w-10 h-10 rounded-lg flex items-center justify-center text-xl transition-all cursor-pointer ${
                           reviewScore >= star
                             ? "bg-amber-500 text-slate-950 border-amber-400 scale-110 shadow-lg shadow-amber-500/10"
-                            : "bg-slate-950 text-slate-600 border border-slate-800"
+                            : isDark ? "bg-slate-950 text-slate-600 border border-slate-800" : "bg-slate-100 text-slate-400 border border-slate-200"
                         }`}
                       >
                         ★
@@ -207,12 +209,12 @@ export default function ReviewsTab({
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-400 block text-right">
+                  <label className={`text-xs font-bold block text-right ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
                     تعليقك على التعامل (اختياري)
                   </label>
                   <textarea
                     rows={4}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-slate-300 outline-none focus:border-emerald-500 text-xs leading-relaxed text-right"
+                    className={`w-full border rounded-xl p-4 outline-none focus:border-emerald-500 text-xs leading-relaxed text-right ${isDark ? 'bg-slate-950 border-slate-800 text-slate-300' : 'bg-slate-50 border-slate-200 text-slate-800 placeholder-slate-400'}`}
                     value={reviewComment}
                     onChange={(e) => setReviewComment(e.target.value)}
                     placeholder="شاركنا رأيك بتجربة الشراء أو التواصل لتعم الفائدة..."
@@ -235,12 +237,12 @@ export default function ReviewsTab({
               </div>
             </div>
           ) : (
-            <div className="p-12 text-center rounded-3xl border border-dashed border-slate-800 bg-slate-950/20 h-full flex flex-col items-center justify-center space-y-4">
-              <div className="w-16 h-16 rounded-3xl bg-slate-900 border border-slate-800 flex items-center justify-center">
-                <Star className="w-8 h-8 text-slate-700" />
+            <div className={`p-12 text-center rounded-3xl border border-dashed h-full flex flex-col items-center justify-center space-y-4 ${isDark ? 'border-slate-800 bg-slate-950/20' : 'border-slate-200 bg-slate-50/50'}`}>
+              <div className={`w-16 h-16 rounded-3xl border flex items-center justify-center ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-sm'}`}>
+                <Star className="w-8 h-8 text-slate-400" />
               </div>
               <div className="space-y-1 text-center">
-                <p className="text-sm font-bold text-slate-400">
+                <p className={`text-sm font-bold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
                   بانتظار اختيار تاجر لتقييمه
                 </p>
                 <p className="text-[10px] text-slate-500 max-w-xs mx-auto">

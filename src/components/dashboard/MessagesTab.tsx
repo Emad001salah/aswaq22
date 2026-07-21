@@ -18,6 +18,7 @@ interface MessagesTabProps {
   handleOpenRatingModal: (room: any) => void;
   fetchChatRooms: () => Promise<void>;
   fetchActiveChats: (adId: string, partnerId: string) => Promise<void>;
+  isDark?: boolean;
 }
 
 export default function MessagesTab({
@@ -31,6 +32,7 @@ export default function MessagesTab({
   handleOpenRatingModal,
   fetchChatRooms,
   fetchActiveChats,
+  isDark = true,
 }: MessagesTabProps) {
   const [replyText, setReplyText] = useState("");
   const [replying, setReplying] = useState(false);
@@ -87,14 +89,14 @@ export default function MessagesTab({
   };
 
   return (
-    <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 rounded-3xl overflow-hidden bg-slate-900 border border-slate-800 h-[500px]">
+    <div className={`mt-8 grid grid-cols-1 lg:grid-cols-3 rounded-3xl overflow-hidden border h-[500px] transition-colors ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-xl'}`}>
       {/* Active room lists */}
-      <div className="lg:col-span-1 border-l border-slate-800 overflow-y-auto">
-        <div className="p-4 border-b border-slate-800 bg-slate-950 font-bold text-xs text-slate-300">
+      <div className={`lg:col-span-1 border-l overflow-y-auto ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
+        <div className={`p-4 border-b font-bold text-xs ${isDark ? 'border-slate-800 bg-slate-950 text-slate-300' : 'border-slate-200 bg-slate-50 text-slate-700'}`}>
           المحادثات الواردة والصادرة
         </div>
 
-        <div className="divide-y divide-slate-800/50">
+        <div className={`divide-y ${isDark ? 'divide-slate-800/50' : 'divide-slate-100'}`}>
           {chatRooms.length === 0 ? (
             <div className="p-8 text-center text-xs text-slate-500 font-medium">
               لا توجد محادثات نشطة حالياً.
@@ -109,8 +111,8 @@ export default function MessagesTab({
                   onClick={() => setSelectedRoom(room)}
                   className={`p-4 flex items-center gap-3 cursor-pointer transition-colors ${
                     isActiveRoom
-                      ? "bg-emerald-900/10 border-r-2 border-emerald-500"
-                      : "hover:bg-slate-800/30"
+                      ? isDark ? "bg-emerald-900/10 border-r-2 border-emerald-500" : "bg-emerald-50 border-r-2 border-emerald-500"
+                      : isDark ? "hover:bg-slate-800/30" : "hover:bg-slate-50"
                   }`}
                 >
                   <img
@@ -122,7 +124,7 @@ export default function MessagesTab({
 
                   <div className="flex-1 min-w-0 text-right">
                     <div className="flex items-center justify-between gap-1">
-                      <h4 className="text-xs font-bold text-slate-100 truncate flex items-center gap-1.5">
+                      <h4 className={`text-xs font-bold truncate flex items-center gap-1.5 ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
                         {room.partnerName}
                         {ratedConversationIds.includes(room.id) && (
                           <Star className="w-3 h-3 text-amber-400 fill-current" />
@@ -135,10 +137,10 @@ export default function MessagesTab({
                         )}
                       </span>
                     </div>
-                    <p className="text-[10px] text-emerald-400 truncate mt-0.5">
+                    <p className="text-[10px] text-emerald-500 truncate mt-0.5 font-bold">
                       {room.adTitle}
                     </p>
-                    <p className="text-[10px] text-slate-400 truncate mt-1">
+                    <p className={`text-[10px] truncate mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                       {room.lastText}
                     </p>
                   </div>
@@ -150,20 +152,20 @@ export default function MessagesTab({
       </div>
 
       {/* Active Chat message pane */}
-      <div className="lg:col-span-2 flex flex-col h-full bg-slate-950/45 min-h-0">
+      <div className={`lg:col-span-2 flex flex-col h-full min-h-0 ${isDark ? 'bg-slate-950/45' : 'bg-slate-50/50'}`}>
         {selectedRoom ? (
           <>
             {/* Header info */}
-            <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-950 shrink-0">
+            <div className={`p-4 border-b flex items-center justify-between shrink-0 ${isDark ? 'border-slate-800 bg-slate-950' : 'border-slate-200 bg-slate-50'}`}>
               <div className="flex items-center gap-3">
                 <img
                   src={selectedRoom.partnerAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=40&q=80'}
                   className="w-8 h-8 rounded-lg object-cover"
                 />
                 <div className="text-right">
-                  <h4 className="text-xs font-bold text-white flex items-center gap-1">
+                  <h4 className={`text-xs font-bold flex items-center gap-1 ${isDark ? 'text-white' : 'text-slate-800'}`}>
                     {selectedRoom.partnerName}
-                    <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                    <CheckCircle2 className="w-3 h-3 text-emerald-500" />
                   </h4>
                   <p className="text-[9px] text-slate-500">
                     بخصوص: {selectedRoom.adTitle}
@@ -201,7 +203,7 @@ export default function MessagesTab({
             </div>
 
             {/* Messages Body */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-950/45 h-full overscroll-y-contain">
+            <div className={`flex-1 overflow-y-auto p-4 space-y-3 h-full overscroll-y-contain ${isDark ? 'bg-slate-950/45' : 'bg-slate-100/50'}`}>
               {activeChats.map((msg) => {
                 const mine = msg.senderId === currentUser.id;
 
@@ -214,7 +216,9 @@ export default function MessagesTab({
                       className={`p-3 rounded-xl text-xs leading-relaxed max-w-[80%] ${
                         mine
                           ? "bg-emerald-500 text-slate-950 font-bold rounded-tr-none shadow-md shadow-emerald-500/5"
-                          : "bg-slate-800 text-slate-100 rounded-tl-none"
+                          : isDark
+                            ? "bg-slate-800 text-slate-100 rounded-tl-none"
+                            : "bg-white text-slate-800 border border-slate-200/80 rounded-tl-none shadow-sm"
                       }`}
                     >
                       {msg.text}
@@ -233,7 +237,7 @@ export default function MessagesTab({
             {/* Reply Form Footer */}
             <form
               onSubmit={handleReplySubmit}
-              className="p-4 border-t border-slate-800 bg-slate-950/80 flex gap-2 items-center shrink-0"
+              className={`p-4 border-t flex gap-2 items-center shrink-0 ${isDark ? 'border-slate-800 bg-slate-950/80' : 'border-slate-200 bg-white'}`}
             >
               <input 
                 type="file" 
@@ -257,7 +261,7 @@ export default function MessagesTab({
                 type="text"
                 required
                 placeholder="اكتب ردك ومقترح السعر..."
-                className="flex-1 h-10 bg-slate-900 border border-slate-800 rounded-xl px-4 text-xs text-slate-200 outline-none focus:border-emerald-500 text-right"
+                className={`flex-1 h-10 border rounded-xl px-4 text-xs outline-none focus:border-emerald-500 text-right ${isDark ? 'bg-slate-900 border-slate-800 text-slate-200' : 'bg-slate-50 border-slate-200 text-slate-800 placeholder-slate-400'}`}
                 value={replyText}
                 onChange={(e) => setReplyText(e.target.value)}
                 disabled={replying}
@@ -279,7 +283,7 @@ export default function MessagesTab({
           </>
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center text-center p-6 text-slate-500">
-            <MessageSquare className="w-8 h-8 text-slate-700 mb-2" />
+            <MessageSquare className="w-8 h-8 text-slate-400 mb-2" />
             <p className="text-xs">
               الرجاء اختيار محادثة من القائمة للتواصل والتفاوض.
             </p>

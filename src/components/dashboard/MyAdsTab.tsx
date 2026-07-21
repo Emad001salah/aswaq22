@@ -74,7 +74,7 @@ export default function MyAdsTab({
         </h3>
         <button
           onClick={() => onTabChange("create-ad")}
-          className="flex items-center gap-1 bg-slate-900 hover:bg-slate-800 border border-slate-800 px-4 py-2 rounded-xl text-xs text-slate-200 cursor-pointer"
+          className={`flex items-center gap-1 border px-4 py-2 rounded-xl text-xs cursor-pointer transition-colors ${isDark ? 'bg-slate-900 hover:bg-slate-800 border-slate-800 text-slate-200' : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700 shadow-sm'}`}
         >
           <Plus className="w-4 h-4" />
           إعلان جديد
@@ -82,7 +82,7 @@ export default function MyAdsTab({
       </div>
 
       {myAds.length === 0 ? (
-        <div className="p-12 text-center rounded-3xl border border-dashed border-slate-800 bg-slate-950/30">
+        <div className={`p-12 text-center rounded-3xl border border-dashed ${isDark ? 'border-slate-800 bg-slate-950/30' : 'border-slate-300 bg-slate-50/50'}`}>
           <p className="text-sm text-slate-500">
             لم تقم بنشر أي إعلانات حتى الآن في المنصة.
           </p>
@@ -117,7 +117,7 @@ export default function MyAdsTab({
                 id={`my-ad-item-${ad.id}`}
               >
                 <div>
-                  <div className="aspect-video w-full rounded-xl overflow-hidden bg-slate-950 border border-slate-800 relative">
+                  <div className={`aspect-video w-full rounded-xl overflow-hidden relative border ${isDark ? 'bg-slate-950 border-slate-800' : 'bg-slate-100 border-slate-200'}`}>
                     <img
                       src={
                         (ad.images?.[0] && typeof ad.images[0] === 'object'
@@ -183,7 +183,7 @@ export default function MyAdsTab({
                       <span className="opacity-80 mt-0.5">{relativeDateString(ad.createdAt)}</span>
                     </div>
                     <span
-                      className={`px-2 py-0.5 rounded-full capitalize ${ad.status === "active" ? "bg-emerald-500/15 text-emerald-400" : ad.status === "sold" ? "bg-rose-500/15 text-rose-400" : "bg-slate-800 text-slate-400"}`}
+                      className={`px-2 py-0.5 rounded-full capitalize ${ad.status === "active" ? "bg-emerald-500/15 text-emerald-500 font-bold" : ad.status === "sold" ? "bg-rose-500/15 text-rose-400" : isDark ? "bg-slate-800 text-slate-400" : "bg-slate-100 text-slate-500"}`}
                     >
                       {ad.status === "active"
                         ? "نشط ومستمر"
@@ -196,8 +196,8 @@ export default function MyAdsTab({
                   </div>
                 </div>
 
-                <div className="border-t border-slate-800 pt-3 mt-4 flex items-center justify-between">
-                  <p className="text-md font-extrabold text-emerald-400">
+                <div className={`border-t pt-3 mt-4 flex items-center justify-between ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
+                  <p className="text-md font-extrabold text-emerald-500">
                     {formatPrice(ad.price)}{" "}
                     <span className="text-[10px]">{ad.currency}</span>
                   </p>
@@ -205,7 +205,7 @@ export default function MyAdsTab({
                   <div className="flex gap-2 items-center">
                     <button
                       onClick={() => onSelectAd(ad)}
-                      className="bg-slate-800 hover:bg-slate-750 text-slate-200 text-[10px] font-bold px-3 py-1.5 rounded-lg cursor-pointer transition-all"
+                      className={`text-[10px] font-bold px-3 py-1.5 rounded-lg cursor-pointer transition-all ${isDark ? 'bg-slate-800 hover:bg-slate-750 text-slate-200' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'}`}
                     >
                       معاينة
                     </button>

@@ -574,6 +574,7 @@ export default function Dashboard({
               handleOpenRatingModal={handleOpenRatingModal}
               fetchChatRooms={fetchChatRooms}
               fetchActiveChats={fetchActiveChats}
+              isDark={isDark}
             />
           </ErrorBoundary>
         )}
@@ -586,6 +587,7 @@ export default function Dashboard({
               ratedConversationIds={ratedConversationIds}
               setRatedConversationIds={setRatedConversationIds}
               addToast={addToast}
+              isDark={isDark}
             />
           </ErrorBoundary>
         )}
@@ -598,6 +600,7 @@ export default function Dashboard({
               currentMarket={currentMarket}
               categories={categories}
               t={t}
+              isDark={isDark}
             />
           </ErrorBoundary>
         )}

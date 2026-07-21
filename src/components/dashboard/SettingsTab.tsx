@@ -214,20 +214,20 @@ export default function SettingsTab({
   };
 
   return (
-    <div className="mt-8 max-w-3xl mx-auto p-6 sm:p-8 rounded-3xl bg-slate-900 border border-slate-800">
-      <h3 className="text-lg font-black text-white mb-6">
+    <div className={`mt-8 max-w-3xl mx-auto p-6 sm:p-8 rounded-3xl border transition-colors ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-xl'}`}>
+      <h3 className={`text-lg font-black mb-6 ${isDark ? 'text-white' : 'text-slate-900'}`}>
         إعدادات وبيانات الحساب الشخصي
       </h3>
 
       <form onSubmit={handleSaveSettings} className="space-y-4">
         <div className="space-y-1.5">
-          <label className="text-xs font-bold text-slate-400">
+          <label className={`text-xs font-bold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
             الاسم التجاري أو الشخصي
           </label>
           <input
             type="text"
             required
-            className="w-full h-11 bg-slate-950 border border-slate-800 rounded-xl px-4 text-slate-200 text-xs outline-none text-right"
+            className={`w-full h-11 border rounded-xl px-4 text-xs outline-none text-right transition-colors ${isDark ? 'bg-slate-950 border-slate-800 text-slate-200' : 'bg-slate-50 border-slate-200 text-slate-800'}`}
             value={profileName}
             onChange={(e) => setProfileName(e.target.value)}
             id="setting-name"
@@ -235,13 +235,13 @@ export default function SettingsTab({
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-xs font-bold text-slate-400">
+          <label className={`text-xs font-bold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
             رقم الهاتف للتواصل (يفضل واتساب)
           </label>
           <input
             type="text"
             required
-            className="w-full h-11 bg-slate-950 border border-slate-800 rounded-xl px-4 text-slate-200 text-xs outline-none text-right font-mono"
+            className={`w-full h-11 border rounded-xl px-4 text-xs outline-none text-right font-mono transition-colors ${isDark ? 'bg-slate-950 border-slate-800 text-slate-200' : 'bg-slate-50 border-slate-200 text-slate-800'}`}
             value={profilePhone}
             onChange={(e) => setProfilePhone(e.target.value)}
             id="setting-phone"
@@ -249,12 +249,12 @@ export default function SettingsTab({
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-xs font-bold text-slate-400">
+          <label className={`text-xs font-bold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
             نبذة تعريفية أو وصف مختصر للمتجر
           </label>
           <textarea
             rows={4}
-            className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-slate-300 text-xs outline-none text-right placeholder:text-slate-600"
+            className={`w-full border rounded-xl p-4 text-xs outline-none text-right transition-colors ${isDark ? 'bg-slate-950 border-slate-800 text-slate-300 placeholder:text-slate-600' : 'bg-slate-50 border-slate-200 text-slate-800 placeholder:text-slate-400'}`}
             placeholder="اكتب شيئاً عن مهنتك، مقتنياتك أو ساعات دوام متجرك وتواجدك..."
             value={profileBio}
             onChange={(e) => setProfileBio(e.target.value)}
@@ -263,7 +263,7 @@ export default function SettingsTab({
         </div>
 
         <div className="space-y-3 pt-2">
-          <label className="text-xs font-bold text-slate-400">
+          <label className={`text-xs font-bold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
             صورة الملف الشخصي
           </label>
           <div className="flex items-center gap-4">
@@ -271,10 +271,10 @@ export default function SettingsTab({
               src={profileAvatar}
               name={profileName || currentUser.name}
               sizeClassName="w-16 h-16"
-              className="rounded-2xl border border-slate-700 shadow-md"
+              className={`rounded-2xl border shadow-md ${isDark ? 'border-slate-700' : 'border-slate-200'}`}
             />
             <label className="flex-1 cursor-pointer">
-              <div className="h-11 flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-slate-200 text-xs font-bold transition-all border border-slate-700">
+              <div className={`h-11 flex items-center justify-center gap-2 rounded-xl text-xs font-bold transition-all border ${isDark ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'}`}>
                 {isUploadingAvatar ? <Loader2 className="w-4 h-4 animate-spin text-emerald-400" /> : <Camera className="w-4 h-4" />}
                 {isUploadingAvatar ? "جاري رفع الصورة..." : "تغيير الصورة"}
               </div>
@@ -325,19 +325,19 @@ export default function SettingsTab({
         </div>
 
         {/* نظام تفضيلات الإشعارات */}
-        <div className="mt-8 pt-6 border-t border-slate-800/60 space-y-4" id="notification-preferences-sec">
+        <div className={`mt-8 pt-6 border-t space-y-4 ${isDark ? 'border-slate-800/60' : 'border-slate-200'}`} id="notification-preferences-sec">
           <div className="flex items-center gap-2 mb-4">
             <Bell className="w-5 h-5 text-emerald-400" />
-            <h4 className="text-sm font-black text-slate-200">
+            <h4 className={`text-sm font-black ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
               نظام تفضيلات الإشعارات والتنبيهات المخصصة
             </h4>
           </div>
 
-          <div className="p-4 rounded-2xl bg-slate-950/40 border border-slate-800/60 space-y-4">
+          <div className={`p-4 rounded-2xl border space-y-4 ${isDark ? 'bg-slate-950/40 border-slate-800/60' : 'bg-slate-50 border-slate-200'}`}>
             {/* 1. Price drop alert toggle */}
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1 space-y-1 text-right">
-                <label className="text-xs font-bold text-slate-300 block">
+                <label className={`text-xs font-bold block ${isDark ? 'text-slate-300' : 'text-slate-800'}`}>
                   تنبيهات انخفاض الأسعار للسلع المتابعة
                 </label>
                 <span className="text-[10px] text-slate-500 block leading-relaxed">
@@ -348,24 +348,24 @@ export default function SettingsTab({
                 type="button"
                 onClick={() => setPriceDropAlerts(!priceDropAlerts)}
                 className={`w-11 h-6 rounded-full p-0.5 transition-colors duration-200 focus:outline-none shrink-0 ${
-                  priceDropAlerts ? "bg-emerald-500" : "bg-slate-800"
+                  priceDropAlerts ? "bg-emerald-500" : isDark ? "bg-slate-800" : "bg-slate-300"
                 }`}
                 id="pref-price-toggle"
               >
                 <div
-                  className={`w-5 h-5 rounded-full bg-slate-950 shadow-md transform duration-200 ${
+                  className={`w-5 h-5 rounded-full shadow-md transform duration-200 ${isDark ? 'bg-slate-950' : 'bg-white'} ${
                     priceDropAlerts ? "-translate-x-5" : "translate-x-0"
                   }`}
                 />
               </button>
             </div>
 
-            <hr className="border-slate-800/40" />
+            <hr className={isDark ? "border-slate-800/40" : "border-slate-200"} />
 
             {/* 2. New ad alert toggle */}
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1 space-y-1 text-right">
-                <label className="text-xs font-bold text-slate-300 block">
+                <label className={`text-xs font-bold block ${isDark ? 'text-slate-300' : 'text-slate-800'}`}>
                   تنبيهات نشر إعلانات جديدة في منطقتك
                 </label>
                 <span className="text-[10px] text-slate-500 block leading-relaxed">
@@ -376,12 +376,12 @@ export default function SettingsTab({
                 type="button"
                 onClick={() => setNewAdAlerts(!newAdAlerts)}
                 className={`w-11 h-6 rounded-full p-0.5 transition-colors duration-200 focus:outline-none shrink-0 ${
-                  newAdAlerts ? "bg-emerald-500" : "bg-slate-800"
+                  newAdAlerts ? "bg-emerald-500" : isDark ? "bg-slate-800" : "bg-slate-300"
                 }`}
                 id="pref-area-toggle"
               >
                 <div
-                  className={`w-5 h-5 rounded-full bg-slate-950 shadow-md transform duration-200 ${
+                  className={`w-5 h-5 rounded-full shadow-md transform duration-200 ${isDark ? 'bg-slate-950' : 'bg-white'} ${
                     newAdAlerts ? "-translate-x-5" : "translate-x-0"
                   }`}
                 />
@@ -390,14 +390,14 @@ export default function SettingsTab({
 
             {/* 2b. Select alert city if active */}
             {newAdAlerts && (
-              <div className="mt-3 space-y-1.5 pt-2 border-t border-slate-800/20 text-right">
-                <label className="text-[10px] font-black text-slate-400">
+              <div className={`mt-3 space-y-1.5 pt-2 border-t text-right ${isDark ? 'border-slate-800/20' : 'border-slate-200'}`}>
+                <label className={`text-[10px] font-black ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
                   اختر المحافظة أو المنطقة المستهدفة للتنبيهات:
                 </label>
                 <select
                   value={alertCity}
                   onChange={(e) => setAlertCity(e.target.value)}
-                  className="w-full h-10 bg-slate-950 border border-slate-800 rounded-xl px-3 text-slate-300 text-xs outline-none text-right cursor-pointer focus:border-emerald-500/50"
+                  className={`w-full h-10 border rounded-xl px-3 text-xs outline-none text-right cursor-pointer focus:border-emerald-500/50 ${isDark ? 'bg-slate-950 border-slate-800 text-slate-300' : 'bg-white border-slate-200 text-slate-800'}`}
                   id="pref-city-select"
                 >
                   {(currentMarket?.cities || CITIES).map((c) => (
@@ -412,7 +412,7 @@ export default function SettingsTab({
 
           {/* 3. Followed Goods display with price labels */}
           <div className="space-y-2 mt-4 text-right">
-            <h5 className="text-[11px] font-bold text-slate-400">
+            <h5 className={`text-[11px] font-bold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
               العقود والسلع التي تتابعها لتغيرات السعر ({favoritedAds.length})
             </h5>
 
@@ -432,23 +432,23 @@ export default function SettingsTab({
                   return (
                     <div 
                       key={ad.id} 
-                      className="flex items-center gap-3 p-3 rounded-2xl bg-slate-950/20 border border-slate-800/40 hover:border-slate-800 transition-all dir-rtl"
+                      className={`flex items-center gap-3 p-3 rounded-2xl border transition-all dir-rtl ${isDark ? 'bg-slate-950/20 border-slate-800/40 hover:border-slate-800' : 'bg-slate-50 border-slate-200 hover:border-slate-300'}`}
                     >
                       <img 
                         src={adImg || 'https://images.unsplash.com/photo-1496181130204-755241544e35?auto=format&fit=crop&w=300&q=80'} 
                         alt={ad.title} 
-                        className="w-12 h-12 rounded-xl object-cover shrink-0 border border-slate-880 border-slate-800"
+                        className={`w-12 h-12 rounded-xl object-cover shrink-0 border ${isDark ? 'border-slate-800' : 'border-slate-200'}`}
                       />
                       <div className="flex-1 min-w-0 text-right">
-                        <h6 className="text-[11px] font-bold text-slate-200 truncate">{ad.title}</h6>
+                        <h6 className={`text-[11px] font-bold truncate ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>{ad.title}</h6>
                         <div className="flex items-center gap-1.5 mt-1 justify-end">
-                          <span className="text-[10px] font-mono text-emerald-400 font-bold">
+                          <span className="text-[10px] font-mono text-emerald-500 font-bold">
                             {formatPrice(ad.price)} {ad.currency || 'YER'}
                           </span>
                         </div>
                       </div>
                       <div className="flex flex-col items-end gap-1 shrink-0">
-                        <span className="inline-flex items-center gap-1 text-[8px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/25">
+                        <span className="inline-flex items-center gap-1 text-[8px] font-bold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/25">
                           <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
                           رصد دائم
                         </span>
@@ -458,7 +458,7 @@ export default function SettingsTab({
                 })}
               </div>
             ) : (
-              <div className="p-4 text-center rounded-2xl bg-slate-950/10 border border-slate-800/20 text-slate-500 text-[10px] leading-relaxed">
+              <div className={`p-4 text-center rounded-2xl border text-[10px] leading-relaxed ${isDark ? 'bg-slate-950/10 border-slate-800/20 text-slate-500' : 'bg-slate-50 border-slate-200 text-slate-500'}`}>
                 لم تقم بإضافة أي سلعة للمفضلة بعد. عند إعجابك وتفضيلك لأي سلعة، ستظهر هنا تلقائياً لمتابعة السعر.
               </div>
             )}
@@ -496,16 +496,16 @@ export default function SettingsTab({
       </form>
 
       {/* Golden Trust Verification Section */}
-      <div className="mt-8 pt-8 border-t border-slate-800/80 space-y-4">
+      <div className={`mt-8 pt-8 border-t space-y-4 ${isDark ? 'border-slate-800/80' : 'border-slate-200'}`}>
         <div className="flex items-center gap-2">
           <CheckCircle2 className="w-5 h-5 text-emerald-400 fill-emerald-950" />
-          <h4 className="text-sm font-black text-slate-200">
+          <h4 className={`text-sm font-black ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
             برنامج توثيق الحسابات والتاجر المضمون
           </h4>
         </div>
-        <p className="text-xs text-slate-400 leading-relaxed">
+        <p className={`text-xs leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
           توثيق الحساب يزيد من ثقة المشترين في إعلاناتك بمعدل{" "}
-          <span className="text-emerald-400 font-bold">5 أضعاف</span> ويمنحك
+          <span className="text-emerald-500 font-bold">5 أضعاف</span> ويمنحك
           شارة التوثيق الملكية الخضراء على المنصة.
         </p>
 
@@ -521,29 +521,29 @@ export default function SettingsTab({
           </div>
         ) : (
           <div
-            className="p-5 rounded-2xl bg-slate-950/45 border border-slate-800 space-y-4"
+            className={`p-5 rounded-2xl border space-y-4 ${isDark ? 'bg-slate-950/45 border-slate-800' : 'bg-slate-50 border-slate-200'}`}
             id="kyc-verification-box"
           >
             <div className="flex items-center justify-between">
               <div className="space-y-1">
-                <h5 className="text-[11px] font-bold text-slate-200">الخطوة {kycStep}: {kycStep === 1 ? 'تصوير بطاقة الهوية' : 'التحقق من ملامح الوجه'}</h5>
+                <h5 className={`text-[11px] font-bold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>الخطوة {kycStep}: {kycStep === 1 ? 'تصوير بطاقة الهوية' : 'التحقق من ملامح الوجه'}</h5>
                 <p className="text-[9px] text-slate-500">يرجى وضع {kycStep === 1 ? 'البطاقة الشخصية' : 'وجهك'} بوضوح في الإطار</p>
               </div>
               <div className="flex gap-1">
-                <div className={`w-6 h-1 rounded-full ${kycStep === 1 ? 'bg-emerald-500' : 'bg-slate-800'}`} />
-                <div className={`w-6 h-1 rounded-full ${kycStep === 2 ? 'bg-emerald-500' : 'bg-slate-800'}`} />
+                <div className={`w-6 h-1 rounded-full ${kycStep === 1 ? 'bg-emerald-500' : isDark ? 'bg-slate-800' : 'bg-slate-300'}`} />
+                <div className={`w-6 h-1 rounded-full ${kycStep === 2 ? 'bg-emerald-500' : isDark ? 'bg-slate-800' : 'bg-slate-300'}`} />
               </div>
             </div>
 
             {kycMode === 'idle' && !kycPhoto && (
               <div 
                 onClick={startKycCamera}
-                className="aspect-video relative group cursor-pointer overflow-hidden rounded-xl border-2 border-dashed border-slate-800 hover:border-emerald-500/50 bg-slate-900 flex flex-col items-center justify-center gap-3 transition-all"
+                className={`aspect-video relative group cursor-pointer overflow-hidden rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-3 transition-all ${isDark ? 'border-slate-800 hover:border-emerald-500/50 bg-slate-900' : 'border-slate-300 hover:border-emerald-500 bg-white'}`}
               >
-                <div className="w-12 h-12 rounded-full bg-slate-950 flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <Camera className="w-6 h-6 text-slate-400 group-hover:text-emerald-400" />
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform ${isDark ? 'bg-slate-950' : 'bg-slate-100'}`}>
+                  <Camera className="w-6 h-6 text-slate-400 group-hover:text-emerald-500" />
                 </div>
-                <span className="text-[10px] font-bold text-slate-500 group-hover:text-slate-300">اضغط لفتح الكاميرا وبدء التحقق</span>
+                <span className="text-[10px] font-bold text-slate-500 group-hover:text-slate-700">اضغط لفتح الكاميرا وبدء التحقق</span>
               </div>
             )}
 

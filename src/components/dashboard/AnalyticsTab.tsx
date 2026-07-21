@@ -26,6 +26,7 @@ interface AnalyticsTabProps {
   currentMarket: Market;
   categories: any[];
   t: (key: string, options?: any) => string;
+  isDark?: boolean;
 }
 
 export default function AnalyticsTab({
@@ -34,51 +35,62 @@ export default function AnalyticsTab({
   currentMarket,
   categories,
   t,
+  isDark = true,
 }: AnalyticsTabProps) {
   const isRtl = true; // Dashboard is layout-level RTL
+
+  const cardBg = isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200 shadow-sm";
+  const titleColor = isDark ? "text-white" : "text-slate-900";
+  const valueColor = isDark ? "text-slate-200" : "text-slate-800";
+  const subtextColor = isDark ? "text-slate-500" : "text-slate-500";
+  const gridStroke = isDark ? "#1e293b" : "#e2e8f0";
+  const axisStroke = isDark ? "#475569" : "#64748b";
+  const tooltipBg = isDark ? "#0f172a" : "#ffffff";
+  const tooltipBorder = isDark ? "1px solid #1e293b" : "1px solid #e2e8f0";
+  const tooltipLabel = isDark ? "#94a3b8" : "#475569";
 
   return (
     <div className="mt-8 space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 text-right">
+        <div className={`p-6 rounded-3xl border text-right transition-colors ${cardBg}`}>
           <Eye className="w-8 h-8 text-emerald-400 mb-2" />
-          <p className="text-[11px] text-slate-500">
+          <p className={`text-xs ${subtextColor}`}>
             إجمالي مشاهدات إعلاناتك
           </p>
-          <p className="text-2xl font-black text-slate-200 mt-1">
+          <p className={`text-2xl font-black mt-1 ${valueColor}`}>
             {myAds.reduce((acc, ad) => acc + (ad.views || 0), 0)}
           </p>
-          <div className="mt-2 text-[10px] text-emerald-400 flex items-center gap-1">
+          <div className="mt-2 text-xs text-emerald-500 flex items-center gap-1 font-bold">
             <TrendingUp className="w-3.5 h-3.5" />
             <span>+12.4% زيادة هذا الشهر</span>
           </div>
         </div>
 
-        <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 text-right">
+        <div className={`p-6 rounded-3xl border text-right transition-colors ${cardBg}`}>
           <Heart className="w-8 h-8 text-cyan-400 mb-2 fill-current" />
-          <p className="text-[11px] text-slate-500">
+          <p className={`text-xs ${subtextColor}`}>
             التفضيلات والنقرات المهتمة
           </p>
-          <p className="text-2xl font-black text-slate-200 mt-1">
+          <p className={`text-2xl font-black mt-1 ${valueColor}`}>
             {myAds.reduce((acc, ad) => acc + (ad.likes || 0), 0)}
           </p>
-          <div className="mt-2 text-[10px] text-cyan-400 flex items-center gap-1">
+          <div className="mt-2 text-xs text-cyan-500 flex items-center gap-1 font-bold">
             <TrendingUp className="w-3.5 h-3.5" />
             <span>+8.1% تفاعل جيد</span>
           </div>
         </div>
 
-        <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 text-right">
+        <div className={`p-6 rounded-3xl border text-right transition-colors ${cardBg}`}>
           <CheckCircle2 className="w-8 h-8 text-amber-400 mb-2" />
-          <p className="text-[11px] text-slate-500">رتبة ونمو الحساب</p>
-          <p className="text-2xl font-black text-slate-200 mt-1">
+          <p className={`text-xs ${subtextColor}`}>رتبة ونمو الحساب</p>
+          <p className={`text-2xl font-black mt-1 ${valueColor}`}>
             {currentUser.role === "merchant"
               ? "تاجر موثوق"
               : currentUser.role === "store"
                 ? "صاحب متجر ذهبي"
                 : "مستشار نشط"}
           </p>
-          <div className="mt-2 text-[10px] text-amber-500 flex items-center gap-1">
+          <div className="mt-2 text-xs text-amber-500 flex items-center gap-1 font-bold">
             <CheckCircle2 className="w-3.5 h-3.5" />
             <span>الحساب موثق بالكامل</span>
           </div>
@@ -86,12 +98,12 @@ export default function AnalyticsTab({
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="p-8 rounded-[32px] bg-slate-900 border border-slate-800 space-y-6">
+        <div className={`p-8 rounded-[32px] border space-y-6 transition-colors ${cardBg}`}>
           <div className="text-right">
-            <h4 className="text-sm font-black text-white">
+            <h4 className={`text-base font-black ${titleColor}`}>
               إحصائيات المشاهدات (7 أيام)
             </h4>
-            <p className="text-[10px] text-slate-500 mt-1">
+            <p className={`text-xs mt-1 ${subtextColor}`}>
               رسم بياني يوضح نمو الاهتمام بإعلاناتك خلال الأسبوع الماضي
             </p>
           </div>
@@ -130,33 +142,34 @@ export default function AnalyticsTab({
                 </defs>
                 <CartesianGrid
                   strokeDasharray="3 3"
-                  stroke="#1e293b"
+                  stroke={gridStroke}
                   vertical={false}
                 />
                 <XAxis
                   dataKey="name"
-                  stroke="#475569"
+                  stroke={axisStroke}
                   fontSize={10}
                   tickLine={false}
                   axisLine={false}
                   reversed
                 />
                 <YAxis
-                  stroke="#475569"
+                  stroke={axisStroke}
                   fontSize={10}
                   tickLine={false}
                   axisLine={false}
                 />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: "#0f172a",
-                    border: "1px solid #1e293b",
+                    backgroundColor: tooltipBg,
+                    border: tooltipBorder,
                     borderRadius: "12px",
+                    boxShadow: isDark ? "none" : "0 4px 12px rgba(0,0,0,0.08)",
                   }}
-                  itemStyle={{ color: "#10b981", fontSize: "10px" }}
+                  itemStyle={{ color: "#10b981", fontSize: "11px" }}
                   labelStyle={{
-                    color: "#94a3b8",
-                    fontSize: "11px",
+                    color: tooltipLabel,
+                    fontSize: "12px",
                     marginBottom: "4px",
                   }}
                 />
@@ -173,12 +186,12 @@ export default function AnalyticsTab({
           </div>
         </div>
 
-        <div className="p-8 rounded-[32px] bg-slate-900 border border-slate-800 space-y-6">
+        <div className={`p-8 rounded-[32px] border space-y-6 transition-colors ${cardBg}`}>
           <div className="text-right">
-            <h4 className="text-sm font-black text-white">
+            <h4 className={`text-base font-black ${titleColor}`}>
               توزيع الإعلانات حسب التصنيف
             </h4>
-            <p className="text-[10px] text-slate-500 mt-1">
+            <p className={`text-xs mt-1 ${subtextColor}`}>
               توزيع استثماراتك ونشاطك عبر الأقسام المختلفة في أسواق {currentMarket.labelAr}
             </p>
           </div>
@@ -192,30 +205,31 @@ export default function AnalyticsTab({
               >
                 <CartesianGrid
                   strokeDasharray="3 3"
-                  stroke="#1e293b"
+                  stroke={gridStroke}
                   vertical={false}
                 />
                 <XAxis
                   dataKey="name"
-                  stroke="#475569"
-                  fontSize={8}
+                  stroke={axisStroke}
+                  fontSize={10}
                   tickLine={false}
                   axisLine={false}
                 />
                 <YAxis
-                  stroke="#475569"
+                  stroke={axisStroke}
                   fontSize={10}
                   tickLine={false}
                   axisLine={false}
                 />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: "#0f172a",
-                    border: "1px solid #1e293b",
+                    backgroundColor: tooltipBg,
+                    border: tooltipBorder,
                     borderRadius: "12px",
+                    boxShadow: isDark ? "none" : "0 4px 12px rgba(0,0,0,0.08)",
                   }}
-                  cursor={{ fill: "#1e293b" }}
-                  itemStyle={{ color: "#38bdf8", fontSize: "10px" }}
+                  cursor={{ fill: isDark ? "#1e293b" : "#f1f5f9" }}
+                  itemStyle={{ color: "#38bdf8", fontSize: "11px" }}
                 />
                 <Bar dataKey="count" fill="#38bdf8" radius={[4, 4, 0, 0]}>
                   {categories.map((entry, index) => (
