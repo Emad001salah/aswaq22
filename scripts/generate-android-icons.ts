@@ -1,13 +1,14 @@
 /**
  * scripts/generate-android-icons.ts
  *
- * Resizes public/aswaq-admin-avatar.png into clean Android launcher icons across all mipmap sizes
+ * Resizes public/custom-admin-logo.png (the exact logo uploaded by admin in Control Panel)
+ * into clean Android launcher icons across all mipmap sizes
  */
 
 import sharp from 'sharp';
 import path from 'path';
 
-const sourceIcon = path.resolve('public/aswaq-admin-avatar.png');
+const sourceIcon = path.resolve('public/custom-admin-logo.png');
 const resDir = path.resolve('android/app/src/main/res');
 
 const sizes = [
@@ -19,7 +20,7 @@ const sizes = [
 ];
 
 async function generateIcons() {
-  console.log('🖼️ Resizing Android icons...');
+  console.log('🖼️ Resizing Admin Control Panel uploaded logo for Android icons...');
 
   for (const item of sizes) {
     const targetFolder = path.join(resDir, item.folder);
@@ -34,7 +35,7 @@ async function generateIcons() {
     console.log(`  ✅ Generated ${item.folder} (${item.size}x${item.size}px)`);
   }
 
-  console.log('✨ All Android launcher icons generated successfully!');
+  console.log('✨ All Android launcher icons generated from Admin Control Panel logo successfully!');
 }
 
 generateIcons().catch(console.error);
