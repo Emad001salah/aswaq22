@@ -1126,12 +1126,17 @@ function AdminPanelInner({
   ];
 
   // ── Analytics data from real stats ──
-  const categoryChartData = stats?.categoryStats
-    ? Object.entries(stats.categoryStats)
-        .map(([name, count]) => ({ name: name.substring(0, 12), count }))
-        .sort((a: any, b: any) => b.count - a.count)
-        .slice(0, 8)
-    : [];
+  const categoryChartData = useMemo(() => {
+    if (!stats?.categoryStats || typeof stats.categoryStats !== 'object') return [];
+    return Object.entries(stats.categoryStats)
+      .map(([name, count]) => ({
+        name: String(name || '').substring(0, 12),
+        count: typeof count === 'number' ? count : Number(count) || 0,
+      }))
+      .filter(item => item.name && !isNaN(item.count))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 8);
+  }, [stats]);
 
   const pieColors = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
 
