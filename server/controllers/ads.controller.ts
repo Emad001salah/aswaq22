@@ -338,6 +338,53 @@ export const AdsController = () => {
 
     try {
       const result = await prisma.$transaction(async (tx) => {
+        // Ensure category exists before creating ad to prevent FK constraint failure
+        const catRaw = dto.category || 'general';
+        const catSlug = catRaw.toLowerCase();
+        const catUuid = uuidRegex.test(catRaw) ? catRaw : getDeterministicUuid(catSlug);
+
+        let category = await tx.category.findFirst({
+          where: { OR: [{ id: catUuid }, { slug: catSlug }] }
+        });
+
+        if (!category) {
+          category = await tx.category.create({
+            data: {
+              id: catUuid,
+              slug: catSlug,
+              nameAr: catRaw,
+              nameEn: catRaw,
+              icon: 'folder'
+            }
+          });
+        }
+        const categoryId = category.id;
+
+        // Ensure subcategory exists if provided
+        let subCategoryId: string | null = null;
+        if (dto.subCategory) {
+          const subRaw = dto.subCategory;
+          const subSlug = subRaw.toLowerCase();
+          const subUuid = uuidRegex.test(subRaw) ? subRaw : getDeterministicUuid(subSlug);
+
+          let subCategory = await tx.subCategory.findFirst({
+            where: { OR: [{ id: subUuid }, { slug: subSlug }] }
+          });
+
+          if (!subCategory) {
+            subCategory = await tx.subCategory.create({
+              data: {
+                id: subUuid,
+                categoryId: categoryId,
+                slug: subSlug,
+                nameAr: subRaw,
+                nameEn: subRaw
+              }
+            });
+          }
+          subCategoryId = subCategory.id;
+        }
+
         // Create the core Ad
         const ad = await tx.ad.create({
           data: {
@@ -345,8 +392,8 @@ export const AdsController = () => {
             description: dto.description,
             price: dto.price,
             currency: dto.currency || 'YER',
-            categoryId: uuidRegex.test(dto.category) ? dto.category : getDeterministicUuid(dto.category),
-            subCategoryId: dto.subCategory ? (uuidRegex.test(dto.subCategory) ? dto.subCategory : getDeterministicUuid(dto.subCategory)) : null,
+            categoryId,
+            subCategoryId,
             jobType: dto.jobType as JobType,
             city: dto.city,
             district: dto.district,
