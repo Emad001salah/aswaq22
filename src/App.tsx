@@ -102,49 +102,8 @@ const DeliveryDashboard = React.lazy(() => import("./modules/shipping/DeliveryDa
 // AdModal is large (129 KB) — lazy loaded to remove it from the initial bundle
 const AdModal = React.lazy(() => import("./components/AdModal.tsx"));
 
-// Global geographical anchors for distance calculations
-const CITY_COORDINATES: Record<string, { lat: number; lng: number }> = {
-  sanaa_city: { lat: 15.3694, lng: 44.1910 },
-  aden: { lat: 12.7855, lng: 45.0186 },
-  taiz: { lat: 13.5795, lng: 44.0206 },
-  hadramout: { lat: 15.9333, lng: 48.7833 },
-  ibb: { lat: 13.9669, lng: 44.1822 },
-  hodeidah: { lat: 14.7979, lng: 42.9530 },
-  marib: { lat: 15.4619, lng: 45.3253 },
-  saada: { lat: 16.9402, lng: 43.7639 },
-  hajjah: { lat: 15.6939, lng: 43.6019 },
-  amran: { lat: 15.6601, lng: 43.9439 },
-  al_jawf: { lat: 16.4750, lng: 45.4200 },
-  al_mahra: { lat: 16.2167, lng: 52.1667 },
-  socotra: { lat: 12.4634, lng: 53.8237 },
-  abyan: { lat: 13.5833, lng: 45.7500 },
-  lahj: { lat: 13.1667, lng: 44.8333 },
-  shabwa: { lat: 14.5333, lng: 46.8333 },
-  al_bayda: { lat: 14.2122, lng: 45.4744 },
-  dhale: { lat: 13.6953, lng: 44.7314 },
-  al_mawit: { lat: 15.4701, lng: 43.5448 },
-  raymah: { lat: 14.6300, lng: 43.7100 }
-};
-
-// Haversine formula
-const getDistanceInKm = (
-  lat1: number,
-  lon1: number,
-  lat2: number,
-  lon2: number,
-): number => {
-  const R = 6371;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLon = ((lon2 - lon1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-};
+import { CITY_COORDINATES, getDistanceInKm, formatPrice } from "./constants/cities.ts";
+import { DEFAULT_SOCIAL_POSTS } from "./constants/sample-posts.ts";
 
 const LazyFallback = () => (
   <div className="flex flex-col items-center justify-center min-h-[350px] w-full py-16 space-y-4">
@@ -153,53 +112,6 @@ const LazyFallback = () => (
   </div>
 );
 
-const formatPrice = (price: any) => {
-  if (price === undefined || price === null || isNaN(Number(price))) return '0';
-  return new Intl.NumberFormat("en-US").format(Number(price));
-};
-
-export function slugify(text?: string | null): string {
-  if (!text) return '';
-  return text
-    .toString()
-    .toLowerCase()
-    .replace(/\s+/g, '-')           // Replace spaces with -
-    .replace(/[^\w\u0621-\u064A-]+/g, '') // Keep alphanumeric, Arabic chars and -
-    .replace(/--+/g, '-')          // Replace multiple - with single -
-    .replace(/^-+/, '')            // Trim - from start
-    .replace(/-+$/, '');           // Trim - from end
-}
-
-const DEFAULT_SOCIAL_POSTS = [
-  {
-    id: "jo_post_1",
-    authorId: "jo_user_1",
-    authorName: "عمر المجالي",
-    authorHandle: "omar_cars",
-    authorAvatar: "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=150&q=80",
-    content: "عشاق التميز في عمان، وصلت حديثاً تشكيلة واسعة من السيارات الهجينة والكهربائية (تويوتا، بي واي دي، تسلا) بخصومات حصرية لعملاء تطبيق أسواق الأردن! تفضلوا بزيارة فرعنا الجديد في العبدلي أو تواصلوا لمعاينة الفحص كرت 🚗🔋🔌",
-    image: "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=800&q=80",
-    createdAt: "2026-06-01T09:00:00.000Z",
-    likes: 42,
-    likedBy: [] as string[],
-    comments: [
-      { id: "jc1", author: "أنس القضاه", comment: "كم سعر الهيلوكس أو الكامري كاش بالله عليك؟" }
-    ]
-  },
-  {
-    id: "jo_post_2",
-    authorId: "jo_user_2",
-    authorName: "رانيا سويدان",
-    authorHandle: "rania_decor",
-    authorAvatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=150&q=80",
-    content: "لكل الباحثين عن تشطيبات سوبر ديلوكس وديكورات تضفي الفخامة على بيوتهم في دابوق والجبيهة والعبدلي، يسعدنا تقديم استشارة مجانية وخصم 15% على التصاميم الداخلية هذا الشهر. يسعدني سماع آرائكم بالعمل الأخير المرفق! 🏡🎨🌟",
-    image: "https://images.unsplash.com/photo-1618219908412-a29a1bb7b86e?auto=format&fit=crop&w=800&q=80",
-    createdAt: "2026-06-01T15:10:00.000Z",
-    likes: 19,
-    likedBy: [] as string[],
-    comments: []
-  }
-];
 
 export default function App() {
   // Market Logic
