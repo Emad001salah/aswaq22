@@ -1486,6 +1486,25 @@ export class App {
             createdAt: true,
             lastLoginAt: true,
             deletedAt: true,
+            deliveryAgent: {
+              select: {
+                id: true,
+                vehicleType: true,
+                licensePlate: true,
+                status: true,
+                walletBalance: true,
+                totalDeliveries: true,
+                rating: true,
+              }
+            },
+            uploadedMedia: {
+              select: {
+                id: true,
+                url: true,
+                type: true,
+                createdAt: true,
+              }
+            },
             _count: {
               select: { ads: true }
             }

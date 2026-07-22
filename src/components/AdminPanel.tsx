@@ -196,6 +196,33 @@ export default function AdminPanel({
   const [loadingMarkets, setLoadingMarkets] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [driverSearch, setDriverSearch] = useState('');
+  const [driverRoleFilter, setDriverRoleFilter] = useState('all');
+  const [driverStatusFilter, setDriverStatusFilter] = useState('all');
+  const [inspectedDocUrl, setInspectedDocUrl] = useState<string | null>(null);
+
+  const filteredDriverList = useMemo(() => {
+    return allUsers.filter(u => {
+      if (driverRoleFilter === 'driver' && u.role !== 'AGENT' && !u.deliveryAgent) return false;
+      if (driverRoleFilter === 'merchant' && u.role !== 'MERCHANT') return false;
+      if (driverRoleFilter === 'user' && u.role !== 'USER') return false;
+
+      if (driverStatusFilter === 'pending' && u.isVerified === 'verified') return false;
+      if (driverStatusFilter === 'verified' && u.isVerified !== 'verified') return false;
+      if (driverStatusFilter === 'unverified' && u.isVerified === 'verified') return false;
+
+      if (driverSearch.trim()) {
+        const q = driverSearch.toLowerCase();
+        const matchName = u.name?.toLowerCase().includes(q);
+        const matchPhone = u.phone?.includes(q);
+        const matchEmail = u.email?.toLowerCase().includes(q);
+        const matchPlate = u.deliveryAgent?.licensePlate?.toLowerCase().includes(q);
+        if (!matchName && !matchPhone && !matchEmail && !matchPlate) return false;
+      }
+
+      return true;
+    });
+  }, [allUsers, driverRoleFilter, driverStatusFilter, driverSearch]);
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [selectedAd, setSelectedAd] = useState<any>(null);
   const [settingsSaving, setSettingsSaving] = useState(false);
@@ -1022,7 +1049,7 @@ export default function AdminPanel({
     { id: 'analytics', icon: BarChart3, label: 'التحليلات والتقارير' },
     { id: 'ads', icon: FileText, label: 'إدارة الإعلانات', badge: adminAds.filter(a => a.status === 'PENDING').length || undefined },
     { id: 'users', icon: Users, label: 'إدارة المستخدمين' },
-    { id: 'delivery', icon: Truck, label: 'لوحة الشحن والتوصيل' },
+    { id: 'delivery', icon: ShieldCheck, label: 'توثيق وإدارة السائقين', badge: allUsers.filter(u => (u.role === 'AGENT' || u.deliveryAgent) && u.isVerified !== 'verified').length || undefined },
     { id: 'featured', icon: Star, label: 'الإعلانات المميزة', badge: featuredAds.length || undefined },
     { id: 'categories', icon: Tag, label: 'الفئات والتصنيفات' },
     { id: 'markets', icon: Globe, label: 'إدارة الأسواق' },
@@ -1570,16 +1597,229 @@ export default function AdminPanel({
               {/* ════════════════════════════════════════════════════════════ */}
               {/* DELIVERY DASHBOARD TAB */}
               {/* ════════════════════════════════════════════════════════════ */}
+              {/* ════════════════════════════════════════════════════════════ */}
+              {/* DRIVER & MERCHANT VERIFICATION CONTROL PANEL TAB */}
+              {/* ════════════════════════════════════════════════════════════ */}
               {activeTab === 'delivery' && (
-                <div className="space-y-4 animate-in fade-in duration-300">
-                  <DeliveryDashboard
-                    currentUser={currentUser}
-                    currentMarket={MARKETS[selectedMarket] || Object.values(MARKETS)[0]}
-                    isRtl={true}
-                    addToast={addToast}
-                    ads={adminAds}
-                    isDark={true}
+                <div className="space-y-6 animate-in fade-in duration-300">
+                  <SectionHeader 
+                    title="توثيق وإدارة السائقين والتجار" 
+                    subtitle="مراجعة وتدقيق المستندات المرفوعة وتوثيق حسابات المندوبين والتجار بضغطة زر واحدة" 
                   />
+
+                  {/* Driver Statistics Cards */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <StatCard 
+                      icon={Users} 
+                      label="إجمالي السائقين" 
+                      value={allUsers.filter(u => u.role === 'AGENT' || u.deliveryAgent).length} 
+                      color="text-emerald-400" 
+                    />
+                    <StatCard 
+                      icon={Clock} 
+                      label="بانتظار التوثيق" 
+                      value={allUsers.filter(u => (u.role === 'AGENT' || u.deliveryAgent || u.role === 'MERCHANT') && u.isVerified !== 'verified').length} 
+                      color="text-amber-400" 
+                    />
+                    <StatCard 
+                      icon={ShieldCheck} 
+                      label="السائقين الموثقين" 
+                      value={allUsers.filter(u => (u.role === 'AGENT' || u.deliveryAgent) && u.isVerified === 'verified').length} 
+                      color="text-cyan-400" 
+                    />
+                    <StatCard 
+                      icon={Briefcase} 
+                      label="التجار الموثقين" 
+                      value={allUsers.filter(u => u.role === 'MERCHANT' && u.isVerified === 'verified').length} 
+                      color="text-purple-400" 
+                    />
+                  </div>
+
+                  {/* Driver Search and Filter Controls */}
+                  <div className="flex flex-col md:flex-row items-center gap-3 bg-slate-800/40 p-3 rounded-2xl border border-white/5">
+                    <div className="relative flex-1 w-full">
+                      <Search className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        placeholder="ابحث باسم السائق، رقم الهاتف، أو رقم اللوحة..."
+                        value={driverSearch}
+                        onChange={(e) => setDriverSearch(e.target.value)}
+                        className="w-full bg-slate-900/60 text-white text-xs py-2 pr-9 pl-4 rounded-xl border border-white/10 outline-none focus:border-emerald-500"
+                      />
+                    </div>
+
+                    <div className="flex items-center gap-2 w-full md:w-auto">
+                      <select
+                        value={driverRoleFilter}
+                        onChange={(e) => setDriverRoleFilter(e.target.value)}
+                        className="bg-slate-900/60 text-white text-xs py-2 px-3 rounded-xl border border-white/10 outline-none focus:border-emerald-500"
+                      >
+                        <option value="all">جميع الأدوار</option>
+                        <option value="driver">السائقين والمندوبين 🚚</option>
+                        <option value="merchant">التجار والمحلات 💼</option>
+                        <option value="user">المستخدمين العاديين 👤</option>
+                      </select>
+
+                      <select
+                        value={driverStatusFilter}
+                        onChange={(e) => setDriverStatusFilter(e.target.value)}
+                        className="bg-slate-900/60 text-white text-xs py-2 px-3 rounded-xl border border-white/10 outline-none focus:border-emerald-500"
+                      >
+                        <option value="all">جميع الحالات</option>
+                        <option value="pending">⏳ بانتظار التوثيق</option>
+                        <option value="verified">✅ الحسابات الموثقة</option>
+                        <option value="unverified">⚪ غير موثق</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Driver List Table & Document Inspection */}
+                  {loading ? (
+                    <div className="flex items-center justify-center h-48">
+                      <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {filteredDriverList.map((user) => (
+                        <div key={user.id} className="bg-slate-800/40 border border-white/5 rounded-2xl p-4 hover:border-white/10 transition-all">
+                          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                            
+                            {/* Left Column: Driver info */}
+                            <div className="flex items-start gap-3">
+                              <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 font-bold shrink-0">
+                                {user.role === 'AGENT' || user.deliveryAgent ? <Truck className="w-6 h-6" /> : <UserIcon className="w-6 h-6" />}
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <h3 className="text-sm font-black text-white">{user.name || 'بدون اسم'}</h3>
+                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                    user.role === 'AGENT' || user.deliveryAgent ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20' :
+                                    user.role === 'MERCHANT' ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' :
+                                    'bg-slate-500/10 text-slate-400'
+                                  }`}>
+                                    {user.role === 'AGENT' || user.deliveryAgent ? 'سائق / مندوب' : user.role === 'MERCHANT' ? 'تاجر' : 'مستخدم'}
+                                  </span>
+                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                    user.isVerified === 'verified' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                                  }`}>
+                                    {user.isVerified === 'verified' ? 'موثق ✓' : 'بانتظار التوثيق ⏳'}
+                                  </span>
+                                </div>
+
+                                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-400 mt-1">
+                                  {user.phone && <span className="flex items-center gap-1"><Phone className="w-3 h-3 text-slate-500" />{user.phone}</span>}
+                                  {user.email && <span className="flex items-center gap-1"><Mail className="w-3 h-3 text-slate-500" />{user.email}</span>}
+                                  {user.deliveryAgent?.vehicleType && (
+                                    <span className="flex items-center gap-1 text-cyan-300 font-bold">
+                                      <Truck className="w-3 h-3" /> نوع المركبة: {user.deliveryAgent.vehicleType}
+                                    </span>
+                                  )}
+                                  {user.deliveryAgent?.licensePlate && (
+                                    <span className="flex items-center gap-1 text-amber-300 font-bold">
+                                      <Hash className="w-3 h-3" /> رقم اللوحة: {user.deliveryAgent.licensePlate}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Right Column: Actions */}
+                            <div className="flex items-center gap-2 shrink-0">
+                              {user.phone && (
+                                <a
+                                  href={`https://wa.me/${user.phone.replace(/[^0-9]/g, '')}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-white transition-all text-xs font-bold flex items-center gap-1 border border-emerald-500/20"
+                                >
+                                  <Phone className="w-3.5 h-3.5" />
+                                  <span>واتساب السائق</span>
+                                </a>
+                              )}
+
+                              {user.isVerified === 'verified' ? (
+                                <button
+                                  onClick={() => handleUserAction(user.id, 'unverify')}
+                                  disabled={actionLoading === `${user.id}_unverify`}
+                                  className="px-3 py-1.5 rounded-xl bg-rose-500/10 text-rose-400 hover:bg-rose-500 hover:text-white transition-all text-xs font-black border border-rose-500/20 flex items-center gap-1"
+                                >
+                                  <XCircle className="w-3.5 h-3.5" />
+                                  <span>إلغاء التوثيق</span>
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => handleUserAction(user.id, 'verify')}
+                                  disabled={actionLoading === `${user.id}_verify`}
+                                  className="px-4 py-2 rounded-xl bg-emerald-500 text-slate-950 font-black hover:bg-emerald-400 transition-all text-xs shadow-lg shadow-emerald-500/20 flex items-center gap-1.5"
+                                >
+                                  <ShieldCheck className="w-4 h-4" />
+                                  <span>توثيق وقبول السائق ✓</span>
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Document Photos Section */}
+                          <div className="mt-4 pt-3 border-t border-white/5">
+                            <p className="text-[11px] font-bold text-slate-400 mb-2 flex items-center gap-1.5">
+                              <FileText className="w-3.5 h-3.5 text-emerald-400" />
+                              <span>الوثائق والمستندات المرفوعة من السائق:</span>
+                            </p>
+                            {user.uploadedMedia && user.uploadedMedia.length > 0 ? (
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                {user.uploadedMedia.map((media: any, idx: number) => (
+                                  <div 
+                                    key={media.id || idx}
+                                    onClick={() => setInspectedDocUrl(media.url)}
+                                    className="group relative cursor-pointer overflow-hidden rounded-xl border border-white/10 bg-slate-900/80 aspect-video hover:border-emerald-500/50 transition-all"
+                                  >
+                                    <img src={media.url} alt="وثيقة السائق" className="w-full h-full object-cover group-hover:scale-105 transition-all" />
+                                    <div className="absolute inset-0 bg-slate-950/60 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center text-white text-xs font-bold gap-1">
+                                      <Eye className="w-4 h-4 text-emerald-400" />
+                                      <span>معاينة مكبرة</span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="bg-slate-900/40 p-3 rounded-xl border border-dashed border-white/10 text-[11px] text-slate-500 flex items-center gap-2">
+                                <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
+                                <span>لم يقم السائق برفع ملفات أو صور إضافية بعد (تم التسجيل واستخدام رقم الهاتف). يمكنك التوثيق المباشر أعلاه.</span>
+                              </div>
+                            )}
+                          </div>
+
+                        </div>
+                      ))}
+
+                      {filteredDriverList.length === 0 && (
+                        <div className="text-center py-12 text-slate-500 text-sm">لا يوجد سائقين أو تجار يطابقون خيارات البحث</div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Fullscreen Document Inspection Modal */}
+                  {inspectedDocUrl && (
+                    <div className="fixed inset-0 z-[5000] bg-black/90 backdrop-blur-lg flex items-center justify-center p-4">
+                      <div className="relative max-w-4xl w-full bg-slate-900 border border-white/10 rounded-3xl p-4 overflow-hidden">
+                        <div className="flex items-center justify-between pb-3 mb-3 border-b border-white/10">
+                          <h3 className="text-sm font-black text-white flex items-center gap-2">
+                            <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                            <span>معاينة وثيقة السائق المرفوعة</span>
+                          </h3>
+                          <button 
+                            onClick={() => setInspectedDocUrl(null)}
+                            className="p-1.5 rounded-full bg-white/10 hover:bg-rose-500 text-white transition-all"
+                          >
+                            <X className="w-5 h-5" />
+                          </button>
+                        </div>
+                        <div className="max-h-[80vh] overflow-auto flex items-center justify-center bg-black/50 rounded-2xl p-2">
+                          <img src={inspectedDocUrl} alt="معاينة الوثيقة" className="max-w-full max-h-[75vh] object-contain rounded-xl" />
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
