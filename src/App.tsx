@@ -93,9 +93,8 @@ const OtpVerification = React.lazy(() => import("./components/OtpVerification.ts
 
 import JobPortal from "./components/JobPortal.tsx";
 
-// Heavy pages — lazy loaded since they only appear on user navigation
+import AdminPanel from "./components/AdminPanel";
 const Dashboard = React.lazy(() => import("./components/Dashboard.tsx"));
-const AdminPanel = React.lazy(() => import("./components/AdminPanel.tsx"));
 const AdMap = React.lazy(() => import("./modules/maps/AdMap.tsx"));
 const SpotlightFeed = React.lazy(() => import("./components/SpotlightFeed.tsx"));
 const DeliveryDashboard = React.lazy(() => import("./modules/shipping/DeliveryDashboard.tsx"));
@@ -4383,30 +4382,28 @@ useEffect(() => {
       )}
 
       {/* 1. Global System Admin Panel Modal */}
-      {showAdminModal && (currentUser?.role === 'admin' || currentUser?.role === 'super_admin' || currentUser?.role === 'ADMIN' || currentUser?.role === 'SUPER_ADMIN') && (
-        <React.Suspense fallback={<LazyFallback />}>
-          <AdminPanel
-            onClose={() => setShowAdminModal(false)}
-            ads={ads}
-            currentUser={currentUser}
-            onAdDeleted={handleAdDeleted}
-            onAdStatusChange={handleAdStatusChange}
-            onViewAd={(ad) => {
-              if (ad.isLive || (ad as any).isPromo) {
-                setSelectedSpotlightId(ad.id);
-                setShowDiscovery(true);
-                setShowAdminModal(false);
-              } else {
-                setSelectedAd(ad);
-              }
-            }}
-            onViewUser={(user) => {
-              setSelectedUserPreview(user);
-            }}
-            onSettingsSaved={fetchPlatformSettings}
-            addToast={addToast}
-          />
-        </React.Suspense>
+      {showAdminModal && (currentUser?.role?.toLowerCase() === 'admin' || currentUser?.role?.toLowerCase() === 'super_admin') && (
+        <AdminPanel
+          onClose={() => setShowAdminModal(false)}
+          ads={ads}
+          currentUser={currentUser}
+          onAdDeleted={handleAdDeleted}
+          onAdStatusChange={handleAdStatusChange}
+          onViewAd={(ad) => {
+            if (ad.isLive || (ad as any).isPromo) {
+              setSelectedSpotlightId(ad.id);
+              setShowDiscovery(true);
+              setShowAdminModal(false);
+            } else {
+              setSelectedAd(ad);
+            }
+          }}
+          onViewUser={(user) => {
+            setSelectedUserPreview(user);
+          }}
+          onSettingsSaved={fetchPlatformSettings}
+          addToast={addToast}
+        />
       )}
 
       {/* 2. Ad Detail Modal Overlay */}
