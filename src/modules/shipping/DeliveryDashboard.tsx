@@ -24,14 +24,32 @@ import LocationMapPicker from '../maps/LocationMapPicker.tsx';
 import socket, { joinRoom } from '../../lib/socket.ts';
 import { Ad } from '../../types.ts';
 
+const DEFAULT_MARKET = {
+  id: 'yemen',
+  code: 'YE',
+  labelAr: 'أسواق اليمن',
+  labelEn: 'Aswaq Yemen',
+  countryCode: 'YE',
+  currency: 'YER',
+  center: { lat: 15.3694, lng: 44.1910 },
+  cityCoordinates: {
+    sanaa: { lat: 15.3694, lng: 44.1910, ar: 'صنعاء', en: 'Sanaa' },
+    aden: { lat: 12.7855, lng: 45.0186, ar: 'عدن', en: 'Aden' },
+    taiz: { lat: 13.5795, lng: 44.0209, ar: 'تعز', en: 'Taiz' },
+    hodeidah: { lat: 14.7978, lng: 42.9545, ar: 'الحديدة', en: 'Hodeidah' },
+    ibb: { lat: 13.9667, lng: 44.1833, ar: 'إب', en: 'Ibb' },
+    mukalla: { lat: 14.5425, lng: 49.1242, ar: 'المكلا', en: 'Mukalla' },
+  }
+};
+
 interface DeliveryDashboardProps {
-  currentUser: any;
-  currentMarket: any;
-  isRtl: boolean;
-  addToast: (title: string, desc: string, type: any) => void;
-  ads: any[];
-  setAds: React.Dispatch<React.SetStateAction<any[]>>;
-  setFilteredAds: React.Dispatch<React.SetStateAction<any[]>>;
+  currentUser?: any;
+  currentMarket?: any;
+  isRtl?: boolean;
+  addToast?: (title: string, desc: string, type: any) => void;
+  ads?: any[];
+  setAds?: React.Dispatch<React.SetStateAction<any[]>>;
+  setFilteredAds?: React.Dispatch<React.SetStateAction<any[]>>;
   isDark?: boolean;
 }
 

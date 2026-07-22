@@ -1572,7 +1572,14 @@ export default function AdminPanel({
               {/* ════════════════════════════════════════════════════════════ */}
               {activeTab === 'delivery' && (
                 <div className="space-y-4 animate-in fade-in duration-300">
-                  <DeliveryDashboard currentUser={currentUser} isDark={true} />
+                  <DeliveryDashboard
+                    currentUser={currentUser}
+                    currentMarket={MARKETS[selectedMarket] || Object.values(MARKETS)[0]}
+                    isRtl={true}
+                    addToast={addToast}
+                    ads={adminAds}
+                    isDark={true}
+                  />
                 </div>
               )}
 
