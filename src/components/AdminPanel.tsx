@@ -160,9 +160,59 @@ function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }
   );
 }
 
-// ─── Main Component ──────────────────────────────────────────────────────────
+// ─── Local Error Boundary for AdminPanel ─────────────────────────────────────
 
-export default function AdminPanel({
+class AdminPanelErrorBoundary extends React.Component<{ onClose: () => void; children: React.ReactNode }, { hasError: boolean; error: any }> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: any) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: any, info: any) {
+    console.error('[AdminPanel Error]', error, info);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="fixed inset-0 z-[3000] overflow-hidden flex items-center justify-center bg-black/90 backdrop-blur-md p-4" dir="rtl">
+          <div className="bg-[#0d1117] w-full max-w-lg rounded-3xl border border-rose-500/30 p-6 shadow-2xl text-center space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-rose-500/10 text-rose-400 flex items-center justify-center mx-auto">
+              <ShieldAlert className="w-6 h-6" />
+            </div>
+            <h2 className="text-lg font-black text-white">خطأ في لوحة التحكم الإدارية</h2>
+            <p className="text-xs text-slate-400 leading-relaxed font-mono bg-black/40 p-3 rounded-xl border border-white/5 overflow-x-auto text-right">
+              {this.state.error?.message || String(this.state.error)}
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => this.setState({ hasError: false, error: null })}
+                className="flex-1 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded-xl cursor-pointer transition-all border-none"
+              >
+                إعادة المحاولة 🔄
+              </button>
+              <button
+                onClick={this.props.onClose}
+                className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs rounded-xl cursor-pointer transition-all border-none"
+              >
+                إغلاق
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+// ─── Main Component Inner ──────────────────────────────────────────────────
+
+function AdminPanelInner({
   onClose,
   ads: initialAds,
   onAdDeleted,
@@ -3209,5 +3259,13 @@ export default function AdminPanel({
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AdminPanel(props: AdminPanelProps) {
+  return (
+    <AdminPanelErrorBoundary onClose={props.onClose}>
+      <AdminPanelInner {...props} />
+    </AdminPanelErrorBoundary>
   );
 }
