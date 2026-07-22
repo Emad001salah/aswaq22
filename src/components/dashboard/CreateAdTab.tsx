@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -89,7 +89,8 @@ export default function CreateAdTab({
   const [adStatus, setAdStatus] = useState<"active" | "sold" | "expired">("active");
   const [contactNumber, setContactNumber] = useState(currentUser.phone || "");
   const [showPhone, setShowPhone] = useState(true);
-  const [customCategoryName, setCustomCategoryName] = useState("");
+    const [customCategoryName, setCustomCategoryName] = useState("");
+  const [customFieldValues, setCustomFieldValues] = useState<Record<string, any>>({});
 
   // Map & Location States
   const [showOnMap, setShowOnMap] = useState<boolean>(true);
@@ -491,6 +492,7 @@ export default function CreateAdTab({
       userAvatar: currentUser.avatar,
       userVerified: currentUser.verified,
       videoUrl: videoUrl.trim() || undefined,
+      customFieldValues,
       ...(finalCategory === "realestate"
         ? {
             rooms,
@@ -1651,6 +1653,7 @@ export default function CreateAdTab({
     </div>
   );
 }
+
 
 
 

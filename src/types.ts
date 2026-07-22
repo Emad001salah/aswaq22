@@ -124,6 +124,7 @@ export interface Ad {
   instagramLink?: string;
   showOnMap?: boolean;
   thumbnailUrl?: string;
+  customFieldValues?: Record<string, any>;
 }
 
 export interface ChatMessage {
@@ -158,6 +159,22 @@ export interface AppNotification {
   read: boolean;
 }
 
+export interface CustomFieldOption {
+  id: string;
+  labelAr: string;
+  labelEn: string;
+}
+
+export interface CustomFieldDefinition {
+  id: string;
+  labelAr: string;
+  labelEn: string;
+  type: 'select' | 'text' | 'number' | 'multiselect' | 'button_group';
+  options?: CustomFieldOption[];
+  required?: boolean;
+  placeholderAr?: string;
+}
+
 export interface Category {
   id: string;
   nameAr: string;
@@ -168,6 +185,7 @@ export interface Category {
     nameAr: string;
     nameEn: string;
   }[];
+  customFields?: CustomFieldDefinition[];
 }
 
 export interface City {

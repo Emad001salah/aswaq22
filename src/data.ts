@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -726,3 +726,4 @@ export const INITIAL_ADS: Ad[] = [
     userId: 'user_1'
   }
 ];
+
