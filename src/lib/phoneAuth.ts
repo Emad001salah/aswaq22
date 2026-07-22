@@ -59,19 +59,20 @@ export async function sendPhoneOtp(
 ): Promise<SendOtpResult> {
   const config = await getFeaturesConfig();
 
-  if (config.firebasePhoneAuth) {
-    if (!recaptchaVerifier) {
-      throw new Error('reCAPTCHA verifier is required for Firebase Phone Auth');
+  if (config.firebasePhoneAuth && recaptchaVerifier) {
+    try {
+      const confirmationResult = await signInWithPhoneNumber(auth, phone, recaptchaVerifier);
+      return {
+        success: true,
+        confirmationResult,
+        useFirebase: true,
+      };
+    } catch (fbErr: any) {
+      console.warn('[phoneAuth] Firebase Phone Auth error:', fbErr?.code || fbErr?.message, 'Falling back to backend OTP...');
     }
-    const confirmationResult = await signInWithPhoneNumber(auth, phone, recaptchaVerifier);
-    return {
-      success: true,
-      confirmationResult,
-      useFirebase: true,
-    };
   }
 
-  // Legacy backend / Twilio route
+  // Backend / SMS route
   const res = await fetch('/api/v1/auth/phone/send', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -86,7 +87,7 @@ export async function sendPhoneOtp(
   const data = await res.json() as any;
   return {
     success: true,
-    devOtp: data.devOtp, // only set in dev mode
+    devOtp: data.devOtp,
     useFirebase: false,
   };
 }
