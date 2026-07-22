@@ -58,14 +58,14 @@ export const DISTRICTS: District[] = [
 ];
 
 export const CATEGORIES: Category[] = [
-  { id: 'cars', nameAr: 'سيارات ومركبات', nameEn: 'Vehicles', icon: 'Car', count: 0 },
-  { id: 'realestate', nameAr: 'عقارات وأراضي', nameEn: 'Real Estate', icon: 'Building2', count: 0 },
-  { id: 'phones', nameAr: 'هواتف وأجهزة', nameEn: 'Electronics', icon: 'Smartphone', count: 0 },
-  { id: 'jobs', nameAr: 'وظائف وأعمال', nameEn: 'Jobs', icon: 'Briefcase', count: 0 },
-  { id: 'services', nameAr: 'خدمات وحرف', nameEn: 'Services', icon: 'Wrench', count: 0 },
-  { id: 'livestock', nameAr: 'حيوانات ومواشي', nameEn: 'Animals', icon: 'PawPrint', count: 0 },
-  { id: 'furniture', nameAr: 'أثاث ومستلزمات', nameEn: 'Furniture', icon: 'Armchair', count: 0 },
-  { id: 'fashion', nameAr: 'موضة وجمال', nameEn: 'Fashion', icon: 'Shirt', count: 0 },
+  { id: 'cars', nameAr: 'سيارات ومركبات', nameEn: 'Vehicles', icon: 'Car' },
+  { id: 'realestate', nameAr: 'عقارات وأراضي', nameEn: 'Real Estate', icon: 'Building2' },
+  { id: 'phones', nameAr: 'هواتف وأجهزة', nameEn: 'Electronics', icon: 'Smartphone' },
+  { id: 'jobs', nameAr: 'وظائف وأعمال', nameEn: 'Jobs', icon: 'Briefcase' },
+  { id: 'services', nameAr: 'خدمات وحرف', nameEn: 'Services', icon: 'Wrench' },
+  { id: 'livestock', nameAr: 'حيوانات ومواشي', nameEn: 'Animals', icon: 'PawPrint' },
+  { id: 'furniture', nameAr: 'أثاث ومستلزمات', nameEn: 'Furniture', icon: 'Armchair' },
+  { id: 'fashion', nameAr: 'موضة وجمال', nameEn: 'Fashion', icon: 'Shirt' },
 ];
 
 export const SUB_CATEGORIES: Record<string, { id: string; nameAr: string; nameEn: string }[]> = {

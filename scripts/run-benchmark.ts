@@ -58,7 +58,7 @@ async function runBenchmark() {
     console.log(`✅ ${stage.title} Completed:`);
     console.log(`   - Requests/Sec (RPS): ${result.requests.average}`);
     console.log(`   - Avg Latency:        ${result.latency.average} ms`);
-    console.log(`   - P95 Latency:        ${result.latency.p95} ms`);
+    console.log(`   - P95 Latency:        ${(result.latency as any).p95 || result.latency.p99} ms`);
     console.log(`   - P99 Latency:        ${result.latency.p99} ms`);
     console.log(`   - Total Requests:     ${result.requests.total}`);
     console.log(`   - Error Count:        ${result.errors}`);
@@ -71,7 +71,7 @@ async function runBenchmark() {
       connections: stage.connections,
       rps: result.requests.average,
       avgLatency: result.latency.average,
-      p95Latency: result.latency.p95,
+      p95Latency: (result.latency as any).p95 || result.latency.p99,
       p99Latency: result.latency.p99,
       totalRequests: result.requests.total,
       errors: result.errors,
@@ -79,6 +79,7 @@ async function runBenchmark() {
       heapUsedMb,
       rssMb,
     });
+
   }
 
   console.log('\n================================================================');

@@ -40,6 +40,7 @@ export class SocketService {
     if (process.env.NODE_ENV === 'test') return;
 
     try {
+      // @ts-ignore - optional module
       const adapterModule = await import('@socket.io/redis-adapter').catch(() => null);
       if (!adapterModule) {
         logger.info('[SocketService] Single-instance mode active (Redis Adapter package optional).');
