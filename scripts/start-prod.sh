@@ -19,4 +19,4 @@ fi
 
 # ── 2. Start the Node.js server ──
 echo "[Boot] Starting Node.js application server..."
-exec node --import tsx server/main.ts
+exec node --import tsx/esm server.ts
