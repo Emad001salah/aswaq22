@@ -27,7 +27,9 @@ interface AppRouterProps {
   platformMode: 'marketplace' | 'delivery' | 'social' | 'reels' | 'jobs';
   currentUser: any;
   ads: any[];
+  filteredAds?: any[];
   onSelectAd: (ad: any) => void;
+  setSelectedAd?: (ad: any) => void;
   isDark?: boolean;
   [key: string]: any;
 }
@@ -37,7 +39,9 @@ export function AppRouter({
   platformMode,
   currentUser,
   ads,
+  filteredAds,
   onSelectAd,
+  setSelectedAd,
   isDark = false,
   ...restProps
 }: AppRouterProps) {
@@ -71,13 +75,15 @@ export function AppRouter({
     );
   }
 
+  const effectiveFilteredAds = filteredAds || ads;
+  const effectiveSetSelectedAd = setSelectedAd || onSelectAd;
+
   return (
     <MainContentArea
-      ads={ads}
-      onSelectAd={onSelectAd}
-      currentUser={currentUser}
+      filteredAds={effectiveFilteredAds}
+      setSelectedAd={effectiveSetSelectedAd}
       isDark={isDark}
-      {...restProps}
+      {...(restProps as any)}
     />
   );
 }
