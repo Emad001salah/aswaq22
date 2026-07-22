@@ -309,12 +309,8 @@ export default function AuthModal({ isOpen, onClose, onSuccess, isDark }: AuthMo
       }
       await recaptchaRef.current.render().catch(() => {});
 
-      const firebasePromise = signInWithPhoneNumber(auth, fullPhone, recaptchaRef.current);
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('firebase_timeout')), 15000)
-      );
-      const confirmation = await Promise.race([firebasePromise, timeoutPromise]);
-      confirmationRef.current = confirmation as ConfirmationResult;
+      const confirmation = await signInWithPhoneNumber(auth, fullPhone, recaptchaRef.current);
+      confirmationRef.current = confirmation;
       setDevOtp(null);
       setOtpSent(true);
       setPhoneStep('otp');

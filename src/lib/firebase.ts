@@ -6,18 +6,9 @@ import { FIREBASE_CONFIG } from '@/src/config/firebase.config';
 
 const getEnvVar = (val: any, fallback: string) => (typeof val === 'string' && val.length > 5 ? val : fallback);
 
-const getAuthDomain = () => {
-  if (typeof window !== 'undefined' && window.location.hostname) {
-    if (window.location.hostname.includes('aswaq22.com')) {
-      return 'www.aswaq22.com';
-    }
-  }
-  return FIREBASE_CONFIG.authDomain;
-};
-
 const firebaseConfig = {
   apiKey: getEnvVar(import.meta.env.VITE_FIREBASE_API_KEY, FIREBASE_CONFIG.apiKey),
-  authDomain: getAuthDomain(),
+  authDomain: FIREBASE_CONFIG.authDomain,
   projectId: getEnvVar(import.meta.env.VITE_FIREBASE_PROJECT_ID, FIREBASE_CONFIG.projectId),
   storageBucket: getEnvVar(import.meta.env.VITE_FIREBASE_STORAGE_BUCKET, FIREBASE_CONFIG.storageBucket),
   messagingSenderId: getEnvVar(import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID, FIREBASE_CONFIG.messagingSenderId),
