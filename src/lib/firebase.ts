@@ -4,9 +4,14 @@ import { getFirestore } from 'firebase/firestore';
 import { Capacitor } from '@capacitor/core';
 import { FIREBASE_CONFIG } from '@/src/config/firebase.config';
 
+const envAuthDomain = import.meta.env.VITE_FIREBASE_AUTH_DOMAIN;
+const canonicalAuthDomain = (envAuthDomain && envAuthDomain.includes('.firebaseapp.com'))
+  ? envAuthDomain
+  : FIREBASE_CONFIG.authDomain;
+
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || FIREBASE_CONFIG.apiKey,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || FIREBASE_CONFIG.authDomain,
+  authDomain: canonicalAuthDomain,
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || FIREBASE_CONFIG.projectId,
   storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || FIREBASE_CONFIG.storageBucket,
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || FIREBASE_CONFIG.messagingSenderId,

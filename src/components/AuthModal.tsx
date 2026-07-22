@@ -307,6 +307,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess, isDark }: AuthMo
           'expired-callback': () => { recaptchaRef.current = null; }
         });
       }
+      await recaptchaRef.current.render().catch(() => {});
 
       const firebasePromise = signInWithPhoneNumber(auth, fullPhone, recaptchaRef.current);
       const timeoutPromise = new Promise<never>((_, reject) =>

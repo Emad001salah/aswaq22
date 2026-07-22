@@ -75,6 +75,7 @@ export async function sendPhoneOtp(
         });
       }
 
+      await verifier.render().catch(() => {});
       const confirmationResult = await signInWithPhoneNumber(auth, phone, verifier);
       return {
         success: true,
