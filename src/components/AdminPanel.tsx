@@ -202,7 +202,8 @@ export default function AdminPanel({
   const [inspectedDocUrl, setInspectedDocUrl] = useState<string | null>(null);
 
   const filteredDriverList = useMemo(() => {
-    return allUsers.filter(u => {
+    return (Array.isArray(allUsers) ? allUsers : []).filter(u => {
+      if (!u) return false;
       if (driverRoleFilter === 'driver' && u.role !== 'AGENT' && !u.deliveryAgent) return false;
       if (driverRoleFilter === 'merchant' && u.role !== 'MERCHANT') return false;
       if (driverRoleFilter === 'user' && u.role !== 'USER') return false;
@@ -313,8 +314,12 @@ export default function AdminPanel({
       const params = new URLSearchParams({ limit: '100', market: selectedMarket });
       if (searchTerm) params.set('search', searchTerm);
       const res = await adminFetch(`/api/admin/users?${params}`);
-      if (res.ok) setAllUsers(await res.json());
-      else console.error('Users API error', res.status);
+      if (res.ok) {
+        const data = await res.json();
+        setAllUsers(Array.isArray(data) ? data : (Array.isArray(data?.users) ? data.users : (Array.isArray(data?.data) ? data.data : [])));
+      } else {
+        console.error('Users API error', res.status);
+      }
     } catch (e) {
       console.error('Users fetch failed', e);
     } finally {
@@ -328,8 +333,12 @@ export default function AdminPanel({
       const params = new URLSearchParams({ limit: '100', market: selectedMarket });
       if (searchTerm) params.set('search', searchTerm);
       const res = await adminFetch(`/api/admin/ads?${params}`);
-      if (res.ok) setAdminAds(await res.json());
-      else console.error('Ads API error', res.status);
+      if (res.ok) {
+        const data = await res.json();
+        setAdminAds(Array.isArray(data) ? data : (Array.isArray(data?.ads) ? data.ads : (Array.isArray(data?.data) ? data.data : [])));
+      } else {
+        console.error('Ads API error', res.status);
+      }
     } catch (e) {
       console.error('Ads fetch failed', e);
     } finally {
@@ -438,8 +447,8 @@ export default function AdminPanel({
 
   // ── Load data on tab change ──
   useEffect(() => {
-    if (activeTab === 'overview') fetchStats();
-    if (activeTab === 'users') fetchUsers();
+    if (activeTab === 'overview') { fetchStats(); fetchUsers(); fetchAds(); }
+    if (activeTab === 'users' || activeTab === 'delivery') fetchUsers();
     if (activeTab === 'ads' || activeTab === 'featured') fetchAds();
     if (activeTab === 'security') fetchSecurity();
     if (activeTab === 'settings') fetchSettings();
@@ -1025,7 +1034,11 @@ export default function AdminPanel({
   };
 
   // ── Derived Data ──
-  const filteredUsers = allUsers.filter(u => {
+  const safeAllUsers = Array.isArray(allUsers) ? allUsers : [];
+  const safeAdminAds = Array.isArray(adminAds) ? adminAds : [];
+
+  const filteredUsers = safeAllUsers.filter(u => {
+    if (!u) return false;
     if (!searchTerm) return true;
     const term = searchTerm.toLowerCase();
     return (
@@ -1035,21 +1048,22 @@ export default function AdminPanel({
     );
   });
 
-  const filteredAds = adminAds.filter(ad => {
+  const filteredAds = safeAdminAds.filter(ad => {
+    if (!ad) return false;
     const matchSearch = !searchTerm || ad.title?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchStatus = statusFilter === 'all' || ad.status === statusFilter;
     return matchSearch && matchStatus;
   });
 
-  const featuredAds = adminAds.filter(a => a.isFeatured);
+  const featuredAds = safeAdminAds.filter(a => a && a.isFeatured);
 
   // ── Sidebar Items ──
   const sidebarItems: { id: AdminTab; icon: any; label: string; badge?: number }[] = [
     { id: 'overview', icon: LayoutDashboard, label: 'نظرة عامة' },
     { id: 'analytics', icon: BarChart3, label: 'التحليلات والتقارير' },
-    { id: 'ads', icon: FileText, label: 'إدارة الإعلانات', badge: adminAds.filter(a => a.status === 'PENDING').length || undefined },
+    { id: 'ads', icon: FileText, label: 'إدارة الإعلانات', badge: safeAdminAds.filter(a => a && a.status === 'PENDING').length || undefined },
     { id: 'users', icon: Users, label: 'إدارة المستخدمين' },
-    { id: 'delivery', icon: ShieldCheck, label: 'توثيق وإدارة السائقين', badge: allUsers.filter(u => (u.role === 'AGENT' || u.deliveryAgent) && u.isVerified !== 'verified').length || undefined },
+    { id: 'delivery', icon: ShieldCheck, label: 'توثيق وإدارة السائقين', badge: safeAllUsers.filter(u => u && (u.role === 'AGENT' || u.deliveryAgent) && u.isVerified !== 'verified').length || undefined },
     { id: 'featured', icon: Star, label: 'الإعلانات المميزة', badge: featuredAds.length || undefined },
     { id: 'categories', icon: Tag, label: 'الفئات والتصنيفات' },
     { id: 'markets', icon: Globe, label: 'إدارة الأسواق' },
