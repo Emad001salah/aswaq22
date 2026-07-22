@@ -59,21 +59,48 @@ export async function sendPhoneOtp(
 ): Promise<SendOtpResult> {
   const config = await getFeaturesConfig();
 
-  if (config.firebasePhoneAuth && recaptchaVerifier) {
+  if (config.firebasePhoneAuth) {
+    let verifier = recaptchaVerifier;
+    if (!verifier) {
+      let container = document.getElementById('firebase-recaptcha-container');
+      if (!container) {
+        container = document.createElement('div');
+        container.id = 'firebase-recaptcha-container';
+        document.body.appendChild(container);
+      }
+      verifier = new RecaptchaVerifier(auth, container.id, {
+        size: 'invisible',
+        callback: () => {},
+      });
+    }
+
     try {
-      await recaptchaVerifier.render().catch(() => {});
-      const confirmationResult = await signInWithPhoneNumber(auth, phone, recaptchaVerifier);
+      await verifier.render().catch(() => {});
+      const confirmationResult = await signInWithPhoneNumber(auth, phone, verifier);
       return {
         success: true,
         confirmationResult,
         useFirebase: true,
       };
     } catch (fbErr: any) {
-      console.warn('[phoneAuth] Firebase Phone Auth failed, falling back to backend OTP:', fbErr?.code || fbErr?.message);
+      console.warn('[phoneAuth] Firebase Phone Auth error:', fbErr?.code || fbErr?.message);
+      let msg = 'فشل إرسال رمز التحقق عبر SMS. حاول مجدداً.';
+      if (fbErr?.code === 'auth/invalid-phone-number') {
+        msg = 'رقم الهاتف غير صالح. تأكد من اختيار رمز الدولة الصحيح وإدخال الرقم بدون أصفار إضافية.';
+      } else if (fbErr?.code === 'auth/too-many-requests') {
+        msg = 'تم تجاوز عدد المحاولات المسموحة. حاول مجدداً بعد قليل.';
+      } else if (fbErr?.code === 'auth/network-request-failed') {
+        msg = 'تعذر الاتصال بمركز التحقق. يرجى إعادة محاولة الضغط على إرسال الرمز.';
+      } else if (fbErr?.code === 'auth/captcha-check-failed') {
+        msg = 'فشل التحقق الأمني التلقائي. يرجى المحاولة مرة أخرى.';
+      } else if (fbErr?.message) {
+        msg = fbErr.message;
+      }
+      throw new Error(msg);
     }
   }
 
-  // Backend / SMS fallback route
+  // Legacy Backend / SMS route (fallback when firebasePhoneAuth feature flag is disabled)
   const res = await fetch('/api/v1/auth/phone/send', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
