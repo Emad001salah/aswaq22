@@ -3,7 +3,7 @@ services:
   - type: web
     name: aswaq-api
     env: node
-    buildCommand: npm install && npm run build
+    buildCommand: npx prisma generate && npm run build
     startCommand: npm run start
     healthCheckPath: /api/health
     autoDeploy: true
@@ -50,7 +50,7 @@ services:
   - type: worker
     name: aswaq-worker
     env: node
-    buildCommand: npm install && npm run build
+    buildCommand: npx prisma generate && npm run build
     startCommand: npm run worker
     autoDeploy: true
     envVars:
