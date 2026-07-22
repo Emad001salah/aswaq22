@@ -7,8 +7,10 @@ import { FIREBASE_CONFIG } from '@/src/config/firebase.config';
 const getEnvVar = (val: any, fallback: string) => (typeof val === 'string' && val.length > 5 ? val : fallback);
 
 const getAuthDomain = () => {
-  if (typeof window !== 'undefined' && window.location.hostname && !window.location.hostname.includes('localhost') && !window.location.hostname.includes('127.0.0.1')) {
-    return window.location.hostname;
+  if (typeof window !== 'undefined' && window.location.hostname) {
+    if (window.location.hostname.includes('aswaq22.com')) {
+      return 'www.aswaq22.com';
+    }
   }
   return FIREBASE_CONFIG.authDomain;
 };
