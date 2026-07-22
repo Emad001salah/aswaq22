@@ -1522,6 +1522,63 @@ export class App {
       }
     });
 
+    this.app.post('/api/users/verify-documents', authMiddleware, async (req, res, next) => {
+      try {
+        const userId = (req as any).user?.id || (req as any).user?.userId;
+        if (!userId) return res.status(401).json({ error: 'غير مصرح' });
+
+        const { role, documents, vehicleType, licensePlate } = req.body;
+
+        if (!Array.isArray(documents) || documents.length === 0) {
+          return res.status(400).json({ error: 'يرجى إرفاق وثيقة واحدة على الأقل' });
+        }
+
+        // Save documents in MediaObject relation
+        await prisma.mediaObject.createMany({
+          data: documents.map((url: string) => ({
+            url,
+            type: 'VERIFICATION_DOC',
+            uploaderId: userId,
+          }))
+        });
+
+        // Upsert deliveryAgent if role is driver
+        if (role === 'driver' || role === 'AGENT') {
+          await prisma.deliveryAgent.upsert({
+            where: { userId },
+            create: {
+              userId,
+              vehicleType: vehicleType || 'motorcycle',
+              licensePlate: licensePlate || 'قيد التدقيق',
+              status: 'PENDING',
+            },
+            update: {
+              vehicleType: vehicleType || 'motorcycle',
+              licensePlate: licensePlate || 'قيد التدقيق',
+              status: 'PENDING',
+            }
+          });
+        }
+
+        // Update user status to pending verification
+        const updatedUser = await prisma.user.update({
+          where: { id: userId },
+          data: {
+            role: role === 'merchant' ? 'MERCHANT' : role === 'driver' ? 'AGENT' : undefined,
+            isVerified: 'pending',
+          },
+          include: {
+            deliveryAgent: true,
+            uploadedMedia: true,
+          }
+        });
+
+        return res.json({ success: true, user: updatedUser });
+      } catch (err) {
+        next(err);
+      }
+    });
+
     this.app.patch('/api/admin/users/:id', ...adminAccessGuards, async (req, res, next) => {
       try {
         const { id } = req.params;

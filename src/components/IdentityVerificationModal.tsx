@@ -14,7 +14,7 @@ import {
   Truck,
   CreditCard
 } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
+import { apiFetch } from '../lib/api';
 
 interface IdentityVerificationModalProps {
   isOpen: boolean;
@@ -37,22 +37,52 @@ export default function IdentityVerificationModal({
   const [files, setFiles] = useState<{ id: string; name: string; url: string; type: string }[]>([]);
   const [isUploading, setIsUploading] = useState(false);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = e.target.files;
-    if (!selectedFiles) return;
+    if (!selectedFiles || selectedFiles.length === 0) return;
 
     setIsUploading(true);
-    // Simulate upload
-    setTimeout(() => {
-      const newFiles = Array.from(selectedFiles).map((file: any, idx: number) => ({
-        id: `file_${Date.now()}_${idx}`,
-        name: file.name,
-        url: URL.createObjectURL(file),
-        type: file.type
-      }));
-      setFiles(prev => [...prev, ...newFiles]);
+    try {
+      const uploaded: { id: string; name: string; url: string; type: string }[] = [];
+      for (const file of Array.from(selectedFiles)) {
+        const formData = new FormData();
+        formData.append('file', file);
+        try {
+          const res = await apiFetch('/api/storage/upload', {
+            method: 'POST',
+            body: formData,
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            if (data.url) {
+              uploaded.push({
+                id: `file_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                name: file.name,
+                url: data.url,
+                type: file.type
+              });
+              continue;
+            }
+          }
+        } catch (uploadErr) {
+          console.error('API Storage upload failed:', uploadErr);
+        }
+
+        // Fallback for local preview if network is offline
+        uploaded.push({
+          id: `file_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+          name: file.name,
+          url: URL.createObjectURL(file),
+          type: file.type
+        });
+      }
+      setFiles(prev => [...prev, ...uploaded]);
+    } catch (err) {
+      console.error('File upload failed', err);
+    } finally {
       setIsUploading(false);
-    }, 1500);
+    }
   };
 
   const removeFile = (id: string) => {

@@ -1268,8 +1268,23 @@ useEffect(() => {
     );
   };
 
-  const handleIdentityVerifyFinish = (docs: string[]) => {
+  const handleIdentityVerifyFinish = async (docs: string[]) => {
     if (currentUser) {
+      try {
+        await apiFetch('/api/users/verify-documents', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            role: targetUpgradeRole,
+            documents: docs,
+            vehicleType: 'motorcycle',
+            licensePlate: 'قيد التدقيق',
+          }),
+        });
+      } catch (err) {
+        console.error('Failed to submit verify documents API', err);
+      }
+
       const updatedUser = {
         ...currentUser,
         role: targetUpgradeRole === 'merchant' ? UserRole.MERCHANT : (targetUpgradeRole === 'driver' ? UserRole.USER : currentUser.role),
@@ -1280,9 +1295,9 @@ useEffect(() => {
       setCurrentUser(updatedUser);
       setShowIdentityModal(false);
       addToast(
-        isRtl ? "تم استلام الطلب" : "Request Received",
-        isRtl ? "جاري مراجعة وثائقك من قبل فريقنا المختص." : "Your documents are being reviewed by our dedicated team.",
-        "info"
+        isRtl ? "تم استلام وثائق التوثيق" : "Documents Submitted",
+        isRtl ? "جاري مراجعة وثائقك من قبل إدارة المنصة." : "Your verification documents have been uploaded and are being reviewed by the admin.",
+        "success"
       );
     }
   };
