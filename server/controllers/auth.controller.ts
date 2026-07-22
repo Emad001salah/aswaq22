@@ -554,15 +554,6 @@ export function AuthController() {
   });
 
   router.post('/firebase/login', firebaseAuthLimiter, async (req: Request, res: Response) => {
-    const flag = await getFlag('firebase_phone_auth');
-    if (!flag.enabled) {
-      return res.status(503).json({
-        error: 'Auth Temporarily Unavailable',
-        message: 'خدمة التحقق بالهاتف غير متاحة مؤقتاً. يرجى المحاولة لاحقاً.',
-        retryAfter: 300
-      });
-    }
-
     const { idToken } = req.body;
 
     if (!idToken) {
@@ -575,15 +566,6 @@ export function AuthController() {
 
       const userEmail = email || `${id}@phone.aswaq.com`;
       const uuid = getDeterministicUuid(id);
-
-      // Canary rollout check
-      const isAllowed = flag.rolloutPct >= 100 || isInRollout(uuid, flag.rolloutPct, flag.allowedUsers);
-      if (!isAllowed) {
-        return res.status(403).json({
-          error: 'Access Denied',
-          message: 'هذه الميزة غير متاحة لحسابك حالياً (إطلاق تجريبي).'
-        });
-      }
 
       // E.164 validation for phone number in token
       if (phone && !/^\+[1-9]\d{6,14}$/.test(phone)) {
