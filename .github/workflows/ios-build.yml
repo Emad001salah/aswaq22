@@ -1,0 +1,60 @@
+name: iOS Native Cloud Build & Artifact Export
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-ios:
+    name: Build iOS Native App Package
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install NPM Dependencies
+        run: npm ci
+
+      - name: Build Production Web Bundle
+        run: npm run build
+
+      - name: Sync Capacitor iOS Project
+        run: npx cap sync ios
+
+      - name: Setup Xcode Environment
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '15.4'
+
+      - name: Build iOS Archive (Unsigned / Simulator Package)
+        run: |
+          cd ios/App
+          xcodebuild -workspace App.xcworkspace \
+                     -scheme App \
+                     -configuration Release \
+                     -sdk iphoneos \
+                     -archivePath build/App.xcarchive \
+                     CODE_SIGN_IDENTITY="" \
+                     CODE_SIGNING_REQUIRED=NO \
+                     CODE_SIGNING_ALLOWED=NO \
+                     archive
+
+      - name: Compress iOS Archive Artifact
+        run: |
+          cd ios/App/build
+          zip -r aswaq-ios-release-archive.zip App.xcarchive
+
+      - name: Upload iOS Native Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: aswaq-ios-release-archive
+          path: ios/App/build/aswaq-ios-release-archive.zip
+          retention-days: 14
