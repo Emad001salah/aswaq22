@@ -2849,7 +2849,8 @@ useEffect(() => {
         notifications={notifications}
         onOpenDashboard={handleTabChange}
         onOpenAdminPanel={() => {
-          if (currentUser?.role === 'admin' || currentUser?.role === 'super_admin') {
+          const role = currentUser?.role?.toLowerCase();
+          if (role === 'admin' || role === 'super_admin') {
             setShowAdminModal(true);
           } else {
             console.error('Unauthorized access attempt to Admin Panel');

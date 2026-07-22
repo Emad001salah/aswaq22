@@ -349,6 +349,17 @@ export default function Navbar({
                 {/* Vertical Separator */}
                 <div className="h-6 w-px bg-slate-200 mx-1" />
 
+                {(currentUser?.role?.toLowerCase() === 'admin' || currentUser?.role?.toLowerCase() === 'super_admin') && (
+                  <button
+                    onClick={onOpenAdminPanel}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white transition-all text-xs font-black border border-rose-500/20 cursor-pointer shrink-0"
+                    title="فتح لوحة التحكم الإدارية"
+                  >
+                    <ShieldAlert className="w-4 h-4" />
+                    <span className="hidden sm:inline">لوحة التحكم</span>
+                  </button>
+                )}
+
                 {/* User Dropdown */}
                 <div className="relative">
                   <button 
@@ -431,7 +442,7 @@ export default function Navbar({
                         {t('navbar.settings')}
                       </button>
 
-                      {(currentUser.role === 'admin' || currentUser.role === 'super_admin') && (
+                      {(currentUser?.role?.toLowerCase() === 'admin' || currentUser?.role?.toLowerCase() === 'super_admin') && (
                         <button 
                           onClick={() => {
                             onOpenAdminPanel();
@@ -663,7 +674,7 @@ export default function Navbar({
                   {t('navbar.settings')}
                 </button>
 
-                {(currentUser.role === 'admin' || currentUser.role === 'super_admin') && (
+                {(currentUser?.role?.toLowerCase() === 'admin' || currentUser?.role?.toLowerCase() === 'super_admin') && (
                   <button 
                     onClick={() => {
                       onOpenAdminPanel();
