@@ -69,10 +69,10 @@
     }
   ],
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "https://api.aswaq22.com/api/$1" },
-    { "source": "/uploads/(.*)", "destination": "https://api.aswaq22.com/uploads/$1" },
-    { "source": "/sitemap.xml", "destination": "https://api.aswaq22.com/sitemap.xml" },
-    { "source": "/sitemaps/:file", "destination": "https://api.aswaq22.com/sitemaps/:file" },
+    { "source": "/api/(.*)", "destination": "https://aswaq-api-production.up.railway.app/api/$1" },
+    { "source": "/uploads/(.*)", "destination": "https://aswaq-api-production.up.railway.app/uploads/$1" },
+    { "source": "/sitemap.xml", "destination": "https://aswaq-api-production.up.railway.app/sitemap.xml" },
+    { "source": "/sitemaps/:file", "destination": "https://aswaq-api-production.up.railway.app/sitemaps/:file" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
