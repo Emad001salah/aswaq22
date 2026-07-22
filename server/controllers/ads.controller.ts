@@ -11,6 +11,8 @@ import { storageService } from '../services/storage.service.ts';
 import { JobType } from '@prisma/client';
 import { getDeterministicUuid, getLegacyName } from '../utils/db-helpers.ts';
 import { resolveMediaUrl } from '../utils/media-url.ts';
+import { cacheService } from '../services/cache.service.ts';
+
 
 const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -410,11 +412,9 @@ export const AdsController = () => {
         imagesToProcess: result.imagesToProcess,
       });
 
-      // Clear related Redis latest ad feeds caches
-      const keys = await redis.getClient()?.keys('ads:latest:*');
-      if (keys && keys.length > 0) {
-        await Promise.all(keys.map(k => redis.del(k)));
-      }
+      // Clear related Redis latest ad feeds caches non-blockingly using SCAN
+      await cacheService.invalidateFeedCaches();
+
 
       const adWithUser = await prisma.ad.findUnique({
         where: { id: result.ad.id },
