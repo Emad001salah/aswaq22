@@ -2933,17 +2933,17 @@ export default function AdminPanel({
                       <Clock className="w-4 h-4 text-blue-400" /> سجل العمليات الإدارية
                     </h3>
                     <div className="space-y-2 max-h-60 overflow-y-auto">
-                      {(securityStats?.auditLogs || adminLogs).slice(0, 20).map((log: any, i: number) => (
-                        <div key={log.id || i} className="flex items-center gap-3 py-2 border-b border-white/5 last:border-0">
-                          <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${log.type === 'delete' ? 'bg-rose-500' : log.type === 'verify' ? 'bg-emerald-500' : 'bg-blue-500'}`} />
+                      {(securityStats?.auditLogs || adminLogs || []).slice(0, 20).map((log: any, i: number) => (
+                        <div key={log?.id || i} className="flex items-center gap-3 py-2 border-b border-white/5 last:border-0">
+                          <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${log?.type === 'delete' ? 'bg-rose-500' : log?.type === 'verify' ? 'bg-emerald-500' : 'bg-blue-500'}`} />
                           <div className="flex-1 min-w-0">
-                            <p className="text-[10px] text-white font-bold truncate">{log.action}</p>
-                            <p className="text-[9px] text-slate-500 truncate">{log.target || log.details || '—'}</p>
+                            <p className="text-[10px] text-white font-bold truncate">{log?.action}</p>
+                            <p className="text-[9px] text-slate-500 truncate">{log?.target || log?.details || '—'}</p>
                           </div>
-                          <span className="text-[9px] text-slate-600 shrink-0">{log.time}</span>
+                          <span className="text-[9px] text-slate-600 shrink-0">{log?.time}</span>
                         </div>
                       ))}
-                      {(securityStats?.auditLogs || adminLogs).length === 0 && (
+                      {(securityStats?.auditLogs || adminLogs || []).length === 0 && (
                         <p className="text-xs text-slate-500 text-center py-4">لا توجد سجلات</p>
                       )}
                     </div>
