@@ -12,7 +12,7 @@ import JobPortal from './JobPortal.tsx';
 
 const Dashboard = React.lazy(() => import('./Dashboard.tsx'));
 const AdminPanel = React.lazy(() => import('./AdminPanel.tsx'));
-const SpotlightFeed = React.lazy(() => import('./components/SpotlightFeed.tsx'));
+const SpotlightFeed = React.lazy(() => import('./SpotlightFeed.tsx'));
 const DeliveryDashboard = React.lazy(() => import('../modules/shipping/DeliveryDashboard.tsx'));
 
 const LazyFallback = () => (
@@ -28,6 +28,7 @@ interface AppRouterProps {
   currentUser: any;
   ads: any[];
   onSelectAd: (ad: any) => void;
+  isDark?: boolean;
   [key: string]: any;
 }
 
@@ -37,12 +38,13 @@ export function AppRouter({
   currentUser,
   ads,
   onSelectAd,
+  isDark = false,
   ...restProps
 }: AppRouterProps) {
   if (currentTab === 'dashboard' || currentTab === 'create-ad' || currentTab === 'my-ads' || currentTab === 'messages' || currentTab === 'settings') {
     return (
       <Suspense fallback={<LazyFallback />}>
-        <Dashboard initialTab={currentTab} currentUser={currentUser} {...restProps} />
+        <Dashboard initialTab={currentTab} currentUser={currentUser} isDark={isDark} {...restProps} />
       </Suspense>
     );
   }
@@ -50,7 +52,7 @@ export function AppRouter({
   if (currentTab === 'admin') {
     return (
       <Suspense fallback={<LazyFallback />}>
-        <AdminPanel currentUser={currentUser} {...restProps} />
+        <AdminPanel currentUser={currentUser} isDark={isDark} {...restProps} />
       </Suspense>
     );
   }
@@ -58,14 +60,14 @@ export function AppRouter({
   if (platformMode === 'delivery') {
     return (
       <Suspense fallback={<LazyFallback />}>
-        <DeliveryDashboard currentUser={currentUser} {...restProps} />
+        <DeliveryDashboard currentUser={currentUser} isDark={isDark} {...restProps} />
       </Suspense>
     );
   }
 
   if (platformMode === 'jobs') {
     return (
-      <JobPortal ads={ads} onSelectAd={onSelectAd} currentUser={currentUser} {...restProps} />
+      <JobPortal ads={ads} onSelectAd={onSelectAd} currentUser={currentUser} isDark={isDark} {...restProps} />
     );
   }
 
@@ -74,6 +76,7 @@ export function AppRouter({
       ads={ads}
       onSelectAd={onSelectAd}
       currentUser={currentUser}
+      isDark={isDark}
       {...restProps}
     />
   );

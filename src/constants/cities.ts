@@ -54,3 +54,17 @@ export function formatPrice(price: any): string {
   if (price === undefined || price === null || isNaN(Number(price))) return '0';
   return new Intl.NumberFormat('en-US').format(Number(price));
 }
+
+/** Slugifies text for URLs */
+export function slugify(text?: string | null): string {
+  if (!text) return '';
+  return text
+    .toString()
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^\w\u0621-\u064A-]+/g, '')
+    .replace(/--+/g, '-')
+    .replace(/^-+/, '')
+    .replace(/-+$/, '');
+}
+

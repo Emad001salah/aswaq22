@@ -102,7 +102,8 @@ const DeliveryDashboard = React.lazy(() => import("./modules/shipping/DeliveryDa
 // AdModal is large (129 KB) — lazy loaded to remove it from the initial bundle
 const AdModal = React.lazy(() => import("./components/AdModal.tsx"));
 
-import { CITY_COORDINATES, getDistanceInKm, formatPrice } from "./constants/cities.ts";
+import { CITY_COORDINATES, getDistanceInKm, formatPrice, slugify } from "./constants/cities.ts";
+
 import { DEFAULT_SOCIAL_POSTS } from "./constants/sample-posts.ts";
 
 const LazyFallback = () => (
