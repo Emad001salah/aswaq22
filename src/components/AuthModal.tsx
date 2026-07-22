@@ -298,61 +298,52 @@ export default function AuthModal({ isOpen, onClose, onSuccess, isDark }: AuthMo
     if (!/^\+[1-9]\d{6,14}$/.test(fullPhone)) { setError('صيغة رقم الهاتف غير صحيحة'); return; }
     setLoading(true);
 
-    // ── Try Firebase first (sends real SMS) ──────────────────────────
+    // ── Try Firebase Phone Auth (sends real SMS) ──────────────────────
     try {
-      initRecaptcha();
-      if (recaptchaRef.current) {
-        const firebasePromise = signInWithPhoneNumber(auth, fullPhone, recaptchaRef.current);
-        const timeoutPromise = new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('firebase_timeout')), 10000)
-        );
-        const confirmation = await Promise.race([firebasePromise, timeoutPromise]);
-        confirmationRef.current = confirmation as ConfirmationResult;
-        setDevOtp(null);
-        setOtpSent(true);
-        setPhoneStep('otp');
-        setOtpCountdown(120);
-        setSuccessMsg('تم إرسال رمز التحقق عبر SMS ✅');
-        setLoading(false);
-        return; // Firebase SMS sent successfully
+      if (!recaptchaRef.current) {
+        recaptchaRef.current = new RecaptchaVerifier(auth, 'auth-modal-recaptcha', {
+          size: 'invisible',
+          callback: () => {},
+          'expired-callback': () => { recaptchaRef.current = null; }
+        });
       }
+
+      const firebasePromise = signInWithPhoneNumber(auth, fullPhone, recaptchaRef.current);
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('firebase_timeout')), 30000)
+      );
+      const confirmation = await Promise.race([firebasePromise, timeoutPromise]);
+      confirmationRef.current = confirmation as ConfirmationResult;
+      setDevOtp(null);
+      setOtpSent(true);
+      setPhoneStep('otp');
+      setOtpCountdown(120);
+      setSuccessMsg('تم إرسال رمز التحقق عبر SMS ✅');
+      setLoading(false);
+      return; // Firebase SMS sent successfully
     } catch (firebaseErr: any) {
-      console.warn('[Phone Auth] Firebase failed, falling back to backend OTP:', firebaseErr?.code || firebaseErr?.message);
+      console.warn('[Phone Auth] Firebase error:', firebaseErr?.code || firebaseErr?.message);
       try { recaptchaRef.current?.clear(); } catch (_) {}
       recaptchaRef.current = null;
       confirmationRef.current = null;
 
-      // Handle specific Firebase errors that shouldn't fall back
+      let msg = 'فشل إرسال رمز التحقق عبر SMS. حاول مجدداً.';
       if (firebaseErr?.code === 'auth/invalid-phone-number') {
-        setError('رقم الهاتف غير صالح. تأكد من اختيار رمز الدولة الصحيح.');
-        setLoading(false);
-        return;
+        msg = 'رقم الهاتف غير صالح. تأكد من اختيار رمز الدولة الصحيح.';
+      } else if (firebaseErr?.code === 'auth/too-many-requests') {
+        msg = 'تم تجاوز عدد المحاولات. حاول مجدداً بعد قليل.';
+      } else if (firebaseErr?.code === 'auth/network-request-failed') {
+        msg = 'تعذر الاتصال بمركز التحقق. يرجى التأكد من اتصال الإنترنت وحالة المتصفح.';
+      } else if (firebaseErr?.code === 'auth/captcha-check-failed') {
+        msg = 'فشل التحقق الأمني. يرجى إعادة المحاولة.';
+      } else if (firebaseErr?.message === 'firebase_timeout') {
+        msg = 'استغرق إرسال الرمز وقتاً أطول من المتوقع. يرجى المحاولة مرة أخرى.';
+      } else if (firebaseErr?.message) {
+        msg = firebaseErr.message;
       }
-      if (firebaseErr?.code === 'auth/too-many-requests') {
-        setError('تم تجاوز عدد المحاولات. حاول مجدداً بعد قليل.');
-        setLoading(false);
-        return;
-      }
-      // For timeout / reCAPTCHA issues: fall through to backend OTP below
+      setError(msg);
+      setLoading(false);
     }
-
-    // ── Fallback: Backend OTP (shows code on screen) ─────────────────
-    try {
-      const result = await sendPhoneOtp(fullPhone);
-      setOtpSent(true);
-      setPhoneStep('otp');
-      setOtpCountdown(120);
-      if (result.devOtp) {
-        setDevOtp(result.devOtp);
-        setOtp(result.devOtp);
-        setSuccessMsg('رمز التحقق جاهز (وضع التطوير) ✅');
-      } else {
-        setDevOtp(null);
-        setSuccessMsg('تم إرسال رمز التحقق عبر SMS ✅');
-      }
-    } catch (e: any) {
-      setError(e.message || 'فشل إرسال رمز التحقق');
-    } finally { setLoading(false); }
   };
 
   /* ── Verify OTP: Firebase if available, else backend ── */
