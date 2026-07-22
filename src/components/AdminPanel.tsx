@@ -62,7 +62,9 @@ import {
   Info,
   Megaphone,
   ShieldCheck,
+  Truck,
 } from 'lucide-react';
+import DeliveryDashboard from '../modules/shipping/DeliveryDashboard';
 import { User, Ad } from '../types.ts';
 import { MARKETS } from '../markets.ts';
 import {
@@ -87,6 +89,7 @@ type AdminTab =
   | 'overview'
   | 'ads'
   | 'users'
+  | 'delivery'
   | 'reports'
   | 'categories'
   | 'markets'
@@ -1019,6 +1022,7 @@ export default function AdminPanel({
     { id: 'analytics', icon: BarChart3, label: 'التحليلات والتقارير' },
     { id: 'ads', icon: FileText, label: 'إدارة الإعلانات', badge: adminAds.filter(a => a.status === 'PENDING').length || undefined },
     { id: 'users', icon: Users, label: 'إدارة المستخدمين' },
+    { id: 'delivery', icon: Truck, label: 'لوحة الشحن والتوصيل' },
     { id: 'featured', icon: Star, label: 'الإعلانات المميزة', badge: featuredAds.length || undefined },
     { id: 'categories', icon: Tag, label: 'الفئات والتصنيفات' },
     { id: 'markets', icon: Globe, label: 'إدارة الأسواق' },
@@ -1560,6 +1564,15 @@ export default function AdminPanel({
                       )}
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* ════════════════════════════════════════════════════════════ */}
+              {/* DELIVERY DASHBOARD TAB */}
+              {/* ════════════════════════════════════════════════════════════ */}
+              {activeTab === 'delivery' && (
+                <div className="space-y-4 animate-in fade-in duration-300">
+                  <DeliveryDashboard currentUser={currentUser} isDark={true} />
                 </div>
               )}
 
