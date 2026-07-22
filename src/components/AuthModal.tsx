@@ -311,7 +311,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess, isDark }: AuthMo
 
       const firebasePromise = signInWithPhoneNumber(auth, fullPhone, recaptchaRef.current);
       const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('firebase_timeout')), 30000)
+        setTimeout(() => reject(new Error('firebase_timeout')), 15000)
       );
       const confirmation = await Promise.race([firebasePromise, timeoutPromise]);
       confirmationRef.current = confirmation as ConfirmationResult;
@@ -323,28 +323,40 @@ export default function AuthModal({ isOpen, onClose, onSuccess, isDark }: AuthMo
       setLoading(false);
       return; // Firebase SMS sent successfully
     } catch (firebaseErr: any) {
-      console.warn('[Phone Auth] Firebase error:', firebaseErr?.code || firebaseErr?.message);
+      console.warn('[Phone Auth] Firebase failed, falling back to backend OTP:', firebaseErr?.code || firebaseErr?.message);
       try { recaptchaRef.current?.clear(); } catch (_) {}
       recaptchaRef.current = null;
       confirmationRef.current = null;
 
-      let msg = 'فشل إرسال رمز التحقق عبر SMS. حاول مجدداً.';
       if (firebaseErr?.code === 'auth/invalid-phone-number') {
-        msg = 'رقم الهاتف غير صالح. تأكد من اختيار رمز الدولة الصحيح.';
-      } else if (firebaseErr?.code === 'auth/too-many-requests') {
-        msg = 'تم تجاوز عدد المحاولات. حاول مجدداً بعد قليل.';
-      } else if (firebaseErr?.code === 'auth/network-request-failed') {
-        msg = 'تعذر الاتصال بمركز التحقق. يرجى التأكد من اتصال الإنترنت وحالة المتصفح.';
-      } else if (firebaseErr?.code === 'auth/captcha-check-failed') {
-        msg = 'فشل التحقق الأمني. يرجى إعادة المحاولة.';
-      } else if (firebaseErr?.message === 'firebase_timeout') {
-        msg = 'استغرق إرسال الرمز وقتاً أطول من المتوقع. يرجى المحاولة مرة أخرى.';
-      } else if (firebaseErr?.message) {
-        msg = firebaseErr.message;
+        setError('رقم الهاتف غير صالح. تأكد من اختيار رمز الدولة الصحيح.');
+        setLoading(false);
+        return;
       }
-      setError(msg);
-      setLoading(false);
+      if (firebaseErr?.code === 'auth/too-many-requests') {
+        setError('تم تجاوز عدد المحاولات. حاول مجدداً بعد قليل.');
+        setLoading(false);
+        return;
+      }
     }
+
+    // ── Fallback: Backend OTP (seamless login guarantee) ──────────────
+    try {
+      const result = await sendPhoneOtp(fullPhone);
+      setOtpSent(true);
+      setPhoneStep('otp');
+      setOtpCountdown(120);
+      if (result.devOtp) {
+        setDevOtp(result.devOtp);
+        setOtp(result.devOtp);
+        setSuccessMsg('رمز التحقق جاهز (وضع التطوير) ✅');
+      } else {
+        setDevOtp(null);
+        setSuccessMsg('تم إرسال رمز التحقق عبر SMS ✅');
+      }
+    } catch (e: any) {
+      setError(e.message || 'فشل إرسال رمز التحقق');
+    } finally { setLoading(false); }
   };
 
   /* ── Verify OTP: Firebase if available, else backend ── */
