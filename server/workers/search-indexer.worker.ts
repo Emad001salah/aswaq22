@@ -21,6 +21,7 @@ export interface SearchIndexJobData {
   title: string;
   description: string;
   city: string;
+  price?: number;
   categoryId: string;
   status: string;
   action: 'INDEX' | 'DELETE';
@@ -35,25 +36,26 @@ export function startSearchWorker() {
     searchWorker = new Worker<SearchIndexJobData>(
       'search-indexing-queue',
       async (job: Job<SearchIndexJobData>) => {
-        const { adId, title, description, city, categoryId, status, action } = job.data;
+        const { adId, title, description, city, price = 0, categoryId, status, action } = job.data;
 
         if (action === 'DELETE') {
           if (searchEngine.isAvailable()) {
-            await searchEngine.deleteDocument(adId);
+            await searchEngine.deleteAd(adId);
             logger.info({ message: `[SearchWorker] Deleted ad ${adId} from Meilisearch.` });
           }
           return;
         }
 
         if (searchEngine.isAvailable()) {
-          await searchEngine.indexAds([{
+          await searchEngine.indexAd({
             id: adId,
             title,
             description,
             city,
+            price,
             category: categoryId,
             status,
-          }]);
+          });
           logger.info({ message: `[SearchWorker] Indexed ad ${adId} in Meilisearch.` });
         }
       },
