@@ -4,9 +4,11 @@
  * Integration tests for Ads Controller endpoints
  */
 
+import 'reflect-metadata';
 import { AdsController } from '../../server/controllers/ads.controller.ts';
 import express from 'express';
 import request from 'supertest';
+
 
 describe('AdsController Integration Tests', () => {
   let app: express.Application;
