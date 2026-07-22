@@ -84,22 +84,21 @@ import { auth } from "./lib/firebase";
 import { API_BASE_URL } from "./lib/config";
 import { loadGoogleMapsScript } from "./modules/maps/googleMaps.ts";
 
-// Heavy modals — lazy loaded since they only appear on user interaction
-const AuthModal = React.lazy(() => import("./components/AuthModal.tsx"));
-const WelcomeFlow = React.lazy(() => import("./components/WelcomeFlow.tsx"));
-const LocationMapPicker = React.lazy(() => import("./modules/maps/LocationMapPicker.tsx"));
-const IdentityVerificationModal = React.lazy(() => import("./components/IdentityVerificationModal.tsx"));
-const OtpVerification = React.lazy(() => import("./components/OtpVerification.tsx").then(m => ({ default: m.OtpVerification })));
+// Heavy modals — loaded on user interaction
+const AuthModal = React.lazy(() => import("./components/AuthModal"));
+const WelcomeFlow = React.lazy(() => import("./components/WelcomeFlow"));
+const LocationMapPicker = React.lazy(() => import("./modules/maps/LocationMapPicker"));
+import IdentityVerificationModal from "./components/IdentityVerificationModal";
+const OtpVerification = React.lazy(() => import("./components/OtpVerification").then(m => ({ default: m.OtpVerification })));
 
 import JobPortal from "./components/JobPortal.tsx";
 
 import AdminPanel from "./components/AdminPanel";
-const Dashboard = React.lazy(() => import("./components/Dashboard.tsx"));
-const AdMap = React.lazy(() => import("./modules/maps/AdMap.tsx"));
-const SpotlightFeed = React.lazy(() => import("./components/SpotlightFeed.tsx"));
-const DeliveryDashboard = React.lazy(() => import("./modules/shipping/DeliveryDashboard.tsx"));
-// AdModal is large (129 KB) — lazy loaded to remove it from the initial bundle
-const AdModal = React.lazy(() => import("./components/AdModal.tsx"));
+const Dashboard = React.lazy(() => import("./components/Dashboard"));
+const AdMap = React.lazy(() => import("./modules/maps/AdMap"));
+const SpotlightFeed = React.lazy(() => import("./components/SpotlightFeed"));
+const DeliveryDashboard = React.lazy(() => import("./modules/shipping/DeliveryDashboard"));
+const AdModal = React.lazy(() => import("./components/AdModal"));
 
 import { CITY_COORDINATES, getDistanceInKm, formatPrice, slugify } from "./constants/cities.ts";
 
