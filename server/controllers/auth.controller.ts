@@ -14,7 +14,13 @@ import { getFlag, isInRollout, isFeatureEnabled } from '../lib/feature-flags.ts'
 
 export function AuthController() {
   const router = Router();
-  const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'aswaq_jwt_refresh_secret_key_2026';
+
+  /**
+   * [SEC-003b] JWT_REFRESH_SECRET resolved from environment only.
+   * Previously had a hardcoded fallback 'aswaq_jwt_refresh_secret_key_2026' which
+   * allowed anyone knowing that string to forge refresh tokens for any account.
+   * authService now owns secret resolution and will throw on startup if not set.
+   */
 
   const OTP_TTL_SECONDS = 5 * 60;
   const otpFallbackStore = new Map<string, { code: string; expiresAt: Date }>();
@@ -63,10 +69,21 @@ export function AuthController() {
       const salt = await bcrypt.genSalt(10);
       const passwordHash = await bcrypt.hash(password, salt);
 
-      let dbRole: any = 'USER';
-      if (role === 'merchant') dbRole = 'MERCHANT';
-      else if (role === 'driver') dbRole = 'AGENT';
-      else if (role === 'admin') dbRole = 'ADMIN';
+      /**
+       * [SEC-008] Role whitelist on registration.
+       * Previously `role: 'admin'` from the request body was accepted and granted
+       * ADMIN privilege — a direct privilege escalation with zero authentication.
+       *
+       * Policy: public registration only grants USER, MERCHANT, or AGENT.
+       * Elevated roles (ADMIN, SUPER_ADMIN, MODERATOR) MUST be assigned manually
+       * by an existing SUPER_ADMIN via the admin panel.
+       */
+      const ALLOWED_REGISTRATION_ROLES: Record<string, string> = {
+        merchant: 'MERCHANT',
+        driver:   'AGENT',
+        user:     'USER',
+      };
+      const dbRole = ALLOWED_REGISTRATION_ROLES[String(role || '').toLowerCase()] || 'USER';
 
       const user = await prisma.user.create({
         data: {
@@ -74,7 +91,7 @@ export function AuthController() {
           name,
           phone,
           password: passwordHash,
-          role: dbRole,
+          role: dbRole as any,
         }
       });
 
@@ -86,14 +103,19 @@ export function AuthController() {
         accessToken: tokens.accessToken,
         refreshToken: tokens.refreshToken,
         user: {
-          id: user.id,
+          id:    user.id,
           email: user.email,
-          name: user.name,
-          role: user.role.toLowerCase(),
+          name:  user.name,
+          role:  user.role.toLowerCase(),
         }
       });
     } catch (e: any) {
-      res.status(500).json({ error: 'Registration Error', message: e.message });
+      // [SEC] Never expose internal error messages to clients in production
+      const isProd = process.env.NODE_ENV === 'production';
+      res.status(500).json({
+        error:   'Registration Error',
+        message: isProd ? 'حدث خطأ أثناء إنشاء الحساب. يرجى المحاولة لاحقاً.' : e.message,
+      });
     }
   });
 
@@ -326,20 +348,34 @@ export function AuthController() {
       return res.status(400).json({ error: 'Missing Refresh Token' });
     }
     try {
-      const decoded = jwt.verify(refreshToken, JWT_REFRESH_SECRET) as any;
+      /**
+       * [SEC-003b] JWT_REFRESH_SECRET is now resolved by authService.
+       * Previously referenced an undefined local variable JWT_REFRESH_SECRET.
+       * Logout delegates token revocation to authService.revokeSession().
+       */
+      const jwtRefreshSecret = process.env.JWT_REFRESH_SECRET?.replace(/^['"]/g, '').replace(/['"]/g, '');
+      if (!jwtRefreshSecret) throw new Error('REFRESH_SECRET_NOT_SET');
+
+      const decoded = jwt.verify(refreshToken, jwtRefreshSecret) as any;
       const sid = decoded.sid;
-      const tokenHash = crypto.createHmac('sha256', process.env.PEPPER_SECRET || process.env.PEPPER || 'aswaq-pepper-secret-2026').update(refreshToken).digest('hex');
+
+      const pepperSecret = process.env.PEPPER_SECRET?.replace(/^['"]/g, '').replace(/['"]/g, '') || 'dev-pepper-do-not-use-in-production';
+      const tokenHash = crypto.createHmac('sha256', pepperSecret).update(refreshToken).digest('hex');
       await prisma.refreshToken.updateMany({
         where: { OR: [{ tokenHash }, { sessionId: sid || undefined }] },
-        data: { revokedAt: new Date() }
+        data:  { revokedAt: new Date() }
       });
       return res.json({ success: true, message: 'تم تسجيل الخروج بنجاح.' });
     } catch (e: any) {
-      const tokenHash = crypto.createHmac('sha256', process.env.PEPPER_SECRET || process.env.PEPPER || 'aswaq-pepper-secret-2026').update(refreshToken).digest('hex');
-      await prisma.refreshToken.updateMany({
-        where: { tokenHash },
-        data: { revokedAt: new Date() }
-      });
+      // Even on token verification failure, try to revoke by hash
+      try {
+        const pepperSecret = process.env.PEPPER_SECRET?.replace(/^['"]/g, '').replace(/['"]/g, '') || 'dev-pepper-do-not-use-in-production';
+        const tokenHash = crypto.createHmac('sha256', pepperSecret).update(refreshToken).digest('hex');
+        await prisma.refreshToken.updateMany({
+          where: { tokenHash },
+          data:  { revokedAt: new Date() }
+        });
+      } catch (_) {}
       return res.json({ success: true, message: 'تم تسجيل الخروج.' });
     }
   });

@@ -6,4 +6,50 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Uploads (user content — stored in S3/R2 in production)
 uploads/
+
+# ── Security: never commit local secrets or credentials ─────────────────────
+# These were previously committed; explicitly blocked now.
+*.pem
+*.key
+*.p12
+*.pfx
+service-account.json
+firebase-applet-config.json
+google-services.json
+GoogleService-Info.plist
+
+# ── Development databases ──────────────────────────────────────────────────
+# SQLite dev databases may contain real user data from tests
+prisma/*.db
+prisma/*.db-journal
+
+# ── JVM / Java crash dumps ─────────────────────────────────────────────────
+hs_err_pid*.log
+replay_pid*.log
+
+# ── Debug / scratch files ──────────────────────────────────────────────────
+debug-*.ts
+debug-*.js
+scratch/
+*.scratch.*
+
+# ── Build artifacts ────────────────────────────────────────────────────────
+dist/
+.next/
+.vite/
+stats.html
+
+# ── IDE / OS ───────────────────────────────────────────────────────────────
+.idea/
+.vscode/settings.json
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# ── Test artifacts ─────────────────────────────────────────────────────────
+playwright-report/
+test-results/

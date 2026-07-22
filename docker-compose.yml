@@ -33,18 +33,23 @@ services:
     ports:
       - "${PORT:-3000}:3000"
     environment:
-      NODE_ENV:       production
-      CORS_ORIGIN:    "http://localhost:3002,http://localhost:3000,http://localhost:5173"
-      DATABASE_URL:   postgresql://${POSTGRES_USER:-aswaq}:${POSTGRES_PASSWORD:-aswaq_secret}@postgres:5432/${POSTGRES_DB:-aswaqdb}
-      REDIS_URL:      redis://redis:6379
-      REDIS_HOST:     redis
-      REDIS_PORT:     6379
-      MEILI_HOST:     http://meilisearch:7700
-      MEILI_API_KEY:  ${MEILI_MASTER_KEY:-meili_secret_key}
-      JWT_SECRET:     ${JWT_SECRET:-change_in_production}
-      PEPPER_SECRET:  ${PEPPER_SECRET:-change_in_production}
-      PORT:           3000
-      LOG_LEVEL:      ${LOG_LEVEL:-info}
+      NODE_ENV:              production
+      # [CORS-001] Use actual production domains, not localhost
+      CORS_ORIGIN:           "https://www.aswaq22.com,https://aswaq22.com"
+      DATABASE_URL:          postgresql://${POSTGRES_USER:-aswaq}:${POSTGRES_PASSWORD:-aswaq_secret}@postgres:5432/${POSTGRES_DB:-aswaqdb}
+      REDIS_URL:             redis://redis:6379
+      REDIS_HOST:            redis
+      REDIS_PORT:            6379
+      MEILI_HOST:            http://meilisearch:7700
+      MEILI_API_KEY:         ${MEILI_MASTER_KEY:-meili_secret_key}
+      JWT_SECRET:            ${JWT_SECRET:?JWT_SECRET is required}
+      JWT_REFRESH_SECRET:    ${JWT_REFRESH_SECRET:?JWT_REFRESH_SECRET is required}
+      PEPPER_SECRET:         ${PEPPER_SECRET:?PEPPER_SECRET is required}
+      PORT:                  3000
+      LOG_LEVEL:             ${LOG_LEVEL:-info}
+      # [METRICS-001] Allow Prometheus container (in same Docker network) to scrape /metrics
+      METRICS_ALLOWED_IPS:   "prometheus"
+      FRONTEND_URL:          "https://www.aswaq22.com"
     volumes:
       - uploads_data:/app/uploads
     depends_on:

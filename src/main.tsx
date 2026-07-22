@@ -21,6 +21,10 @@ interface ErrorBoundaryState {
 }
 
 class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  // Explicit type declarations to satisfy TypeScript strict mode
+  declare state: ErrorBoundaryState;
+  declare props: ErrorBoundaryProps & { children: React.ReactNode };
+
   constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = { hasError: false };

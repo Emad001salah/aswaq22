@@ -134,37 +134,100 @@ export class App {
       next();
     });
 
-    // Prometheus Metrics endpoint
+    /**
+     * [METRICS-001] Prometheus Metrics endpoint — protected by token or IP whitelist.
+     * Previously unauthenticated: exposed CPU usage, DB connection counts, error rates
+     * and memory metrics to anyone who could reach the server.
+     *
+     * Access control (in priority order):
+     *  1. In test mode — always disabled.
+     *  2. METRICS_TOKEN env var set — require `Authorization: Bearer <METRICS_TOKEN>` header.
+     *  3. METRICS_ALLOWED_IPS env var set — restrict to comma-separated IP list.
+     *  4. Neither set AND production — block all external access (default-deny).
+     *  5. Neither set AND dev — allow (for local Prometheus scraping).
+     */
     this.app.get('/metrics', (req, res) => {
       if (process.env.NODE_ENV === 'test') {
         res.status(404).send('Metrics disabled in test environment');
         return;
       }
-      prometheusExporter.getMetricsRequestHandler(req, res);
+
+      const metricsToken   = process.env.METRICS_TOKEN;
+      const allowedIps     = (process.env.METRICS_ALLOWED_IPS || '').split(',').map(ip => ip.trim()).filter(Boolean);
+      const requestIp      = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || '';
+      const isLocalhost    = requestIp === '127.0.0.1' || requestIp === '::1' || requestIp === 'localhost';
+
+      // Token-based auth (preferred for Prometheus remote scraping)
+      if (metricsToken) {
+        const provided = req.headers.authorization?.replace('Bearer ', '');
+        if (provided !== metricsToken) {
+          res.status(401).json({ error: 'Unauthorized', message: 'Invalid metrics token.' });
+          return;
+        }
+        prometheusExporter.getMetricsRequestHandler(req, res);
+        return;
+      }
+
+      // IP allowlist (for Prometheus in same Docker network)
+      if (allowedIps.length > 0) {
+        if (!allowedIps.includes(requestIp) && !isLocalhost) {
+          res.status(403).json({ error: 'Forbidden', message: 'IP not allowed.' });
+          return;
+        }
+        prometheusExporter.getMetricsRequestHandler(req, res);
+        return;
+      }
+
+      // No protection configured
+      if (process.env.NODE_ENV === 'production') {
+        // Default-deny in production if no protection is set
+        res.status(403).json({ error: 'Forbidden', message: 'Set METRICS_TOKEN or METRICS_ALLOWED_IPS to enable.' });
+        return;
+      }
+
+      // Development: allow localhost only
+      if (isLocalhost) {
+        prometheusExporter.getMetricsRequestHandler(req, res);
+      } else {
+        res.status(403).json({ error: 'Forbidden', message: 'Metrics only accessible from localhost in dev.' });
+      }
     });
 
     // Response compression
     this.app.use(compression());
 
-    // CORS middleware
+    /**
+     * [CORS-001] CORS Middleware — fixed wildcard in non-production environments.
+     * Previously: `process.env.NODE_ENV !== 'production'` allowed ALL origins in dev/staging.
+     * A staging server accessible publicly would have an open CORS door.
+     *
+     * New policy: CORS_ORIGIN whitelist is ALWAYS enforced, in every environment.
+     * In dev without CORS_ORIGIN set, only localhost variants are permitted.
+     */
     this.app.use((req, res, next) => {
       const origin = req.headers.origin;
-      const allowedOrigins = (process.env.CORS_ORIGIN || '')
+
+      // Build allowlist from environment
+      const configuredOrigins = (process.env.CORS_ORIGIN || '')
         .split(',')
         .map(o => o.trim())
         .filter(Boolean);
-      
+
+      // Dev fallback: allow localhost on any port if CORS_ORIGIN is not set
+      const devLocalhostRegex = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
+      const isDevLocalhost = process.env.NODE_ENV !== 'production' && origin && devLocalhostRegex.test(origin);
+
       if (origin) {
-        if (allowedOrigins.includes(origin) || allowedOrigins.includes('*') || process.env.NODE_ENV !== 'production') {
+        if (configuredOrigins.includes(origin) || isDevLocalhost) {
           res.setHeader('Access-Control-Allow-Origin', origin);
         }
-      } else if (allowedOrigins.includes('*')) {
-        res.setHeader('Access-Control-Allow-Origin', '*');
+        // [CORS-001] Removed: `|| allowedOrigins.includes('*') || process.env.NODE_ENV !== 'production'`
+        // This previously allowed ALL origins in any non-production environment.
       }
       res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
       res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-Correlation-ID, X-User-Email, x-user-email, x-csrf-token, X-CSRF-Token');
       res.setHeader('Access-Control-Allow-Credentials', 'true');
-      
+
       if (req.method === 'OPTIONS') {
         res.sendStatus(200);
         return;
@@ -183,25 +246,34 @@ export class App {
       next();
     });
 
-    // 2. Security headers (CSP + HSTS enabled)
+    // 2. Security headers (CSP + HSTS)
     this.app.use(helmet({
       contentSecurityPolicy: {
         directives: {
-          defaultSrc: ["'self'"],
-          scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://www.gstatic.com", "https://apis.google.com", "https://*.googleapis.com", "https://maps.googleapis.com", "https://maps.gstatic.com", "https://*.google.com", "https://unpkg.com"],
-          styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://maps.googleapis.com", "https://unpkg.com"],
-          imgSrc: ["'self'", "data:", "blob:", "https://api.dicebear.com", "https://www.gstatic.com", "https://cdn.aswaq.com", "https://*.s3.amazonaws.com", "https://images.unsplash.com", "https://picsum.photos", "https://*.unsplash.com", "https://*.picsum.photos", "https://*.google.com", "https://*.googleapis.com", "https://maps.gstatic.com", "https://maps.googleapis.com", "https://*.tile.openstreetmap.org", "https://unpkg.com"],
-          connectSrc: ["'self'", "http://localhost:*", "ws://localhost:*", "https://unpkg.com", "https://aswaq22.com", "wss://aswaq22.com", "ws:", "wss:", "https://www.googleapis.com", "https://*.googleapis.com", "https://maps.googleapis.com", "https://*.google.com", "https://*.firebaseapp.com", "https://identitytoolkit.googleapis.com", "https://securetoken.googleapis.com", "https://firebase.googleapis.com", "https://fcmregistrations.googleapis.com", "https://*.firebaseio.com", "wss://*.firebaseio.com", "https://firestore.googleapis.com", "https://storage.googleapis.com", "https://nominatim.openstreetmap.org"],
-          frameSrc: ["'self'", "https://aswaq-48f3f.firebaseapp.com", "https://*.firebaseapp.com", "https://accounts.google.com", "https://*.google.com"],
-          fontSrc: ["'self'", "https://fonts.gstatic.com", "https://maps.gstatic.com", "https://unpkg.com"],
-          objectSrc: ["'none'"],
+          defaultSrc:  ["'self'"],
+          /**
+           * [CSP-001] Removed 'unsafe-eval' from scriptSrc.
+           * 'unsafe-eval' enables arbitrary JS via eval(), Function(), setTimeout(string).
+           * It negates XSS protection entirely if any user input reaches these APIs.
+           * Google Maps and Firebase do not require unsafe-eval in modern versions.
+           *
+           * 'unsafe-inline' remains temporarily for legacy inline scripts.
+           * TODO: Replace with nonce-based CSP once inline scripts are migrated.
+           */
+          scriptSrc:   ["'self'", "'unsafe-inline'", "https://www.gstatic.com", "https://apis.google.com", "https://*.googleapis.com", "https://maps.googleapis.com", "https://maps.gstatic.com", "https://*.google.com", "https://unpkg.com"],
+          styleSrc:    ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://maps.googleapis.com", "https://unpkg.com"],
+          imgSrc:      ["'self'", "data:", "blob:", "https://api.dicebear.com", "https://www.gstatic.com", "https://cdn.aswaq.com", "https://*.s3.amazonaws.com", "https://images.unsplash.com", "https://picsum.photos", "https://*.unsplash.com", "https://*.picsum.photos", "https://*.google.com", "https://*.googleapis.com", "https://maps.gstatic.com", "https://maps.googleapis.com", "https://*.tile.openstreetmap.org", "https://unpkg.com"],
+          connectSrc:  ["'self'", "http://localhost:*", "ws://localhost:*", "https://unpkg.com", "https://aswaq22.com", "wss://aswaq22.com", "ws:", "wss:", "https://www.googleapis.com", "https://*.googleapis.com", "https://maps.googleapis.com", "https://*.google.com", "https://*.firebaseapp.com", "https://identitytoolkit.googleapis.com", "https://securetoken.googleapis.com", "https://firebase.googleapis.com", "https://fcmregistrations.googleapis.com", "https://*.firebaseio.com", "wss://*.firebaseio.com", "https://firestore.googleapis.com", "https://storage.googleapis.com", "https://nominatim.openstreetmap.org"],
+          frameSrc:    ["'self'", "https://aswaq-48f3f.firebaseapp.com", "https://*.firebaseapp.com", "https://accounts.google.com", "https://*.google.com"],
+          fontSrc:     ["'self'", "https://fonts.gstatic.com", "https://maps.gstatic.com", "https://unpkg.com"],
+          objectSrc:   ["'none'"],
           upgradeInsecureRequests: [],
         },
       },
       hsts: {
-        maxAge: 31536000, // 1 year
+        maxAge:            31536000, // 1 year
         includeSubDomains: true,
-        preload: true,
+        preload:           true,
       },
     }));
 
@@ -246,9 +318,13 @@ export class App {
     this.app.use('/api/v1/auth/register', authLimiter);
     this.app.use('/api/v1/auth/refresh',  authLimiter);
 
-    // 4. Body parsers
-    this.app.use(express.json({ limit: '50mb' }));
-    this.app.use(express.urlencoded({ limit: '50mb', extended: true }));
+    /**
+     * [BODY-001] Body parser limits reduced from 50MB to 2MB.
+     * 50MB JSON limit allows DoS via large payload — exhausts memory under concurrent requests.
+     * Files MUST be sent as multipart/form-data (handled by multer), not base64 in JSON.
+     */
+    this.app.use(express.json({ limit: '2mb' }));
+    this.app.use(express.urlencoded({ limit: '2mb', extended: true }));
 
     // 5. Cookie parser (required for CSRF double-submit)
     this.app.use(cookieParser());
@@ -333,9 +409,55 @@ export class App {
     this.app.use('/api/storage', StorageController());
     this.app.use('/api/ai',      AiController({ ads: [] }));
 
+    /**
+     * [SSRF-001] URL Sanitizer for user-supplied media URLs.
+     *
+     * Prevents Server-Side Request Forgery by blocking:
+     *  - Private/loopback IP addresses (10.x, 172.16-31.x, 192.168.x, 127.x, ::1)
+     *  - Internal Docker hostnames (postgres, redis, meilisearch, etc.)
+     *  - Non-http/https URL schemes (file://, ftp://, gopher://)
+     *  - Extremely long URLs that could cause ReDoS
+     *
+     * Special marker values used for live streams ('webcam', 'camera') are allowed.
+     */
+    const ALLOWED_LIVE_MARKERS = new Set(['webcam', 'camera', 'screen']);
+    const PRIVATE_IP_REGEX = /^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|127\.|0\.|::1|localhost)/i;
+    const INTERNAL_HOSTNAME_REGEX = /^https?:\/\/(postgres|redis|meilisearch|adminer|grafana|prometheus|app|localhost|127\.0\.0\.1)(:|\/)*/i;
 
+    function validateMediaUrl(url: string): { valid: boolean; reason?: string } {
+      const trimmed = url.trim();
 
-    // GET /api/promo - Fetch all promo reels
+      // Allow live-stream marker values (not real URLs)
+      if (ALLOWED_LIVE_MARKERS.has(trimmed.toLowerCase())) return { valid: true };
+
+      // Length guard
+      if (trimmed.length > 2048) return { valid: false, reason: 'URL طويل جداً' };
+
+      let parsed: URL;
+      try {
+        parsed = new URL(trimmed);
+      } catch {
+        return { valid: false, reason: 'رابط URL غير صالح' };
+      }
+
+      // Only allow http and https
+      if (!['http:', 'https:'].includes(parsed.protocol)) {
+        return { valid: false, reason: `بروتوكول غير مسموح: ${parsed.protocol}` };
+      }
+
+      // Block private/internal IP ranges
+      if (PRIVATE_IP_REGEX.test(parsed.hostname)) {
+        return { valid: false, reason: 'عناوين IP الداخلية غير مسموح بها' };
+      }
+
+      // Block known internal Docker service names
+      if (INTERNAL_HOSTNAME_REGEX.test(trimmed)) {
+        return { valid: false, reason: 'مضيف داخلي غير مسموح' };
+      }
+
+      return { valid: true };
+    }
+
     this.app.get('/api/promo', async (req, res, next) => {
       try {
         const reels = await prisma.reel.findMany({
@@ -379,11 +501,17 @@ export class App {
           return res.status(400).json({ error: 'العنوان طويل جداً (الحد 200 حرف)' });
         }
 
+        // [SSRF-001] Validate videoUrl to prevent SSRF attacks
+        const urlCheck = validateMediaUrl(videoUrl);
+        if (!urlCheck.valid) {
+          return res.status(400).json({ error: `رابط الفيديو غير صالح: ${urlCheck.reason}` });
+        }
+
         const newReel = await prisma.reel.create({
           data: {
-            title: title.trim(),
+            title:    title.trim(),
             videoUrl: videoUrl.trim(),
-            userId: authenticatedUserId,
+            userId:   authenticatedUserId,
           },
           include: {
             user: { select: { name: true, avatar: true } }
@@ -392,12 +520,12 @@ export class App {
 
         return res.status(201).json({
           ...newReel,
-          isLive: !!isLive,
+          isLive:     !!isLive,
           description: description || '',
-          city: city || 'كافة المناطق',
-          category: category || 'عام',
-          userName: newReel.user?.name || userName || 'مستخدم',
-          userAvatar: newReel.user?.avatar || userAvatar || '',
+          city:        city || 'كافة المناطق',
+          category:    category || 'عام',
+          userName:    newReel.user?.name || userName || 'مستخدم',
+          userAvatar:  newReel.user?.avatar || userAvatar || '',
         });
       } catch (err) {
         next(err);

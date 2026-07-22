@@ -94,7 +94,8 @@ export interface Ad {
     phone?: string | null;
     isVerified?: string | null;
   };
-  jobType?: 'seeking' | 'hiring';
+  jobType?: 'seeking' | 'hiring' | 'craftsman';
+
   latitude?: number;
   longitude?: number;
   destinationLat?: number;
