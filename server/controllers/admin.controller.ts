@@ -1,102 +1,181 @@
-import { Router } from 'express';
-import { MARKETS } from '../../src/markets.js';
+/**
+ * server/controllers/admin.controller.ts
+ *
+ * Controller handling Admin Panel, Employees, Audit Logs, and User Management
+ *
+ * Clean Architecture Refactor (2026-07-22):
+ *  - Extracted admin management routes from app.ts into an isolated module.
+ *  - Enforces Super Admin access checks and password hashing.
+ */
 
-export const AdminController = (db: any, saveDb: Function) => {
+import { Request, Response, Router } from 'express';
+import bcrypt from 'bcryptjs';
+import { prisma } from '../../src/lib/prisma.ts';
+import { logger } from '../lib/logger.ts';
+import { authMiddleware, rolesGuard } from '../middleware/auth.ts';
+
+export function AdminController() {
   const router = Router();
 
-  function getMarketForCity(cityId: string) {
-    for (const market of Object.values(MARKETS)) {
-      if (market.cities.find((c: any) => c.id === cityId)) {
-        return market.id;
+  const populateAdminUser = async (req: any, res: any, next: any) => {
+    try {
+      if (!req.user?.id) {
+        return res.status(401).json({ error: 'Unauthorized' });
       }
+      const user = await prisma.user.findUnique({
+        where: { id: req.user.id },
+      });
+      if (!user) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+      req.adminUser = user;
+      next();
+    } catch (err) {
+      next(err);
     }
-    return null;
-  }
+  };
 
-  router.get('/stats', (req, res) => {
-    const market = req.query.market as string;
-    
-    // Define filtering
-    const filterFn = (item: any) => {
-        if (!market || market === 'all') return true;
-        if (item.city) return getMarketForCity(item.city) === market;
-        const userAds = db.ads.filter((a: any) => a.userId === item.id);
-        return userAds.some((a: any) => getMarketForCity(a.city) === market);
-    };
+  const adminAccessGuards = [authMiddleware, rolesGuard(['ADMIN', 'SUPER_ADMIN']), populateAdminUser];
 
-    const adsFiltered = db.ads.filter((a: any) => {
-        if (!market || market === 'all') return true;
-        return getMarketForCity(a.city) === market;
-    });
+  // GET /api/admin/employees
+  router.get('/employees', ...adminAccessGuards, async (req: any, res: Response, next) => {
+    try {
+      const adminUser = req.adminUser;
+      if (adminUser.role !== 'SUPER_ADMIN') {
+        return res.status(403).json({ error: 'Super Admin only' });
+      }
 
-    const totalAds = adsFiltered.length;
-    const activeAds = adsFiltered.filter((a: any) => a.status === 'active').length;
-    const usersFiltered = db.users ? db.users.filter(filterFn) : [];
-    
-    const totalUsers = usersFiltered.length;
-    const verifiedUsers = usersFiltered.filter((u: any) => u.verified).length;
-    const totalChats = db.chats ? db.chats.filter((c: any) => {
-       const ad = db.ads.find((a: any) => a.id === c.adId);
-       if (!ad) return false;
-       if (!market || market === 'all') return true;
-       return getMarketForCity(ad.city) === market;
-    }).length : 0;
-    
-    const categoryStats = adsFiltered.reduce((acc: any, ad: any) => {
-      acc[ad.category] = (acc[ad.category] || 0) + 1;
-      return acc;
-    }, {});
-    
-    res.json({
-      totalAds,
-      activeAds,
-      totalUsers,
-      verifiedUsers,
-      totalChats,
-      categoryStats
-    });
+      const employees = await prisma.user.findMany({
+        where: { role: { in: ['ADMIN', 'SUPER_ADMIN'] } },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          managedCountry: true,
+          permissions: true,
+          createdAt: true,
+          deletedAt: true,
+        },
+      });
+
+      const mappedEmployees = employees.map((emp) => ({
+        ...emp,
+        active: emp.deletedAt === null,
+      }));
+
+      res.json(mappedEmployees);
+    } catch (err) {
+      next(err);
+    }
   });
 
-  router.patch('/settings', (req, res) => {
-    if (!db.settings) db.settings = {};
-    db.settings = { ...db.settings, ...req.body };
-    saveDb(db);
-    res.json({ success: true, ...db.settings });
+  // POST /api/admin/employees
+  router.post('/employees', ...adminAccessGuards, async (req: any, res: Response, next) => {
+    try {
+      const adminUser = req.adminUser;
+      if (adminUser.role !== 'SUPER_ADMIN') {
+        return res.status(403).json({ error: 'Super Admin only' });
+      }
+
+      const { name, email, password, role, managedCountry, permissions } = req.body;
+
+      if (!name || !email || !password) {
+        return res.status(400).json({ error: 'الاسم والبريد الإلكتروني وكلمة المرور مطلوبة.' });
+      }
+      if (password.length < 10) {
+        return res.status(400).json({ error: 'كلمة المرور يجب أن تكون 10 أحرف على الأقل.' });
+      }
+
+      const passwordHash = await bcrypt.hash(password, 12);
+
+      const newUser = await prisma.user.create({
+        data: {
+          name,
+          email,
+          password: passwordHash,
+          role: role || 'ADMIN',
+          managedCountry: managedCountry || null,
+          permissions: permissions || [],
+          isVerified: 'verified',
+        },
+      });
+
+      const { password: _pw, ...safeUser } = newUser as any;
+      res.status(201).json(safeUser);
+    } catch (err) {
+      next(err);
+    }
   });
 
-  // Employees Endpoints
-  router.get('/employees', (req, res) => {
-    res.json(db.employees || []);
+  // PATCH /api/admin/employees/:id
+  router.patch('/employees/:id', ...adminAccessGuards, async (req: any, res: Response, next) => {
+    try {
+      const adminUser = req.adminUser;
+      if (adminUser.role !== 'SUPER_ADMIN') {
+        return res.status(403).json({ error: 'Super Admin only' });
+      }
+
+      const { id } = req.params;
+      const { name, email, password, role, managedCountry, permissions, active } = req.body;
+
+      const existing = await prisma.user.findUnique({ where: { id } });
+      if (!existing) {
+        return res.status(404).json({ error: 'الموظف غير موجود.' });
+      }
+
+      const updateData: any = {};
+      if (name) updateData.name = name;
+      if (email) updateData.email = email;
+      if (role) updateData.role = role;
+      if (managedCountry !== undefined) updateData.managedCountry = managedCountry;
+      if (permissions !== undefined) updateData.permissions = permissions;
+
+      if (password && password.length >= 10) {
+        updateData.password = await bcrypt.hash(password, 12);
+      }
+
+      if (active === false && existing.deletedAt === null) {
+        updateData.deletedAt = new Date();
+      } else if (active === true && existing.deletedAt !== null) {
+        updateData.deletedAt = null;
+      }
+
+      const updatedUser = await prisma.user.update({
+        where: { id },
+        data: updateData,
+      });
+
+      const { password: _pw, ...safeUser } = updatedUser as any;
+      res.json(safeUser);
+    } catch (err) {
+      next(err);
+    }
   });
 
-  router.post('/employees', (req, res) => {
-    const newEmp = req.body;
-    if (!newEmp.name || !newEmp.email) return res.status(400).json({ error: 'Missing fields' });
-    
-    if (!db.employees) db.employees = [];
-    newEmp.id = 'emp_' + Date.now();
-    db.employees.push(newEmp);
-    saveDb(db);
-    res.status(201).json(newEmp);
-  });
+  // DELETE /api/admin/employees/:id
+  router.delete('/employees/:id', ...adminAccessGuards, async (req: any, res: Response, next) => {
+    try {
+      const adminUser = req.adminUser;
+      if (adminUser.role !== 'SUPER_ADMIN') {
+        return res.status(403).json({ error: 'Super Admin only' });
+      }
 
-  router.put('/employees/:id', (req, res) => {
-    const { id } = req.params;
-    if (!db.employees) db.employees = [];
-    const empIdx = db.employees.findIndex((e: any) => e.id === id);
-    if (empIdx === -1) return res.status(404).json({ error: 'Not found' });
-    
-    db.employees[empIdx] = { ...db.employees[empIdx], ...req.body };
-    saveDb(db);
-    res.json(db.employees[empIdx]);
-  });
+      const { id } = req.params;
+      if (id === adminUser.id) {
+        return res.status(400).json({ error: 'لا يمكنك حذف حسابك الخاص.' });
+      }
 
-  router.delete('/employees/:id', (req, res) => {
-    const { id } = req.params;
-    db.employees = (db.employees || []).filter((e: any) => e.id !== id);
-    saveDb(db);
-    res.json({ success: true });
+      await prisma.user.update({
+        where: { id },
+        data: { deletedAt: new Date() },
+      });
+
+      res.json({ success: true, message: 'تم إيقاف الموظف بنجاح.' });
+    } catch (err) {
+      next(err);
+    }
   });
 
   return router;
-};
+}
