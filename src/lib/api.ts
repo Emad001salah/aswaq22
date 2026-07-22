@@ -87,6 +87,14 @@ export async function refreshAccessToken(): Promise<string | null> {
  * 3. Bearer-token requests bypass CSRF (server exempts them by design).
  */
 export async function apiFetch(url: string, options: RequestInit = {}): Promise<Response> {
+  // Bypass internal interceptor for external third-party requests (e.g. Firebase, Google APIs, Maps)
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    const isInternal = url.startsWith(API_ORIGIN) || url.startsWith(API_BASE_URL) || url.includes('aswaq22.com');
+    if (!isInternal) {
+      return rawFetch(url, options);
+    }
+  }
+
   const method = (options.method || 'GET').toUpperCase();
 
   // Resolve relative URLs
