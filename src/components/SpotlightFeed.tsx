@@ -753,52 +753,71 @@ function WebcamStreamPlayer({
                 // End broadcast immediately
                 socket.emit('leave-stream', { streamId: ad.id, role: 'broadcaster' });
                 
-            const isWebcam = ad.videoUrl === 'webcam' || ad.videoUrl === 'camera';
-            // Simulate saving the recording by pointing to a persistent video URL (archived version)
-            const archiveVideoUrl = isWebcam 
-              ? "https://player.vimeo.com/external/434045526.sd.mp4?s=c19c968f44ff531ae7e77b105021e141aabccb8c&profile_id=165&oauth2_token_id=57447761"
-              : ad.videoUrl;
-
-            // Keep the existing description, city, category, audioUrl
-            const parsedUrl = `${archiveVideoUrl}||none||${ad.description || ''}||${ad.city || ''}||${ad.category || ''}`;
-
-            // Update status in backend
-            fetch(`/api/promo/${ad.id}`, {
-              method: 'PATCH',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ 
-                title: ad.title || '',
-                videoUrl: parsedUrl
-              })
-            })
-            .then(async (res) => {
-              if (!res.ok) {
-                const err = await res.json().catch(() => ({}));
-                console.error("Failed to update status on server:", err);
-              }
-              
-              if (localStreamRef.current) {
-                localStreamRef.current.getTracks().forEach(track => track.stop());
-              }
-
-              setStatusText(isRtl ? '🛑 جاري إنهاء البث وحفظ النسخة...' : '🛑 Ending broadcast and saving...');
-              setIsOffline(true);
-              
-              setTimeout(() => {
-                if (onStreamEnded) {
-                  onStreamEnded(ad.id, archiveVideoUrl);
+                // Capture real snapshot frame from camera feed
+                let snapshotUrl: string | null = null;
+                try {
+                  if (videoRef.current && videoRef.current.videoWidth > 0 && videoRef.current.videoHeight > 0) {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = videoRef.current.videoWidth;
+                    canvas.height = videoRef.current.videoHeight;
+                    const ctx = canvas.getContext('2d');
+                    if (ctx) {
+                      ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+                      snapshotUrl = canvas.toDataURL('image/jpeg', 0.85);
+                    }
+                  }
+                } catch (e) {
+                  console.error("Failed to capture webcam snapshot:", e);
                 }
-              }, 1000);
-            })
-            .catch(err => {
-              console.error('Failed to update promo status', err);
-              if (localStreamRef.current) {
-                localStreamRef.current.getTracks().forEach(track => track.stop());
-              }
-              if (onStreamEnded) {
-                onStreamEnded(ad.id, archiveVideoUrl);
-              }
-            });
+
+                const parsedVid = parseVideoUrl(ad.videoUrl).videoUrl;
+                const isWebcam = parsedVid === 'webcam' || parsedVid === 'camera';
+                
+                const archiveVideoUrl = isWebcam 
+                  ? "https://player.vimeo.com/external/434045526.sd.mp4?s=c19c968f44ff531ae7e77b105021e141aabccb8c&profile_id=165&oauth2_token_id=57447761"
+                  : ad.videoUrl;
+
+                const parsedUrl = `${archiveVideoUrl}||none||${ad.description || ''}||${ad.city || ''}||${ad.category || ''}`;
+
+                // Update status in backend using authenticated apiFetch with real snapshot
+                apiFetch(`/api/promo/${ad.id}`, {
+                  method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ 
+                    title: ad.title || '',
+                    videoUrl: parsedUrl,
+                    thumbnailUrl: snapshotUrl || getImageUrl(ad.images?.[0]),
+                    isLive: false
+                  })
+                })
+                .then(async (res) => {
+                  if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    console.error("Failed to update status on server:", err);
+                  }
+                  
+                  if (localStreamRef.current) {
+                    localStreamRef.current.getTracks().forEach(track => track.stop());
+                  }
+
+                  setStatusText(isRtl ? '🛑 جاري إنهاء البث وحفظ النسخة...' : '🛑 Ending broadcast and saving...');
+                  setIsOffline(true);
+                  
+                  setTimeout(() => {
+                    if (onStreamEnded) {
+                      onStreamEnded(ad.id, archiveVideoUrl, snapshotUrl || undefined);
+                    }
+                  }, 1000);
+                })
+                .catch(err => {
+                  console.error('Failed to update promo status', err);
+                  if (localStreamRef.current) {
+                    localStreamRef.current.getTracks().forEach(track => track.stop());
+                  }
+                  if (onStreamEnded) {
+                    onStreamEnded(ad.id, archiveVideoUrl, snapshotUrl || undefined);
+                  }
+                });
               }}
               className="w-14 h-14 rounded-full flex items-center justify-center transition-all duration-300 group overflow-hidden relative border-4 z-[9999] active:scale-95 shadow-2xl bg-rose-600 text-white border-white scale-110 shadow-[0_0_50px_rgba(225,29,72,0.6)]"
             >
@@ -2093,19 +2112,27 @@ export default function SpotlightFeed({
                               currentUser={currentUser} 
                               pinnedProduct={pinnedProduct} 
                               onPinProductClick={() => setShowPinProductModal(true)} 
-                              onStreamEnded={(adId, archiveUrl) => {
+                              onStreamEnded={(adId, archiveUrl, archiveThumb) => {
                                 const overrideUrl = `${archiveUrl}||none||${ad.description || ''}||${ad.city || ''}||${ad.category || ''}`;
                                 setLocalAdOverrides(prev => ({
                                   ...prev,
                                   [adId]: {
                                     isLive: false,
-                                    videoUrl: overrideUrl
+                                    videoUrl: overrideUrl,
+                                    images: archiveThumb ? [archiveThumb] : ad.images
                                   }
                                 }));
+                                if (archiveThumb) {
+                                  setCustomBgs(prev => ({ ...prev, [adId]: archiveThumb }));
+                                }
                                 apiFetch(`/api/promo/${adId}`, {
                                   method: 'PATCH',
                                   headers: { 'Content-Type': 'application/json' },
-                                  body: JSON.stringify({ isLive: false, videoUrl: overrideUrl })
+                                  body: JSON.stringify({ 
+                                    isLive: false, 
+                                    videoUrl: overrideUrl,
+                                    thumbnailUrl: archiveThumb || getImageUrl(ad.images?.[0])
+                                  })
                                 }).catch(() => {});
                                 showToast(isRtl ? "تم إنهاء البث بنجاح وتحويله إلى فيديو مسجل! 🎥" : "Live stream completed and converted to playback! 🎥");
                               }}
