@@ -193,11 +193,34 @@ export const ShippingController = (io?: Server): Router => {
         }
       });
 
+      // Lookup buyer profile for destination coordinates
+      const buyerUser = await prisma.user.findUnique({
+        where: { id: buyerId },
+        select: { city: true, countryId: true }
+      });
+      const buyerCityKey = (buyerUser?.city || ad.city || 'sanaa').toLowerCase().trim();
+      const CITY_COORDS: Record<string, [number, number]> = {
+        'sanaa': [15.3694, 44.1910], 'صنعاء': [15.3694, 44.1910],
+        'aden': [12.7794, 45.0367], 'عدن': [12.7794, 45.0367],
+        'taiz': [13.5789, 44.0177], 'تعز': [13.5789, 44.0177],
+        'hodeidah': [14.7978, 42.9545], 'الحديدة': [14.7978, 42.9545],
+        'mukalla': [14.5425, 49.1256], 'المكلا': [14.5425, 49.1256],
+        'ibb': [13.9769, 44.1872], 'إب': [13.9769, 44.1872],
+        'marib': [15.4644, 45.3213], 'مأرب': [15.4644, 45.3213],
+        'amman': [31.9539, 35.9106], 'عمان': [31.9539, 35.9106],
+        'riyadh': [24.7136, 46.6753], 'الرياض': [24.7136, 46.6753],
+        'jeddah': [21.4858, 39.1925], 'جدة': [21.4858, 39.1925],
+        'cairo': [30.0444, 31.2357], 'القاهرة': [30.0444, 31.2357],
+        'baghdad': [33.3152, 44.3661], 'بغداد': [33.3152, 44.3661],
+        'kuwait': [29.3759, 47.9774], 'الكويت': [29.3759, 47.9774]
+      };
+      const [derivedDeliveryLat, derivedDeliveryLng] = CITY_COORDS[buyerCityKey] || [15.405, 44.225];
+
       // Compute ETA & Shipping Fee
       const pickupLat = ad.latitude || 15.35;
       const pickupLng = ad.longitude || 44.20;
-      const deliveryLat = 15.40;
-      const deliveryLng = 44.25;
+      const deliveryLat = derivedDeliveryLat;
+      const deliveryLng = derivedDeliveryLng;
 
       const eta = EtaEngine.calculateETA({
         pickupLat,
@@ -212,12 +235,15 @@ export const ShippingController = (io?: Server): Router => {
       const weightFee = order.quantity * 200.0;
       const totalCost = basePrice + distanceFee + weightFee;
 
+      const trackingNumber = `ASQ-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2,6).toUpperCase()}`;
+
       // Create shipment
       const shipment = await prisma.shipment.create({
         data: {
           orderId: order.id,
           carrierName: 'Aswaq Delivery',
           carrierMethod: 'CARRIER',
+          trackingNumber,
           status: 'PENDING',
           basePrice,
           distanceFee,
@@ -261,10 +287,32 @@ export const ShippingController = (io?: Server): Router => {
       }
 
       const ad = order.ad;
+      const buyerUser = await prisma.user.findUnique({
+        where: { id: order.buyerId },
+        select: { city: true }
+      });
+      const buyerCityKey = (buyerUser?.city || ad.city || 'sanaa').toLowerCase().trim();
+      const CITY_COORDS: Record<string, [number, number]> = {
+        'sanaa': [15.3694, 44.1910], 'صنعاء': [15.3694, 44.1910],
+        'aden': [12.7794, 45.0367], 'عدن': [12.7794, 45.0367],
+        'taiz': [13.5789, 44.0177], 'تعز': [13.5789, 44.0177],
+        'hodeidah': [14.7978, 42.9545], 'الحديدة': [14.7978, 42.9545],
+        'mukalla': [14.5425, 49.1256], 'المكلا': [14.5425, 49.1256],
+        'ibb': [13.9769, 44.1872], 'إب': [13.9769, 44.1872],
+        'marib': [15.4644, 45.3213], 'مأرب': [15.4644, 45.3213],
+        'amman': [31.9539, 35.9106], 'عمان': [31.9539, 35.9106],
+        'riyadh': [24.7136, 46.6753], 'الرياض': [24.7136, 46.6753],
+        'jeddah': [21.4858, 39.1925], 'جدة': [21.4858, 39.1925],
+        'cairo': [30.0444, 31.2357], 'القاهرة': [30.0444, 31.2357],
+        'baghdad': [33.3152, 44.3661], 'بغداد': [33.3152, 44.3661],
+        'kuwait': [29.3759, 47.9774], 'الكويت': [29.3759, 47.9774]
+      };
+      const [derivedDeliveryLat, derivedDeliveryLng] = CITY_COORDS[buyerCityKey] || [15.405, 44.225];
+
       const pickupLat = ad.latitude || 15.35;
       const pickupLng = ad.longitude || 44.20;
-      const deliveryLat = 15.40; // mock client destination coordinates
-      const deliveryLng = 44.25;
+      const deliveryLat = derivedDeliveryLat;
+      const deliveryLng = derivedDeliveryLng;
 
       // Call ETA Engine
       const eta = EtaEngine.calculateETA({
@@ -294,12 +342,15 @@ export const ShippingController = (io?: Server): Router => {
       const codFee        = 300.0;
       const totalCost     = basePrice + distanceFee + weightFee + volumeFee + insuranceFee + codFee;
 
+      const trackingNumber = `ASQ-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2,6).toUpperCase()}`;
+
       // Create Shipment record
       const shipment = await prisma.shipment.create({
         data: {
           orderId,
           carrierMethod,
           carrierName,
+          trackingNumber,
           basePrice,
           distanceFee,
           weightFee,

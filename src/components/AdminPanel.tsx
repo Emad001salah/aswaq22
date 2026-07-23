@@ -361,7 +361,7 @@ function AdminPanelInner({
   const fetchUsers = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ limit: '100', market: selectedMarket });
+      const params = new URLSearchParams({ limit: '500', market: selectedMarket });
       if (searchTerm) params.set('search', searchTerm);
       const res = await adminFetch(`/api/admin/users?${params}`);
       if (res.ok) {
@@ -1566,7 +1566,7 @@ function AdminPanelInner({
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-white/5">
-                          {filteredUsers.slice(0, 100).map(user => (
+                          {filteredUsers.map(user => (
                             <tr key={user.id} className="hover:bg-white/[0.02] transition-colors">
                               <td className="px-4 py-3">
                                 <div className="flex items-center gap-3">
