@@ -1812,260 +1812,386 @@ export class App {
       }
     });
 
-    // ── Split Sitemaps (SEO Index & Children) ──────────────────────────────────
-    this.app.get('/sitemap.xml', (req, res) => {
-      const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <sitemap><loc>https://www.aswaq22.com/sitemaps/static.xml</loc></sitemap>
-  <sitemap><loc>https://www.aswaq22.com/sitemaps/categories.xml</loc></sitemap>
-  <sitemap><loc>https://www.aswaq22.com/sitemaps/cities.xml</loc></sitemap>
-  <sitemap><loc>https://www.aswaq22.com/sitemaps/ads-1.xml</loc></sitemap>
-  <sitemap><loc>https://www.aswaq22.com/sitemaps/image-sitemap.xml</loc></sitemap>
-  <sitemap><loc>https://www.aswaq22.com/sitemaps/video-sitemap.xml</loc></sitemap>
-</sitemapindex>`;
+    // ═══════════════════════════════════════════════════════════════════
+    // ── PROFESSIONAL SITEMAP SYSTEM ─────────────────────────────────────
+    // Standards: https://www.sitemaps.org/protocol.html
+    // Google: https://developers.google.com/search/docs/advanced/sitemaps
+    // ═══════════════════════════════════════════════════════════════════
+
+    const BASE_URL   = 'https://www.aswaq22.com';
+    const ADS_PAGE_SIZE = 5000;   // 5k per file — safe for Google & fast to generate
+
+    /** Shared response headers for all sitemap files */
+    const sitemapHeaders = (res: any, cacheSeconds = 3600) => {
       res.setHeader('Content-Type', 'application/xml; charset=utf-8');
-      res.send(xml);
+      res.setHeader('Cache-Control', `public, max-age=${cacheSeconds}, stale-while-revalidate=86400`);
+      res.setHeader('X-Robots-Tag', 'noindex');   // prevent sitemap files from appearing in results
+    };
+
+    /** Build a <url> block */
+    const urlBlock = (loc: string, lastmod: string, changefreq: string, priority: string) =>
+      `  <url>\n    <loc>${escapeXml(loc)}</loc>\n    <lastmod>${lastmod}</lastmod>\n    <changefreq>${changefreq}</changefreq>\n    <priority>${priority}</priority>\n  </url>`;
+
+    /** Build a <sitemap> entry in sitemap index */
+    const sitemapEntry = (loc: string, lastmod: string) =>
+      `  <sitemap>\n    <loc>${escapeXml(loc)}</loc>\n    <lastmod>${lastmod}</lastmod>\n  </sitemap>`;
+
+    /** XML declaration + urlset wrapper */
+    const urlsetXml = (urls: string[], extraNs = '') =>
+      `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"${extraNs}>\n${urls.join('\n')}\n</urlset>`;
+
+    // ── robots.txt ──────────────────────────────────────────────────────
+    this.app.get('/robots.txt', (req, res) => {
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+      res.send(
+`User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+Disallow: /uploads/
+Disallow: /*.json$
+
+Sitemap: ${BASE_URL}/sitemap.xml
+`);
     });
 
-    this.app.get('/sitemaps/static.xml', (req, res) => {
-      const today = new Date().toISOString().split('T')[0];
-      const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>https://www.aswaq22.com/</loc>
-    <lastmod>${today}</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>1.0</priority>
-  </url>
-  <url>
-    <loc>https://www.aswaq22.com/ads</loc>
-    <lastmod>${today}</lastmod>
-    <changefreq>hourly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://www.aswaq22.com/login</loc>
-    <lastmod>${today}</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.5</priority>
-  </url>
-  <url>
-    <loc>https://www.aswaq22.com/register</loc>
-    <lastmod>${today}</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.5</priority>
-  </url>
-</urlset>`;
-      res.setHeader('Content-Type', 'application/xml; charset=utf-8');
-      res.send(xml);
-    });
-
-    this.app.get('/sitemaps/categories.xml', async (req, res, next) => {
+    // ── MAIN SITEMAP INDEX (Dynamic — lists ad pages based on count) ─────
+    this.app.get('/sitemap.xml', async (req, res) => {
       try {
-        const countries = await prisma.country.findMany({ where: { active: true } });
-        const categories = await prisma.category.findMany();
-        const ads = await prisma.ad.findMany({
-          where: { status: 'ACTIVE' },
-          select: { city: true, categoryId: true }
-        });
-        const cities = await prisma.city.findMany({ include: { country: true } });
-
         const today = new Date().toISOString().split('T')[0];
+
+        // Count active ads to determine how many paginated files we need
+        const totalAds = await prisma.ad.count({ where: { status: 'ACTIVE' } });
+        const totalPages = Math.max(1, Math.ceil(totalAds / ADS_PAGE_SIZE));
+
+        const entries: string[] = [
+          sitemapEntry(`${BASE_URL}/sitemaps/static.xml`,     today),
+          sitemapEntry(`${BASE_URL}/sitemaps/countries.xml`,  today),
+          sitemapEntry(`${BASE_URL}/sitemaps/categories.xml`, today),
+          sitemapEntry(`${BASE_URL}/sitemaps/cities.xml`,     today),
+          sitemapEntry(`${BASE_URL}/sitemaps/news.xml`,       today),    // recently added ads
+          sitemapEntry(`${BASE_URL}/sitemaps/images.xml`,     today),    // image sitemap
+        ];
+
+        // Add paginated ads sitemaps dynamically
+        for (let p = 1; p <= totalPages; p++) {
+          entries.push(sitemapEntry(`${BASE_URL}/sitemaps/ads-${p}.xml`, today));
+        }
+
+        const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${entries.join('\n')}\n</sitemapindex>`;
+        sitemapHeaders(res, 1800);
+        res.send(xml);
+      } catch (err) {
+        res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+        res.status(500).send('<?xml version="1.0"?><sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"/>');
+      }
+    });
+
+    // ── STATIC PAGES ────────────────────────────────────────────────────
+    this.app.get('/sitemaps/static.xml', async (req, res) => {
+      try {
+        const today = new Date().toISOString().split('T')[0];
+
+        // Fetch active country codes for market landing pages
+        const countries = await prisma.country.findMany({
+          where: { active: true },
+          select: { countryCode: true }
+        });
+
+        const urls: string[] = [
+          urlBlock(`${BASE_URL}/`,           today, 'daily',   '1.0'),
+          urlBlock(`${BASE_URL}/ads`,         today, 'hourly',  '0.9'),
+          urlBlock(`${BASE_URL}/delivery`,    today, 'weekly',  '0.7'),
+          urlBlock(`${BASE_URL}/login`,       today, 'monthly', '0.4'),
+          urlBlock(`${BASE_URL}/register`,    today, 'monthly', '0.4'),
+        ];
+
+        // Add per-country market landing pages
+        for (const c of countries) {
+          const cc = c.countryCode.toLowerCase();
+          urls.push(urlBlock(`${BASE_URL}/${cc}`, today, 'daily', '0.9'));
+        }
+
+        sitemapHeaders(res, 7200);
+        res.send(urlsetXml(urls));
+      } catch (err) {
+        res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+        res.status(500).send('<?xml version="1.0"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"/>');
+      }
+    });
+
+    // ── COUNTRIES MARKET PAGES ──────────────────────────────────────────
+    this.app.get('/sitemaps/countries.xml', async (req, res) => {
+      try {
+        const today = new Date().toISOString().split('T')[0];
+        const countries = await prisma.country.findMany({ where: { active: true } });
+
+        const urls = countries.map(c =>
+          urlBlock(`${BASE_URL}/${c.countryCode.toLowerCase()}`, today, 'daily', '0.9')
+        );
+
+        sitemapHeaders(res, 7200);
+        res.send(urlsetXml(urls));
+      } catch (err) {
+        res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+        res.status(500).send('<?xml version="1.0"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"/>');
+      }
+    });
+
+    // ── CATEGORIES PER COUNTRY ──────────────────────────────────────────
+    this.app.get('/sitemaps/categories.xml', async (req, res) => {
+      try {
+        const today = new Date().toISOString().split('T')[0];
+
+        const [countries, categories, adGroups, cities] = await Promise.all([
+          prisma.country.findMany({ where: { active: true } }),
+          prisma.category.findMany(),
+          prisma.ad.findMany({
+            where: { status: 'ACTIVE' },
+            select: { city: true, categoryId: true, updatedAt: true }
+          }),
+          prisma.city.findMany({ include: { country: true } })
+        ]);
+
         const urls: string[] = [];
 
         for (const country of countries) {
+          const cc = country.countryCode.toLowerCase();
           const countryCities = cities.filter(c => c.countryId === country.id);
-          const countryCityIds = countryCities.map(c => c.id);
-          const countryCityNamesAr = countryCities.map(c => c.nameAr);
-          const countryCityNamesEn = countryCities.map(c => c.nameEn);
+          const cityIds  = new Set(countryCities.map(c => c.id));
+          const cityNamesAr = new Set(countryCities.map(c => c.nameAr));
+          const cityNamesEn = new Set(countryCities.map(c => c.nameEn.toLowerCase()));
 
-          for (const category of categories) {
-            // Include category only if there's at least one active ad
-            const hasAds = ads.some(ad => 
-              ad.categoryId === category.id && 
-              (countryCityIds.includes(ad.city) || countryCityNamesAr.includes(ad.city) || countryCityNamesEn.includes(ad.city))
+          for (const cat of categories) {
+            const relevantAds = adGroups.filter(ad =>
+              ad.categoryId === cat.id &&
+              (cityIds.has(ad.city) || cityNamesAr.has(ad.city) || cityNamesEn.has(ad.city.toLowerCase()))
             );
+            if (relevantAds.length === 0) continue;
 
-            if (hasAds) {
-              const url = `https://www.aswaq22.com/${country.countryCode.toLowerCase()}/${category.nameEn.toLowerCase()}`;
-              urls.push(`  <url>
-    <loc>${url}</loc>
-    <lastmod>${today}</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.8</priority>
-  </url>`);
-            }
+            // Use the most recently updated ad in this category/country as lastmod
+            const latestUpdate = relevantAds.reduce((max, a) =>
+              a.updatedAt > max ? a.updatedAt : max, relevantAds[0].updatedAt);
+
+            urls.push(urlBlock(
+              `${BASE_URL}/${cc}/${cat.nameEn.toLowerCase()}`,
+              latestUpdate.toISOString().split('T')[0],
+              'daily',
+              '0.8'
+            ));
           }
         }
 
-        const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${urls.join('\n')}
-</urlset>`;
-        res.setHeader('Content-Type', 'application/xml; charset=utf-8');
-        res.send(xml);
+        sitemapHeaders(res, 3600);
+        res.send(urlsetXml(urls));
       } catch (err) {
-        next(err);
+        res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+        res.status(500).send('<?xml version="1.0"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"/>');
       }
     });
 
-    this.app.get('/sitemaps/cities.xml', async (req, res, next) => {
+    // ── CITIES × CATEGORIES ─────────────────────────────────────────────
+    this.app.get('/sitemaps/cities.xml', async (req, res) => {
       try {
-        const countries = await prisma.country.findMany({ where: { active: true } });
-        const categories = await prisma.category.findMany();
-        const cities = await prisma.city.findMany({ where: { active: true }, include: { country: true } });
-        const ads = await prisma.ad.findMany({
-          where: { status: 'ACTIVE' },
-          select: { city: true, categoryId: true }
-        });
-
         const today = new Date().toISOString().split('T')[0];
+
+        const [categories, cities, adGroups] = await Promise.all([
+          prisma.category.findMany(),
+          prisma.city.findMany({ where: { active: true }, include: { country: true } }),
+          prisma.ad.findMany({
+            where: { status: 'ACTIVE' },
+            select: { city: true, categoryId: true }
+          })
+        ]);
+
         const urls: string[] = [];
 
         for (const city of cities) {
-          const countryCode = city.country.countryCode.toLowerCase();
-          for (const category of categories) {
-            const hasAds = ads.some(ad => 
-              ad.categoryId === category.id && 
-              (ad.city === city.id || ad.city === city.nameAr || ad.city === city.nameEn)
-            );
+          const cc       = city.country.countryCode.toLowerCase();
+          const citySlug = slugify(city.nameEn || city.nameAr);
 
-            if (hasAds) {
-              const citySlug = slugify(city.nameEn);
-              const url = `https://www.aswaq22.com/${countryCode}/${citySlug}/${category.nameEn.toLowerCase()}`;
-              urls.push(`  <url>
-    <loc>${url}</loc>
-    <lastmod>${today}</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.7</priority>
-  </url>`);
-            }
+          for (const cat of categories) {
+            const hasAds = adGroups.some(ad =>
+              ad.categoryId === cat.id &&
+              (ad.city === city.id || ad.city === city.nameAr || ad.city.toLowerCase() === city.nameEn.toLowerCase())
+            );
+            if (!hasAds) continue;
+
+            urls.push(urlBlock(
+              `${BASE_URL}/${cc}/${citySlug}/${cat.nameEn.toLowerCase()}`,
+              today,
+              'daily',
+              '0.7'
+            ));
           }
         }
 
-        const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${urls.join('\n')}
-</urlset>`;
-        res.setHeader('Content-Type', 'application/xml; charset=utf-8');
-        res.send(xml);
+        sitemapHeaders(res, 3600);
+        res.send(urlsetXml(urls));
       } catch (err) {
-        next(err);
+        res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+        res.status(500).send('<?xml version="1.0"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"/>');
       }
     });
 
-    this.app.get('/sitemaps/ads-:page.xml', async (req, res, next) => {
+    // ── NEWS SITEMAP (last 2 days — for Google News fast indexing) ───────
+    this.app.get('/sitemaps/news.xml', async (req, res) => {
       try {
-        const page = parseInt(req.params.page) || 1;
-        const pageSize = 30000;
-        const skip = (page - 1) * pageSize;
+        const twoDaysAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
 
-        const ads = await prisma.ad.findMany({
-          where: { status: 'ACTIVE' },
-          include: { category: true },
-          orderBy: { createdAt: 'desc' },
-          skip,
-          take: pageSize
-        });
+        const [recentAds, cities] = await Promise.all([
+          prisma.ad.findMany({
+            where: { status: 'ACTIVE', createdAt: { gte: twoDaysAgo } },
+            include: { category: true },
+            orderBy: { createdAt: 'desc' },
+            take: 1000
+          }),
+          prisma.city.findMany({ include: { country: true } })
+        ]);
 
-        const cities = await prisma.city.findMany({ include: { country: true } });
+        const NS = ` xmlns:news="http://www.google.com/schemas/sitemap-news/0.9"`;
         const urls: string[] = [];
 
-        for (const ad of ads) {
-          const city = cities.find(c => c.id === ad.city || c.nameAr === ad.city || c.nameEn === ad.city);
-          const countryCode = city?.country?.countryCode?.toLowerCase() || 'ye';
-          const categorySlug = ad.category.nameEn.toLowerCase();
-          const adSlug = slugify(ad.title);
-          const safeTitle = escapeXml(ad.title);
-          const safeDesc = escapeXml((ad.description || '').substring(0, 150));
+        for (const ad of recentAds) {
+          const city        = cities.find(c => c.id === ad.city || c.nameAr === ad.city || c.nameEn === ad.city);
+          const cc          = city?.country?.countryCode?.toLowerCase() || 'ye';
+          const catSlug     = ad.category.nameEn.toLowerCase();
+          const adSlug      = slugify(ad.title);
+          const loc         = `${BASE_URL}/${cc}/${catSlug}/${adSlug}-${ad.id}`;
+          const pubDate     = ad.createdAt.toISOString();
+          const safeTitle   = escapeXml(ad.title);
 
-          const url = `https://www.aswaq22.com/${countryCode}/${categorySlug}/${adSlug}-${ad.id}`;
-          urls.push(`  <url>\n    <loc>${url}</loc>\n    <lastmod>${new Date(ad.updatedAt).toISOString().split('T')[0]}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.6</priority>\n  </url>`);
+          urls.push(
+            `  <url>\n    <loc>${escapeXml(loc)}</loc>\n    <news:news>\n      <news:publication>\n        <news:name>أسواق</news:name>\n        <news:language>ar</news:language>\n      </news:publication>\n      <news:publication_date>${pubDate}</news:publication_date>\n      <news:title>${safeTitle}</news:title>\n    </news:news>\n  </url>`
+          );
         }
 
-        const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${urls.join('\n')}
-</urlset>`;
-        res.setHeader('Content-Type', 'application/xml; charset=utf-8');
-        res.send(xml);
+        sitemapHeaders(res, 900); // 15 min cache — news changes fast
+        res.send(urlsetXml(urls, NS));
       } catch (err) {
-        next(err);
+        res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+        res.status(500).send('<?xml version="1.0"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"/>');
       }
     });
 
-    this.app.get('/sitemaps/image-sitemap.xml', async (req, res, next) => {
+    // ── PAGINATED ADS SITEMAP (/sitemaps/ads-1.xml, ads-2.xml, ...) ──────
+    this.app.get('/sitemaps/ads-:page.xml', async (req, res) => {
       try {
-        const ads = await prisma.ad.findMany({
-          where: { status: 'ACTIVE' },
-          include: { category: true, images: { take: 5 } },
-          orderBy: { createdAt: 'desc' },
-          take: 10000
+        const page = Math.max(1, parseInt(req.params.page) || 1);
+        const skip = (page - 1) * ADS_PAGE_SIZE;
+
+        const [ads, cities] = await Promise.all([
+          prisma.ad.findMany({
+            where: { status: 'ACTIVE' },
+            include: { category: true },
+            orderBy: { updatedAt: 'desc' },
+            skip,
+            take: ADS_PAGE_SIZE
+          }),
+          prisma.city.findMany({ include: { country: true } })
+        ]);
+
+        if (ads.length === 0) {
+          res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+          return res.status(404).send('<?xml version="1.0"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"/>');
+        }
+
+        const cityMap = new Map(cities.map(c => [c.id, c]));
+        const cityByName = new Map(cities.flatMap(c => [
+          [c.nameAr, c],
+          [c.nameEn.toLowerCase(), c]
+        ]));
+
+        const urls = ads.map(ad => {
+          const city = cityMap.get(ad.city) ?? cityByName.get(ad.city) ?? cityByName.get(ad.city.toLowerCase());
+          const cc   = city?.country?.countryCode?.toLowerCase() || 'ye';
+          const loc  = `${BASE_URL}/${cc}/${ad.category.nameEn.toLowerCase()}/${slugify(ad.title)}-${ad.id}`;
+          return urlBlock(loc, ad.updatedAt.toISOString().split('T')[0], 'weekly', '0.6');
         });
 
-        const cities = await prisma.city.findMany({ include: { country: true } });
+        sitemapHeaders(res, 3600);
+        res.send(urlsetXml(urls));
+      } catch (err) {
+        res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+        res.status(500).send('<?xml version="1.0"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"/>');
+      }
+    });
+
+    // ── IMAGE SITEMAP (/sitemaps/images.xml) ────────────────────────────
+    this.app.get('/sitemaps/images.xml', async (req, res) => {
+      try {
+        const [ads, cities] = await Promise.all([
+          prisma.ad.findMany({
+            where: { status: 'ACTIVE' },
+            include: { category: true, images: { take: 5 } },
+            orderBy: { updatedAt: 'desc' },
+            take: 20000
+          }),
+          prisma.city.findMany({ include: { country: true } })
+        ]);
+
+        const NS  = ` xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"`;
+        const cityMap    = new Map(cities.map(c => [c.id, c]));
+        const cityByName = new Map(cities.flatMap(c => [[c.nameAr, c], [c.nameEn.toLowerCase(), c]]));
         const urls: string[] = [];
 
         for (const ad of ads) {
           if (ad.images.length === 0) continue;
+          const city = cityMap.get(ad.city) ?? cityByName.get(ad.city) ?? cityByName.get(ad.city.toLowerCase());
+          const cc   = city?.country?.countryCode?.toLowerCase() || 'ye';
+          const loc  = `${BASE_URL}/${cc}/${ad.category.nameEn.toLowerCase()}/${slugify(ad.title)}-${ad.id}`;
+          const safe = escapeXml(ad.title);
 
-          const city = cities.find(c => c.id === ad.city || c.nameAr === ad.city || c.nameEn === ad.city);
-          const countryCode = city?.country?.countryCode?.toLowerCase() || 'ye';
-          const categorySlug = ad.category.nameEn.toLowerCase();
-          const adSlug = slugify(ad.title);
-          const url = `https://www.aswaq22.com/${countryCode}/${categorySlug}/${adSlug}-${ad.id}`;
-
-          const safeTitle = escapeXml(ad.title);
           const imageTags = ad.images.map(img => {
-            const absoluteImgUrl = img.url.startsWith('http') ? img.url : `https://www.aswaq22.com${img.url}`;
-            const safeImgUrl = escapeXml(absoluteImgUrl);
-            return `    <image:image>\n      <image:loc>${safeImgUrl}</image:loc>\n      <image:title>${safeTitle}</image:title>\n    </image:image>`;
+            const imgUrl = img.url.startsWith('http') ? img.url : `${BASE_URL}${img.url}`;
+            return `    <image:image>\n      <image:loc>${escapeXml(imgUrl)}</image:loc>\n      <image:title>${safe}</image:title>\n    </image:image>`;
           }).join('\n');
 
-          urls.push(`  <url>\n    <loc>${url}</loc>\n${imageTags}\n  </url>`);
+          urls.push(`  <url>\n    <loc>${escapeXml(loc)}</loc>\n${imageTags}\n  </url>`);
         }
 
-        const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
-        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
-${urls.join('\n')}
-</urlset>`;
-        res.setHeader('Content-Type', 'application/xml; charset=utf-8');
-        res.send(xml);
+        sitemapHeaders(res, 7200);
+        res.send(urlsetXml(urls, NS));
       } catch (err) {
-        next(err);
+        res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+        res.status(500).send('<?xml version="1.0"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"/>');
       }
     });
 
-    this.app.get('/sitemaps/video-sitemap.xml', async (req, res, next) => {
+    // ── VIDEO SITEMAP (/sitemaps/videos.xml) ────────────────────────────
+    this.app.get('/sitemaps/videos.xml', async (req, res) => {
       try {
         const reels = await prisma.reel.findMany({
           orderBy: { createdAt: 'desc' },
           take: 1000
         });
 
+        const NS = ` xmlns:video="http://www.google.com/schemas/sitemap-video/1.1"`;
         const urls: string[] = [];
 
         for (const reel of reels) {
-          const absoluteVideoUrl = reel.videoUrl.startsWith('http') ? reel.videoUrl : `https://www.aswaq22.com${reel.videoUrl}`;
-          const safeVideoUrl = escapeXml(absoluteVideoUrl);
-          const safeTitle = escapeXml(reel.title || 'فيديو ترويجي - أسواق');
-          const thumbnail = 'https://www.aswaq22.com/aswaq-icon-512.png';
-          
-          urls.push(`  <url>\n    <loc>https://www.aswaq22.com/</loc>\n    <video:video>\n      <video:thumbnail_loc>${thumbnail}</video:thumbnail_loc>\n      <video:title>${safeTitle}</video:title>\n      <video:description>فيديو ريلز ترويجي على منصة أسواق</video:description>\n      <video:content_loc>${safeVideoUrl}</video:content_loc>\n      <video:publication_date>${reel.createdAt.toISOString()}</video:publication_date>\n    </video:video>\n  </url>`);
+          const videoUrl   = reel.videoUrl.startsWith('http') ? reel.videoUrl : `${BASE_URL}${reel.videoUrl}`;
+          const safeVideo  = escapeXml(videoUrl);
+          const safeTitle  = escapeXml(reel.title || 'فيديو ترويجي - أسواق');
+          const safeThumb  = `${BASE_URL}/aswaq-icon-512.png`;
+
+          urls.push(
+            `  <url>\n    <loc>${BASE_URL}/</loc>\n    <video:video>\n      <video:thumbnail_loc>${safeThumb}</video:thumbnail_loc>\n      <video:title>${safeTitle}</video:title>\n      <video:description>فيديو ريلز ترويجي على منصة أسواق</video:description>\n      <video:content_loc>${safeVideo}</video:content_loc>\n      <video:publication_date>${reel.createdAt.toISOString()}</video:publication_date>\n    </video:video>\n  </url>`
+          );
         }
 
-        const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
-        xmlns:video="http://www.google.com/schemas/sitemap-video/1.1">
-${urls.join('\n')}
-</urlset>`;
-        res.setHeader('Content-Type', 'application/xml; charset=utf-8');
-        res.send(xml);
+        sitemapHeaders(res, 7200);
+        res.send(urlsetXml(urls, NS));
       } catch (err) {
-        next(err);
+        res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+        res.status(500).send('<?xml version="1.0"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"/>');
       }
     });
+
+    // Legacy alias: /sitemaps/image-sitemap.xml → /sitemaps/images.xml
+    this.app.get('/sitemaps/image-sitemap.xml', (req, res) => res.redirect(301, '/sitemaps/images.xml'));
+    this.app.get('/sitemaps/video-sitemap.xml',  (req, res) => res.redirect(301, '/sitemaps/videos.xml'));
 
     // ── Admin Settings ────────────────────────────────────────────────────────
 
@@ -2670,7 +2796,12 @@ ${urls.join('\n')}
       }));
       // SPA fallback — skip for server-generated files
       this.app.get('*', (req, res) => {
-        if (req.path === '/sitemap.xml' || req.path === '/robots.txt') {
+        // Let server routes handle these — do NOT serve index.html for them
+        if (
+          req.path === '/robots.txt' ||
+          req.path === '/sitemap.xml' ||
+          req.path.startsWith('/sitemaps/')
+        ) {
           return res.status(404).end();
         }
         res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
