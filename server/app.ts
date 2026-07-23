@@ -1843,10 +1843,16 @@ export class App {
       }
     };
 
-    /** Empty but valid urlset — returned when a sitemap has no entries */
+    /** Empty but valid urlset — MUST contain at least one <url> tag for Google Search Console */
     const emptyUrlset = (extraNs = '') =>
       `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"${extraNs}>
+  <url>
+    <loc>https://www.aswaq22.com/</loc>
+    <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
 </urlset>`;
 
     /** Build a <url> block */
@@ -1859,7 +1865,9 @@ export class App {
 
     /** XML declaration + urlset wrapper */
     const urlsetXml = (urls: string[], extraNs = '') =>
-      `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"${extraNs}>\n${urls.join('\n')}\n</urlset>`;
+      urls.length > 0
+        ? `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"${extraNs}>\n${urls.join('\n')}\n</urlset>`
+        : emptyUrlset(extraNs);
 
     // ── robots.txt ──────────────────────────────────────────────────────
     this.app.get('/robots.txt', (req, res) => {
