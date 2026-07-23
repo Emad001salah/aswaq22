@@ -83,6 +83,21 @@ export const parseVideoUrl = (rawUrl?: string) => {
   };
 };
 
+export const getImageUrl = (rawImg: any, fallback = 'https://images.unsplash.com/photo-1496181130204-755241544e35?auto=format&fit=crop&w=1920&q=80'): string => {
+  if (!rawImg) return fallback;
+  if (typeof rawImg === 'string') {
+    const s = rawImg.trim();
+    if (s.startsWith('http') || s.startsWith('/') || s.startsWith('data:')) return s;
+    return fallback;
+  }
+  if (typeof rawImg === 'object' && rawImg && typeof rawImg.url === 'string') {
+    const s = rawImg.url.trim();
+    if (s.startsWith('http') || s.startsWith('/') || s.startsWith('data:')) return s;
+    return fallback;
+  }
+  return fallback;
+};
+
 const AUDIO_TRACKS = [
   { id: 'none', nameAr: 'بدون موسيقى (صوت الفيديو الأصلي)', nameEn: 'No music (Original video sound)' },
   { id: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3', nameAr: '🎵 نغمة تجارية حماسية (Upbeat Commercial)', nameEn: '🎵 Upbeat Commercial' },
@@ -2080,7 +2095,7 @@ export default function SpotlightFeed({
               <div className="absolute inset-0 z-0 bg-neutral-950">
                 {/* 1. Base Layer: Always render background image as a stable backdrop to avoid flashes of black */}
                 <img 
-                  src={(customBgs[ad.id] && currentUser?.id === ad.userId) ? customBgs[ad.id] : (ad.images?.[0] || 'https://images.unsplash.com/photo-1496181130204-755241544e35?auto=format&fit=crop&w=1920&q=80')} 
+                  src={(customBgs[ad.id] && currentUser?.id === ad.userId) ? customBgs[ad.id] : getImageUrl(ad.images?.[0])} 
                   alt={ad.title}
                   className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${isCurrent ? 'brightness-100' : 'brightness-40 blur-[4px]'}`}
                   loading="lazy"
@@ -2684,7 +2699,7 @@ export default function SpotlightFeed({
                 {/* Product mini header information */}
                 <div className="flex gap-3 bg-slate-900/60 p-2.5 rounded-xl border border-slate-900">
                   <img 
-                    src={safeImages?.[0] || 'https://images.unsplash.com/photo-1540553016722-983e48a2cd10?auto=format&fit=crop&w=120&q=80'} 
+                    src={getImageUrl(safeImages?.[0], 'https://images.unsplash.com/photo-1540553016722-983e48a2cd10?auto=format&fit=crop&w=120&q=80')} 
                     className="w-12 h-12 rounded-lg object-cover border border-slate-850 shrink-0"
                     referrerPolicy="no-referrer"
                   />
