@@ -2253,9 +2253,9 @@ export default function SpotlightFeed({
                 </div>
                 {/* اسم صاحب الريل */}
                 <span className={`text-[9px] font-black drop-shadow-lg text-center leading-tight max-w-[48px] truncate ${
-                  ad.isPromo ? 'text-amber-300' : 'text-white/90'
+                  (ad.promoType === 'system' || ad.userName === 'إدارة أسواق') ? 'text-amber-300' : 'text-white/90'
                 }`}>
-                  {ad.isPromo
+                  {(ad.promoType === 'system' || ad.userName === 'إدارة أسواق')
                     ? (isRtl ? 'إدارة\nأسواق' : 'Aswaq\nMgmt')
                     : (ad.user?.name?.split(' ')[0] || ad.userName?.split(' ')[0] || (isRtl ? 'بائع' : 'Seller'))
                   }
