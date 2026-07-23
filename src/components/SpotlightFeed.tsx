@@ -1328,8 +1328,15 @@ export default function SpotlightFeed({
     const activeAd = displayAds[activeIndex];
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (activeAd && uuidRegex.test(activeAd.id)) {
-      // Logic for both live and normal ads: persistent view tracking
-      apiFetch(`/api/ads/${activeAd.id}/view`, { method: 'POST' }).catch(() => {});
+      const currentId = activeAd.id;
+      apiFetch(`/api/ads/${currentId}/view`, { method: 'POST' })
+        .then(res => res.json())
+        .then(data => {
+          if (data && typeof data.views === 'number') {
+            setAdViews(prev => ({ ...prev, [currentId]: data.views }));
+          }
+        })
+        .catch(() => {});
     }
 
     if (activeAd && activeAd.isLive) {
@@ -2162,7 +2169,7 @@ export default function SpotlightFeed({
                     <span className="w-2 h-2 rounded-full bg-white animate-ping" />
                     <span className="text-[10px] sm:text-[11px] tracking-wider uppercase font-black">{isRtl ? 'بث مباشر 🔴' : 'LIVE 🔴'}</span>
                     <span className="w-px h-4 bg-white/20" />
-                    <span className="text-[10px] sm:text-[11px] font-mono font-black">{liveViewerCount ? `${liveViewerCount.toLocaleString()} 👁️` : '540 👁️'}</span>
+                    <span className="text-[10px] sm:text-[11px] font-mono font-black">{(liveViewerCount || 0).toLocaleString()} 👁️</span>
                   </div>
                 )}
 
