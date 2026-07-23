@@ -17,8 +17,18 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return MARKETS.YE;
   });
   
+  const handleSetMarket = (newMarket: Market) => {
+    try {
+      if (newMarket?.id) {
+        localStorage.setItem('selected_market_id', newMarket.id);
+        localStorage.setItem('user_manually_selected_market', 'true');
+      }
+    } catch (e) {}
+    setMarketState(newMarket);
+  };
+
   useEffect(() => {
-    if (market) {
+    if (market?.id) {
       localStorage.setItem('selected_market_id', market.id);
     }
   }, [market]);
@@ -92,7 +102,7 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, []);
 
   return (
-    <MarketContext.Provider value={{ market, setMarket }}>
+    <MarketContext.Provider value={{ market, setMarket: handleSetMarket }}>
       {children}
     </MarketContext.Provider>
   );

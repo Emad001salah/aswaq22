@@ -787,8 +787,12 @@ useEffect(() => {
   }, [currentUser]);
 
   // Auto-detect and switch market based on user phone prefix
+  // Set initial market based on phone prefix ONLY on initial login if user hasn't explicitly chosen a market
   useEffect(() => {
     if (currentUser?.phone) {
+      const hasChosenMarket = localStorage.getItem('user_manually_selected_market') === 'true';
+      if (hasChosenMarket) return; // Respect user's country choice!
+
       const phonePrefixToMarket: Record<string, string> = {
         '962': 'JO',
         '967': 'YE',
@@ -827,7 +831,7 @@ useEffect(() => {
         setCurrentMarket(MARKETS[detectedMarketId]);
       }
     }
-  }, [currentUser?.phone, currentMarket.id, setCurrentMarket]);
+  }, [currentUser?.id]);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [showFavsOnly, setShowFavsOnly] = useState(false);
   const [showFollowedSellersOnly, setShowFollowedSellersOnly] = useState(false);
