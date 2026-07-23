@@ -1827,10 +1827,10 @@ export class App {
     const BASE_URL   = 'https://www.aswaq22.com';
     const ADS_PAGE_SIZE = 5000;   // 5k per file — safe for Google & fast to generate
 
-    /** Shared response headers for all sitemap files */
-    const sitemapHeaders = (res: any, cacheSeconds = 3600) => {
+    /** Shared response headers for all sitemap files — 5 min cache for fast freshness */
+    const sitemapHeaders = (res: any, cacheSeconds = 300) => {
       res.setHeader('Content-Type', 'application/xml; charset=utf-8');
-      res.setHeader('Cache-Control', `public, max-age=${cacheSeconds}, stale-while-revalidate=86400`);
+      res.setHeader('Cache-Control', `public, max-age=${cacheSeconds}, stale-while-revalidate=3600`);
       // NOTE: Do NOT add X-Robots-Tag here — that would prevent Google from reading the sitemap
     };
 
