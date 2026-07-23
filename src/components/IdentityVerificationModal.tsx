@@ -138,29 +138,79 @@ export default function IdentityVerificationModal({
                    targetRole === 'driver' ? 'توثيق حساب السائق' : 'توثيق العضوية المميزة'}
                 </h2>
                 <p className="text-sm text-slate-500 mt-3 font-bold max-w-sm">
-                  لضمان سلامة التعاملات، يجب توثيق هويتك عبر رفع صورة واضحة من بطاقتك الشخصية أو جواز السفر.
+                  {targetRole === 'merchant'
+                    ? 'يرجى تقديم الوثائق الرسمية لتأكيد ملكية المتجر والسجل التجاري لاعتماد حسابك كتاجر موثق.'
+                    : targetRole === 'driver'
+                    ? 'يرجى تقديم رخصة القيادة السارية وكرت ملكية المركبة لتأكيد اعتمادك كمندوب وسائق رسمي.'
+                    : 'لضمان سلامة التعاملات، يجب توثيق هويتك عبر رفع صورة واضحة من بطاقتك الشخصية أو جواز السفر.'}
                 </p>
               </div>
 
               <div className="space-y-4">
-                <div className={`p-5 rounded-2xl border flex items-center gap-4 ${isDark ? 'bg-slate-950 border-white/5' : 'bg-slate-50 border-slate-200'}`}>
-                   <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center">
-                     <FileText className="w-5 h-5" />
-                   </div>
-                   <div className="flex-1">
-                     <p className={`text-xs font-black ${isDark ? 'text-slate-200' : 'text-slate-900'}`}>البطاقة الشخصية (وجهين)</p>
-                     <p className="text-[10px] text-slate-500 font-bold">يجب أن تكون البيانات واضحة وتاريخ الانتهاء ساري</p>
-                   </div>
-                </div>
-                <div className={`p-5 rounded-2xl border flex items-center gap-4 ${isDark ? 'bg-slate-950 border-white/5' : 'bg-slate-50 border-slate-200'}`}>
-                   <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center">
-                     <Camera className="w-5 h-5" />
-                   </div>
-                   <div className="flex-1">
-                     <p className={`text-xs font-black ${isDark ? 'text-slate-200' : 'text-slate-900'}`}>صورة سيلفي مع الهوية</p>
-                     <p className="text-[10px] text-slate-500 font-bold">للتأكد بأنك المالك الحقيقي للوثائق المرفوعة</p>
-                   </div>
-                </div>
+                {targetRole === 'driver' ? (
+                  <>
+                    <div className={`p-5 rounded-2xl border flex items-center gap-4 ${isDark ? 'bg-slate-950 border-white/5' : 'bg-slate-50 border-slate-200'}`}>
+                       <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+                         <Truck className="w-5 h-5" />
+                       </div>
+                       <div className="flex-1">
+                         <p className={`text-xs font-black ${isDark ? 'text-slate-200' : 'text-slate-900'}`}>رخصة القيادة + كرت المركبة</p>
+                         <p className="text-[10px] text-slate-500 font-bold">صورة واضحة للرخصة السارية ودفتر ملكية وسيلة التوصيل</p>
+                       </div>
+                    </div>
+                    <div className={`p-5 rounded-2xl border flex items-center gap-4 ${isDark ? 'bg-slate-950 border-white/5' : 'bg-slate-50 border-slate-200'}`}>
+                       <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center">
+                         <FileText className="w-5 h-5" />
+                       </div>
+                       <div className="flex-1">
+                         <p className={`text-xs font-black ${isDark ? 'text-slate-200' : 'text-slate-900'}`}>البطاقة الشخصية (الهوية الوطنية)</p>
+                         <p className="text-[10px] text-slate-500 font-bold">إرفاق صورة البطاقة الشخصية لمطابقة اسم السائق</p>
+                       </div>
+                    </div>
+                  </>
+                ) : targetRole === 'merchant' ? (
+                  <>
+                    <div className={`p-5 rounded-2xl border flex items-center gap-4 ${isDark ? 'bg-slate-950 border-white/5' : 'bg-slate-50 border-slate-200'}`}>
+                       <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center">
+                         <Briefcase className="w-5 h-5" />
+                       </div>
+                       <div className="flex-1">
+                         <p className={`text-xs font-black ${isDark ? 'text-slate-200' : 'text-slate-900'}`}>السجل التجاري / رخصة المتجر</p>
+                         <p className="text-[10px] text-slate-500 font-bold">إرفاق ترخيص المتجر أو رخصة المحل لتوثيق المتجر الرسمي</p>
+                       </div>
+                    </div>
+                    <div className={`p-5 rounded-2xl border flex items-center gap-4 ${isDark ? 'bg-slate-950 border-white/5' : 'bg-slate-50 border-slate-200'}`}>
+                       <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center">
+                         <FileText className="w-5 h-5" />
+                       </div>
+                       <div className="flex-1">
+                         <p className={`text-xs font-black ${isDark ? 'text-slate-200' : 'text-slate-900'}`}>هوية مالك المتجر / التاجر</p>
+                         <p className="text-[10px] text-slate-500 font-bold">البطاقة الشخصية أو جواز السفر لصاحب السجل</p>
+                       </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className={`p-5 rounded-2xl border flex items-center gap-4 ${isDark ? 'bg-slate-950 border-white/5' : 'bg-slate-50 border-slate-200'}`}>
+                       <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center">
+                         <FileText className="w-5 h-5" />
+                       </div>
+                       <div className="flex-1">
+                         <p className={`text-xs font-black ${isDark ? 'text-slate-200' : 'text-slate-900'}`}>البطاقة الشخصية (وجهين)</p>
+                         <p className="text-[10px] text-slate-500 font-bold">يجب أن تكون البيانات واضحة وتاريخ الانتهاء ساري</p>
+                       </div>
+                    </div>
+                    <div className={`p-5 rounded-2xl border flex items-center gap-4 ${isDark ? 'bg-slate-950 border-white/5' : 'bg-slate-50 border-slate-200'}`}>
+                       <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center">
+                         <Camera className="w-5 h-5" />
+                       </div>
+                       <div className="flex-1">
+                         <p className={`text-xs font-black ${isDark ? 'text-slate-200' : 'text-slate-900'}`}>صورة سيلفي مع الهوية</p>
+                         <p className="text-[10px] text-slate-500 font-bold">للتأكد بأنك المالك الحقيقي للوثائق المرفوعة</p>
+                       </div>
+                    </div>
+                  </>
+                )}
               </div>
 
               <button 

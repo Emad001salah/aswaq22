@@ -1585,8 +1585,31 @@ export class App {
         const { action } = req.body; 
         
         let data: any = {};
-        if (action === 'verify') data.isVerified = 'verified';
-        if (action === 'unverify') data.isVerified = 'unverify'; // or 'none' or 'unverified'
+        if (action === 'verify' || action === 'verify_user') {
+          data.isVerified = 'verified';
+        }
+        if (action === 'verify_merchant') {
+          data.isVerified = 'verified';
+          data.role = 'MERCHANT';
+        }
+        if (action === 'verify_driver') {
+          data.isVerified = 'verified';
+          data.role = 'AGENT';
+          // Activate driver delivery permissions in DeliveryAgent table
+          await prisma.deliveryAgent.upsert({
+            where: { userId: id },
+            create: {
+              userId: id,
+              vehicleType: 'motorcycle',
+              licensePlate: 'معتمد رسمياً',
+              status: 'APPROVED'
+            },
+            update: {
+              status: 'APPROVED'
+            }
+          });
+        }
+        if (action === 'unverify') data.isVerified = 'unverify';
         if (action === 'ban') data.deletedAt = new Date();
         if (action === 'unban') data.deletedAt = null;
         if (action === 'make_admin') data.role = 'ADMIN';
