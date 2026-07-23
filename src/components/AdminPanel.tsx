@@ -2756,14 +2756,14 @@ function AdminPanelInner({
                             {/* منشئ الريل */}
                             <div className="flex items-center gap-1.5 mt-1.5">
                               <img
-                                src="/aswaq-admin-avatar.png"
-                                alt="Admin"
-                                className="w-4 h-4 rounded-full border border-amber-400/50 object-cover"
+                                src={reel.user?.avatar || '/aswaq-admin-avatar.png'}
+                                alt={reel.user?.name || 'مستخدم'}
+                                className="w-4 h-4 rounded-full border border-white/20 object-cover"
+                                onError={(e: any) => { e.target.src = '/aswaq-admin-avatar.png'; }}
                               />
-                              <span className="text-[10px] text-amber-300 font-bold">
-                                {reel.ownerName || 'إدارة أسواق'}
+                              <span className="text-[10px] text-slate-300 font-bold">
+                                {reel.user?.name || 'مستخدم'}
                               </span>
-                              <ShieldCheck className="w-2.5 h-2.5 text-amber-400" />
                             </div>
                             <div className="flex items-center justify-between mt-2">
                               <span className="text-[9px] text-slate-600">
