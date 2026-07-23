@@ -173,6 +173,8 @@ export function AuthController() {
           name: user.name,
           role: user.role.toLowerCase(),
           avatar: user.avatar,
+          coverPhoto: user.coverPhoto,
+          bio: user.bio,
           phone: user.phone,
           hasPostedAd: adCount > 0
         }
@@ -244,6 +246,8 @@ export function AuthController() {
             name: user.name,
             role: user.role.toLowerCase(),
             avatar: user.avatar,
+            coverPhoto: user.coverPhoto,
+            bio: user.bio,
             phone: user.phone,
             hasPostedAd: adCount > 0
           }
@@ -322,6 +326,9 @@ export function AuthController() {
           name: user.name,
           role: user.role.toLowerCase(),
           avatar: user.avatar,
+          coverPhoto: user.coverPhoto,
+          bio: user.bio,
+          phone: user.phone,
           hasPostedAd: adCount > 0
         }
       });
@@ -610,7 +617,7 @@ export function AuthController() {
         } else if (isRawUidName(user.name)) {
           updateData.name = 'مستخدم جديد';
         }
-        if (avatar && user.avatar !== avatar) updateData.avatar = avatar;
+        if (avatar && !user.avatar) updateData.avatar = avatar;
         if (phone && !user.phone) updateData.phone = phone;
 
         user = await prisma.user.update({
@@ -633,6 +640,8 @@ export function AuthController() {
           name: user.name,
           role: user.role.toLowerCase(),
           avatar: user.avatar,
+          coverPhoto: user.coverPhoto,
+          bio: user.bio,
           phone: user.phone,
           hasPostedAd: adCount > 0
         }
