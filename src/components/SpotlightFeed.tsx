@@ -2916,7 +2916,7 @@ export default function SpotlightFeed({
                     // Serialize videoUrl
                     const videoUrl = `${rawVideoUrl}||${audioUrl}||${description}||${city === 'all' ? (isRtl ? "كافة المناطق" : "All Regions") : city}||${liveCategory}`;
 
-                    const response = await fetch('/api/promo', {
+                    const response = await apiFetch('/api/promo', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({
