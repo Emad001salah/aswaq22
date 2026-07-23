@@ -214,6 +214,12 @@ export const UsersController = () => {
       const updateData: any = {};
       if (req.body.name !== undefined) updateData.name = String(req.body.name).trim();
       if (req.body.phone !== undefined) updateData.phone = req.body.phone ? String(req.body.phone).trim() : null;
+      if (req.body.email !== undefined) {
+        const inputEmail = String(req.body.email).trim();
+        if (inputEmail && !inputEmail.includes('@phone.aswaq.com')) {
+          updateData.email = inputEmail;
+        }
+      }
       if (avatarUrl !== undefined) updateData.avatar = avatarUrl || null;
       if (req.body.bio !== undefined) updateData.bio = req.body.bio || null;
       if (req.body.city !== undefined) updateData.city = req.body.city || null;

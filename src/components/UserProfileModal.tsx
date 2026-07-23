@@ -35,10 +35,13 @@ export default function UserProfileModal({
   onVerifyIdentity,
   addToast,
 }: UserProfileModalProps) {
+  const displayEmail = (user.email && !user.email.includes('@phone.aswaq.com')) ? user.email : '';
+
   const [isEditing, setIsEditing] = React.useState(false);
   const [editForm, setEditForm] = React.useState({
     name: user.name,
     phone: user.phone || '',
+    email: displayEmail,
     bio: user.bio || '',
     avatar: user.avatar || '',
     coverPhoto: user.coverPhoto || ''
@@ -58,9 +61,11 @@ export default function UserProfileModal({
    const [uploadingCover, setUploadingCover] = React.useState(false);
 
   React.useEffect(() => {
+    const cleanEmail = (user.email && !user.email.includes('@phone.aswaq.com')) ? user.email : '';
     setEditForm({
       name: user.name,
       phone: user.phone || '',
+      email: cleanEmail,
       bio: user.bio || '',
       avatar: user.avatar || '',
       coverPhoto: user.coverPhoto || ''
@@ -346,8 +351,10 @@ export default function UserProfileModal({
                     <span dir="ltr">{user.phone || 'لم يُضاف الهاتف'}</span>
                   </div>
                   <div className="flex items-center gap-3 p-4 rounded-2xl bg-white/[0.03] border border-white/5 text-slate-300 text-xs font-bold">
-                    <Mail className="w-4 h-4 shrink-0" />
-                    <span className="truncate">{user.email}</span>
+                    <Mail className="w-4 h-4 shrink-0 text-slate-400" />
+                    <span className="truncate font-sans">
+                      {user.email && !user.email.includes('@phone.aswaq.com') ? user.email : 'البريد غير مضاف (انقر لتعديل ملفك وإضافته)'}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -372,6 +379,17 @@ export default function UserProfileModal({
                         value={editForm.phone}
                         onChange={e => setEditForm({...editForm, phone: e.target.value})}
                         className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-5 py-3.5 text-xs text-white outline-none focus:border-emerald-500/50 transition-all text-right shadow-inner"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-black text-slate-500 mb-2 uppercase tracking-widest">البريد الإلكتروني الشخصي (اختياري)</label>
+                      <input 
+                        type="email" 
+                        value={editForm.email}
+                        onChange={e => setEditForm({...editForm, email: e.target.value})}
+                        placeholder="أدخل بريدك الإلكتروني الشخصي (مثال: name@gmail.com)"
+                        dir="ltr"
+                        className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-5 py-3.5 text-xs text-white outline-none focus:border-emerald-500/50 transition-all text-left shadow-inner"
                       />
                     </div>
                     <div>
