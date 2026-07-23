@@ -2075,69 +2075,85 @@ export default function SpotlightFeed({
                 />
 
         {/* 2. Interactive Video Overlay (Only active for the current slide if no custom image is set or visible) */}
-                {(((ad.videoUrl === 'webcam' || ad.videoUrl === 'camera') ? isCurrent : isPreloading)) && (!(customBgs[ad.id] && currentUser?.id === ad.userId)) && ad.videoUrl && (
-                  ad.videoUrl === 'webcam' || ad.videoUrl === 'camera' ? (
-                    <div className="absolute inset-0 z-[60]">
-                      <WebcamStreamPlayer 
-                        isMuted={isMuted} 
-                        isRtl={isRtl} 
-                        ad={ad} 
-                        currentUser={currentUser} 
-                        pinnedProduct={pinnedProduct} 
-                        onPinProductClick={() => setShowPinProductModal(true)} 
-                        onStreamEnded={(adId, archiveUrl) => {
-                          const overrideUrl = `${archiveUrl}||none||${ad.description || ''}||${ad.city || ''}||${ad.category || ''}`;
-                          setLocalAdOverrides(prev => ({
-                            ...prev,
-                            [adId]: {
-                              isLive: false,
-                              videoUrl: overrideUrl
-                            }
-                          }));
-                          showToast(isRtl ? "تم إنهاء البث بنجاح وتحويله إلى فيديو مسجل! 🎥" : "Live stream completed and converted to playback! 🎥");
-                        }}
-                      />
-                    </div>
-                  ) : getYoutubeEmbedUrlForBg(ad.videoUrl, isMuted) ? (
-                    <div className="absolute inset-0 w-full h-full z-[1]">
-                      <iframe
-                        src={getYoutubeEmbedUrlForBg(ad.videoUrl, isMuted) || undefined}
-                        className="w-full h-full object-cover scale-[1.3] pointer-events-none brightness-95 absolute inset-0 border-0"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        title="Spotlight Background Video"
-                      />
-                    </div>
-                  ) : (
-                    <div className="absolute inset-0 w-full h-full z-[1]">
-                      <video 
-                        src={ad.videoUrl} 
-                        autoPlay={isCurrent}
-                        loop 
-                        muted={ad.audioUrl ? true : isMuted}
-                        playsInline
-                        className="absolute inset-0 w-full h-full object-cover brightness-100"
-                      />
-                      {ad.audioUrl && (
-                        <AudioPlayer 
-                          src={ad.audioUrl} 
-                          isPlaying={isCurrent} 
-                          isMuted={isMuted} 
-                        />
+                {(() => {
+                  const parsedMedia = parseVideoUrl(ad.videoUrl);
+                  const actualVid = parsedMedia.videoUrl || ad.videoUrl || '';
+                  const isWebcamSource = actualVid === 'webcam' || actualVid === 'camera';
+                  const isAdLive = localAdOverrides[ad.id]?.isLive !== undefined ? localAdOverrides[ad.id].isLive : ad.isLive;
+
+                  return (
+                    <>
+                      {((isWebcamSource ? isCurrent : isPreloading)) && (!(customBgs[ad.id] && currentUser?.id === ad.userId)) && actualVid && (
+                        isWebcamSource ? (
+                          <div className="absolute inset-0 z-[60]">
+                            <WebcamStreamPlayer 
+                              isMuted={isMuted} 
+                              isRtl={isRtl} 
+                              ad={ad} 
+                              currentUser={currentUser} 
+                              pinnedProduct={pinnedProduct} 
+                              onPinProductClick={() => setShowPinProductModal(true)} 
+                              onStreamEnded={(adId, archiveUrl) => {
+                                const overrideUrl = `${archiveUrl}||none||${ad.description || ''}||${ad.city || ''}||${ad.category || ''}`;
+                                setLocalAdOverrides(prev => ({
+                                  ...prev,
+                                  [adId]: {
+                                    isLive: false,
+                                    videoUrl: overrideUrl
+                                  }
+                                }));
+                                apiFetch(`/api/promo/${adId}`, {
+                                  method: 'PATCH',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ isLive: false, videoUrl: overrideUrl })
+                                }).catch(() => {});
+                                showToast(isRtl ? "تم إنهاء البث بنجاح وتحويله إلى فيديو مسجل! 🎥" : "Live stream completed and converted to playback! 🎥");
+                              }}
+                            />
+                          </div>
+                        ) : getYoutubeEmbedUrlForBg(actualVid, isMuted) ? (
+                          <div className="absolute inset-0 w-full h-full z-[1]">
+                            <iframe
+                              src={getYoutubeEmbedUrlForBg(actualVid, isMuted) || undefined}
+                              className="w-full h-full object-cover scale-[1.3] pointer-events-none brightness-95 absolute inset-0 border-0"
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                              title="Spotlight Background Video"
+                            />
+                          </div>
+                        ) : (
+                          <div className="absolute inset-0 w-full h-full z-[1]">
+                            <video 
+                              src={actualVid} 
+                              autoPlay={isCurrent}
+                              loop 
+                              muted={ad.audioUrl ? true : isMuted}
+                              playsInline
+                              className="absolute inset-0 w-full h-full object-cover brightness-100"
+                            />
+                            {ad.audioUrl && (
+                              <AudioPlayer 
+                                src={ad.audioUrl} 
+                                isPlaying={isCurrent} 
+                                isMuted={isMuted} 
+                              />
+                            )}
+                          </div>
+                        )
                       )}
-                    </div>
-                  )
-                )}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/45 to-black/30 z-[2]" />
-                
-                {/* Simulated Live Stream Indicator & Badge - Hide if real webcam is active */}
-                {ad.isLive && ad.videoUrl !== 'webcam' && ad.videoUrl !== 'camera' && (
-                  <div className={`absolute top-28 z-[70] flex items-center gap-2 bg-rose-600 border border-rose-500/40 text-white font-black px-4 py-2 rounded-full shadow-[0_4px_25px_rgba(225,29,72,0.4)] ${isRtl ? 'left-6' : 'right-6'} backdrop-blur-xl`}>
-                    <span className="w-2 h-2 rounded-full bg-white animate-ping" />
-                    <span className="text-[10px] sm:text-[11px] tracking-wider uppercase font-black">{isRtl ? 'بث مباشر 🔴' : 'LIVE 🔴'}</span>
-                    <span className="w-px h-4 bg-white/20" />
-                    <span className="text-[10px] sm:text-[11px] font-mono font-black">{(liveViewerCount || 0).toLocaleString()} 👁️</span>
-                  </div>
-                )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/45 to-black/30 z-[2]" />
+                      
+                      {/* Live Stream Indicator & Badge - Only show when stream is live */}
+                      {isAdLive && !isWebcamSource && (
+                        <div className={`absolute top-28 z-[70] flex items-center gap-2 bg-rose-600 border border-rose-500/40 text-white font-black px-4 py-2 rounded-full shadow-[0_4px_25px_rgba(225,29,72,0.4)] ${isRtl ? 'left-6' : 'right-6'} backdrop-blur-xl`}>
+                          <span className="w-2 h-2 rounded-full bg-white animate-ping" />
+                          <span className="text-[10px] sm:text-[11px] tracking-wider uppercase font-black">{isRtl ? 'بث مباشر 🔴' : 'LIVE 🔴'}</span>
+                          <span className="w-px h-4 bg-white/20" />
+                          <span className="text-[10px] sm:text-[11px] font-mono font-black">{(liveViewerCount || 0).toLocaleString()} 👁️</span>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
 
                 {/* Simulated Live Feed Floating Comments - REMOVED TO PREVENT OVERLAP WITH REAL CHAT */}
 
@@ -2190,7 +2206,8 @@ export default function SpotlightFeed({
                 <div className="flex flex-col items-center gap-1 relative mb-2">
                   <div 
                      onClick={() => {
-                       if (ad.isPromo) {
+                       const isSystemAdminPromo = ad.promoType === 'system' || ad.userName === 'إدارة أسواق' || ad.userName === 'Aswaq Management';
+                       if (isSystemAdminPromo) {
                          showToast(isRtl ? '🏢 إدارة أسواق — المنصة الرسمية' : '🏢 Aswaq Management — Official Platform');
                          return;
                        }
@@ -2204,20 +2221,20 @@ export default function SpotlightFeed({
                        showToast(t('spotlight.merchantToast'));
                      }}
                      className={`w-11 h-11 sm:w-12 sm:h-12 rounded-full overflow-hidden bg-slate-900 shadow-xl cursor-pointer hover:scale-105 transition-transform ${
-                       ad.isPromo
+                       (ad.promoType === 'system' || ad.userName === 'إدارة أسواق')
                          ? 'border-[2px] border-amber-400 shadow-amber-400/40 shadow-lg ring-2 ring-amber-500/30'
                          : 'border-[1.5px] border-white p-0.5'
                      }`}
                   >
                     <Avatar 
-                      src={ad.isPromo ? '/aswaq-admin-avatar.png' : (ad.user?.avatar || ad.userAvatar)} 
-                      name={ad.isPromo ? (isRtl ? 'إدارة أسواق' : 'Aswaq Management') : (ad.user?.name || ad.userName || (isRtl ? 'بائع أسواق' : 'Aswaq Seller'))} 
+                      src={(ad.promoType === 'system' || ad.userName === 'إدارة أسواق') ? '/aswaq-admin-avatar.png' : (ad.user?.avatar || ad.userAvatar)} 
+                      name={(ad.promoType === 'system' || ad.userName === 'إدارة أسواق') ? (isRtl ? 'إدارة أسواق' : 'Aswaq Management') : (ad.user?.name || ad.userName || (isRtl ? 'بائع أسواق' : 'Aswaq Seller'))} 
                       sizeClassName="w-full h-full"
                       className="rounded-full"
                     />
                   </div>
                   {/* Badge: شعار ذهبي للإدارة / زر متابعة للعاديين */}
-                  {ad.isPromo ? (
+                  {(ad.promoType === 'system' || ad.userName === 'إدارة أسواق') ? (
                     <div className="absolute -bottom-2 bg-gradient-to-br from-amber-400 to-yellow-500 rounded-full w-5 h-5 flex items-center justify-center shadow-lg shadow-amber-500/50 border border-white"
                          title={isRtl ? 'إدارة أسواق الرسمية' : 'Official Aswaq Management'}
                     >
@@ -2391,7 +2408,7 @@ export default function SpotlightFeed({
 
                   {/* اسم صاحب الريل في المحتوى السفلي */}
                   <div className={`flex items-center gap-1.5 ${isRtl ? 'flex-row' : 'flex-row-reverse'}`}>
-                    {ad.isPromo ? (
+                    {(ad.promoType === 'system' || ad.userName === 'إدارة أسواق') ? (
                       <div className="flex items-center gap-1.5 bg-gradient-to-r from-amber-500/20 to-yellow-500/20 border border-amber-500/40 px-3 py-1 rounded-full backdrop-blur-md shadow-md">
                         <img src="/aswaq-admin-avatar.png" alt="Aswaq Admin" className="w-4 h-4 rounded-full border border-amber-400/60 object-cover" />
                         <span className="text-amber-300 text-[10px] sm:text-[11px] font-black tracking-wide">
