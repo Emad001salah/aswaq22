@@ -2159,14 +2159,17 @@ Sitemap: ${BASE_URL}/sitemap.xml
         const urls: string[] = [];
 
         for (const ad of ads) {
-          if (ad.images.length === 0) continue;
+          const validImages = ad.images.filter(img => img.url && !img.url.startsWith('data:'));
+          if (validImages.length === 0) continue;
+
           const city = cityMap.get(ad.city) ?? cityByName.get(ad.city) ?? cityByName.get(ad.city.toLowerCase());
           const cc   = city?.country?.countryCode?.toLowerCase() || 'ye';
           const loc  = `${BASE_URL}/${cc}/${ad.category.nameEn.toLowerCase()}/${slugify(ad.title)}-${ad.id}`;
           const safe = escapeXml(ad.title);
 
-          const imageTags = ad.images.map(img => {
-            const imgUrl = img.url.startsWith('http') ? img.url : `${BASE_URL}${img.url}`;
+          const imageTags = validImages.map(img => {
+            const cleanUrl = img.url.trim();
+            const imgUrl   = cleanUrl.startsWith('http') ? cleanUrl : `${BASE_URL}${cleanUrl.startsWith('/') ? '' : '/'}${cleanUrl}`;
             return `    <image:image>\n      <image:loc>${safeLoc(imgUrl)}</image:loc>\n      <image:title>${safe}</image:title>\n    </image:image>`;
           }).join('\n');
 
@@ -2232,14 +2235,17 @@ Sitemap: ${BASE_URL}/sitemap.xml
         const urls: string[] = [];
 
         for (const ad of ads) {
-          if (ad.images.length === 0) continue;
+          const validImages = ad.images.filter(img => img.url && !img.url.startsWith('data:'));
+          if (validImages.length === 0) continue;
+
           const city = cityMap.get(ad.city) ?? cityByName.get(ad.city) ?? cityByName.get(ad.city.toLowerCase());
           const cc   = city?.country?.countryCode?.toLowerCase() || 'ye';
           const loc  = `${BASE_URL}/${cc}/${ad.category.nameEn.toLowerCase()}/${slugify(ad.title)}-${ad.id}`;
           const safe = escapeXml(ad.title);
 
-          const imageTags = ad.images.map(img => {
-            const imgUrl = img.url.startsWith('http') ? img.url : `${BASE_URL}${img.url}`;
+          const imageTags = validImages.map(img => {
+            const cleanUrl = img.url.trim();
+            const imgUrl   = cleanUrl.startsWith('http') ? cleanUrl : `${BASE_URL}${cleanUrl.startsWith('/') ? '' : '/'}${cleanUrl}`;
             return `    <image:image>\n      <image:loc>${safeLoc(imgUrl)}</image:loc>\n      <image:title>${safe}</image:title>\n    </image:image>`;
           }).join('\n');
 
