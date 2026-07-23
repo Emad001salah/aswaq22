@@ -2077,7 +2077,7 @@ Sitemap: ${BASE_URL}/sitemap.xml
         for (const ad of recentAds) {
           const city        = cities.find(c => c.id === ad.city || c.nameAr === ad.city || c.nameEn === ad.city);
           const cc          = city?.country?.countryCode?.toLowerCase() || 'ye';
-          const catSlug     = slugify(ad.category.nameEn);
+          const catSlug     = ad.category.nameEn.toLowerCase();
           const adSlug      = slugify(ad.title);
           const loc         = `${BASE_URL}/${cc}/${catSlug}/${adSlug}-${ad.id}`;
           const pubDate     = ad.createdAt.toISOString();
@@ -2128,7 +2128,7 @@ Sitemap: ${BASE_URL}/sitemap.xml
         const urls = ads.map(ad => {
           const city = cityMap.get(ad.city) ?? cityByName.get(ad.city) ?? cityByName.get(ad.city.toLowerCase());
           const cc   = city?.country?.countryCode?.toLowerCase() || 'ye';
-          const loc  = `${BASE_URL}/${cc}/${slugify(ad.category.nameEn)}/${slugify(ad.title)}-${ad.id}`;
+          const loc  = `${BASE_URL}/${cc}/${ad.category.nameEn.toLowerCase()}/${slugify(ad.title)}-${ad.id}`;
           return urlBlock(loc, ad.updatedAt.toISOString().split('T')[0], 'weekly', '0.6');
         });
 
@@ -2159,17 +2159,18 @@ Sitemap: ${BASE_URL}/sitemap.xml
         const urls: string[] = [];
 
         for (const ad of ads) {
-          const validImages = ad.images.filter(img => img.url && !img.url.startsWith('data:'));
-          if (validImages.length === 0) continue;
-
+          if (!ad.images || ad.images.length === 0) continue;
           const city = cityMap.get(ad.city) ?? cityByName.get(ad.city) ?? cityByName.get(ad.city.toLowerCase());
           const cc   = city?.country?.countryCode?.toLowerCase() || 'ye';
-          const loc  = `${BASE_URL}/${cc}/${slugify(ad.category.nameEn)}/${slugify(ad.title)}-${ad.id}`;
+          const loc  = `${BASE_URL}/${cc}/${ad.category.nameEn.toLowerCase()}/${slugify(ad.title)}-${ad.id}`;
           const safe = escapeXml(ad.title);
 
+          const validImages = ad.images.filter(img => img.url && !img.url.trim().startsWith('data:'));
+          if (validImages.length === 0) continue;
+
           const imageTags = validImages.map(img => {
-            const cleanUrl = img.url.trim();
-            const imgUrl   = cleanUrl.startsWith('http') ? cleanUrl : `${BASE_URL}${cleanUrl.startsWith('/') ? '' : '/'}${cleanUrl}`;
+            const raw = img.url.trim();
+            const imgUrl = raw.startsWith('http') ? raw : `${BASE_URL}${raw.startsWith('/') ? '' : '/'}${raw}`;
             return `    <image:image>\n      <image:loc>${safeLoc(imgUrl)}</image:loc>\n      <image:title>${safe}</image:title>\n    </image:image>`;
           }).join('\n');
 
@@ -2196,10 +2197,12 @@ Sitemap: ${BASE_URL}/sitemap.xml
         const urls: string[] = [];
 
         for (const reel of reels) {
-          const videoUrl   = reel.videoUrl.startsWith('http') ? reel.videoUrl : `${BASE_URL}${reel.videoUrl}`;
-          const safeVideo  = safeLoc(videoUrl);
-          const safeTitle  = escapeXml(reel.title || 'فيديو ترويجي - أسواق');
-          const safeThumb  = `${BASE_URL}/aswaq-icon-512.png`;
+          if (!reel.videoUrl || reel.videoUrl.trim().startsWith('data:')) continue;
+          const rawVideo  = reel.videoUrl.trim();
+          const videoUrl  = rawVideo.startsWith('http') ? rawVideo : `${BASE_URL}${rawVideo.startsWith('/') ? '' : '/'}${rawVideo}`;
+          const safeVideo = safeLoc(videoUrl);
+          const safeTitle = escapeXml(reel.title || 'فيديو ترويجي - أسواق');
+          const safeThumb = `${BASE_URL}/aswaq-icon-512.png`;
 
           urls.push(
             `  <url>\n    <loc>${safeLoc(BASE_URL + '/')}</loc>\n    <video:video>\n      <video:thumbnail_loc>${safeLoc(safeThumb)}</video:thumbnail_loc>\n      <video:title>${safeTitle}</video:title>\n      <video:description>فيديو ريلز ترويجي على منصة أسواق</video:description>\n      <video:content_loc>${safeVideo}</video:content_loc>\n      <video:publication_date>${reel.createdAt.toISOString()}</video:publication_date>\n    </video:video>\n  </url>`
@@ -2235,17 +2238,18 @@ Sitemap: ${BASE_URL}/sitemap.xml
         const urls: string[] = [];
 
         for (const ad of ads) {
-          const validImages = ad.images.filter(img => img.url && !img.url.startsWith('data:'));
-          if (validImages.length === 0) continue;
-
+          if (!ad.images || ad.images.length === 0) continue;
           const city = cityMap.get(ad.city) ?? cityByName.get(ad.city) ?? cityByName.get(ad.city.toLowerCase());
           const cc   = city?.country?.countryCode?.toLowerCase() || 'ye';
-          const loc  = `${BASE_URL}/${cc}/${slugify(ad.category.nameEn)}/${slugify(ad.title)}-${ad.id}`;
+          const loc  = `${BASE_URL}/${cc}/${ad.category.nameEn.toLowerCase()}/${slugify(ad.title)}-${ad.id}`;
           const safe = escapeXml(ad.title);
 
+          const validImages = ad.images.filter(img => img.url && !img.url.trim().startsWith('data:'));
+          if (validImages.length === 0) continue;
+
           const imageTags = validImages.map(img => {
-            const cleanUrl = img.url.trim();
-            const imgUrl   = cleanUrl.startsWith('http') ? cleanUrl : `${BASE_URL}${cleanUrl.startsWith('/') ? '' : '/'}${cleanUrl}`;
+            const raw = img.url.trim();
+            const imgUrl = raw.startsWith('http') ? raw : `${BASE_URL}${raw.startsWith('/') ? '' : '/'}${raw}`;
             return `    <image:image>\n      <image:loc>${safeLoc(imgUrl)}</image:loc>\n      <image:title>${safe}</image:title>\n    </image:image>`;
           }).join('\n');
 
