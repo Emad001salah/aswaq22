@@ -191,7 +191,11 @@ function WebcamStreamPlayer({
         try {
           const stream = await navigator.mediaDevices.getUserMedia({
             video: { facingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
-            audio: true
+            audio: {
+              echoCancellation: true,
+              noiseSuppression: true,
+              autoGainControl: true
+            }
           });
           
           if (!active) {
@@ -416,6 +420,7 @@ function WebcamStreamPlayer({
           console.log("[Viewer] Received broadcast tracks!", event.streams);
           if (videoRef.current && event.streams[0]) {
             videoRef.current.srcObject = event.streams[0];
+            videoRef.current.play().catch(e => console.log("Autoplay handle:", e));
             setStatusText('');
             setIsOffline(false);
           }
@@ -2102,7 +2107,7 @@ export default function SpotlightFeed({
 
                   return (
                     <>
-                      {((isWebcamSource ? isCurrent : isPreloading)) && (!(customBgs[ad.id] && currentUser?.id === ad.userId)) && actualVid && (
+                      {((isWebcamSource ? isCurrent : isPreloading)) && actualVid && (
                         isWebcamSource ? (
                           <div className="absolute inset-0 z-[60]">
                             <WebcamStreamPlayer 
