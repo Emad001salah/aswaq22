@@ -33,9 +33,18 @@ export const getAvatarColor = (name: string) => {
   return colors[index];
 };
 
+export const sanitizeName = (name: string): string => {
+  if (!name || !name.trim()) return 'مستخدم جديد';
+  const trimmed = name.trim();
+  if (/^[A-Za-z0-9_-]{20,}$/.test(trimmed) || trimmed.includes('@phone.aswaq.com')) {
+    return 'مستخدم جديد';
+  }
+  return trimmed;
+};
+
 export const getInitials = (name: string) => {
-  if (!name) return '?';
-  const parts = name.trim().split(/\s+/);
+  const clean = sanitizeName(name);
+  const parts = clean.split(/\s+/);
   if (parts.length === 1) {
     return parts[0].charAt(0).toUpperCase();
   }
@@ -57,8 +66,9 @@ const getTextSize = (size?: string) => {
 export const Avatar: React.FC<AvatarProps> = ({ src, name, className = '', sizeClassName = 'w-10 h-10' }) => {
   const [imgError, setImgError] = React.useState(false);
   const hasAvatar = !isPlaceholder(src) && src && !imgError;
-  const initials = getInitials(name);
-  const gradientColor = getAvatarColor(name);
+  const cleanName = sanitizeName(name);
+  const initials = getInitials(cleanName);
+  const gradientColor = getAvatarColor(cleanName);
   const textSize = getTextSize(sizeClassName);
 
   // Combine classes. If rounded class is not specified, default to rounded-2xl to match design

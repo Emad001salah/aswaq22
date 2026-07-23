@@ -36,10 +36,11 @@ export default function UserProfileModal({
   addToast,
 }: UserProfileModalProps) {
   const displayEmail = (user.email && !user.email.includes('@phone.aswaq.com')) ? user.email : '';
+  const cleanInitialName = (!user.name || /^[A-Za-z0-9_-]{20,}$/.test(user.name.trim()) || user.name.includes('@phone.aswaq.com')) ? 'مستخدم جديد' : user.name;
 
   const [isEditing, setIsEditing] = React.useState(false);
   const [editForm, setEditForm] = React.useState({
-    name: user.name,
+    name: cleanInitialName,
     phone: user.phone || '',
     email: displayEmail,
     bio: user.bio || '',

@@ -587,12 +587,15 @@ export function AuthController() {
       const salt = await bcrypt.genSalt(10);
       const passwordHash = await bcrypt.hash(randomPassword, salt);
 
+      const isRawUidName = (str?: string | null) => !str || !str.trim() || /^[A-Za-z0-9_-]{20,}$/.test(str.trim()) || str.includes('@phone.aswaq.com');
+      const cleanName = (name && name.trim() && !isRawUidName(name)) ? name.trim() : 'مستخدم جديد';
+
       if (!user) {
         user = await prisma.user.create({
           data: {
             id: uuid,
             email: userEmail,
-            name: name || userEmail.split('@')[0] || 'User',
+            name: cleanName,
             avatar: avatar || null,
             phone: phone || null,
             password: passwordHash,
@@ -602,7 +605,11 @@ export function AuthController() {
         });
       } else {
         const updateData: any = { lastLoginAt: new Date() };
-        if (name && user.name !== name) updateData.name = name;
+        if (name && user.name !== name && !isRawUidName(name)) {
+          updateData.name = name;
+        } else if (isRawUidName(user.name)) {
+          updateData.name = 'مستخدم جديد';
+        }
         if (avatar && user.avatar !== avatar) updateData.avatar = avatar;
         if (phone && !user.phone) updateData.phone = phone;
 
