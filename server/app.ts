@@ -2077,7 +2077,7 @@ Sitemap: ${BASE_URL}/sitemap.xml
         for (const ad of recentAds) {
           const city        = cities.find(c => c.id === ad.city || c.nameAr === ad.city || c.nameEn === ad.city);
           const cc          = city?.country?.countryCode?.toLowerCase() || 'ye';
-          const catSlug     = ad.category.nameEn.toLowerCase();
+          const catSlug     = slugify(ad.category.nameEn);
           const adSlug      = slugify(ad.title);
           const loc         = `${BASE_URL}/${cc}/${catSlug}/${adSlug}-${ad.id}`;
           const pubDate     = ad.createdAt.toISOString();
@@ -2128,7 +2128,7 @@ Sitemap: ${BASE_URL}/sitemap.xml
         const urls = ads.map(ad => {
           const city = cityMap.get(ad.city) ?? cityByName.get(ad.city) ?? cityByName.get(ad.city.toLowerCase());
           const cc   = city?.country?.countryCode?.toLowerCase() || 'ye';
-          const loc  = `${BASE_URL}/${cc}/${ad.category.nameEn.toLowerCase()}/${slugify(ad.title)}-${ad.id}`;
+          const loc  = `${BASE_URL}/${cc}/${slugify(ad.category.nameEn)}/${slugify(ad.title)}-${ad.id}`;
           return urlBlock(loc, ad.updatedAt.toISOString().split('T')[0], 'weekly', '0.6');
         });
 
@@ -2164,7 +2164,7 @@ Sitemap: ${BASE_URL}/sitemap.xml
 
           const city = cityMap.get(ad.city) ?? cityByName.get(ad.city) ?? cityByName.get(ad.city.toLowerCase());
           const cc   = city?.country?.countryCode?.toLowerCase() || 'ye';
-          const loc  = `${BASE_URL}/${cc}/${ad.category.nameEn.toLowerCase()}/${slugify(ad.title)}-${ad.id}`;
+          const loc  = `${BASE_URL}/${cc}/${slugify(ad.category.nameEn)}/${slugify(ad.title)}-${ad.id}`;
           const safe = escapeXml(ad.title);
 
           const imageTags = validImages.map(img => {
@@ -2240,7 +2240,7 @@ Sitemap: ${BASE_URL}/sitemap.xml
 
           const city = cityMap.get(ad.city) ?? cityByName.get(ad.city) ?? cityByName.get(ad.city.toLowerCase());
           const cc   = city?.country?.countryCode?.toLowerCase() || 'ye';
-          const loc  = `${BASE_URL}/${cc}/${ad.category.nameEn.toLowerCase()}/${slugify(ad.title)}-${ad.id}`;
+          const loc  = `${BASE_URL}/${cc}/${slugify(ad.category.nameEn)}/${slugify(ad.title)}-${ad.id}`;
           const safe = escapeXml(ad.title);
 
           const imageTags = validImages.map(img => {
