@@ -622,7 +622,20 @@ export default function CreateAdTab({
             ))}
           </div>
 
-          <form onSubmit={handleCreateAdSubmit} className="space-y-6 notranslate" translate="no">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (adStep < 3) {
+                if (validateStep(adStep)) {
+                  setAdStep(adStep + 1);
+                }
+              } else {
+                handleCreateAdSubmit(e);
+              }
+            }}
+            className="space-y-6 notranslate"
+            translate="no"
+          >
             {adStep === 1 && (
               <div className="space-y-4 animate-in fade-in slide-in-from-bottom duration-300">
                 {/* Title */}
@@ -638,6 +651,11 @@ export default function CreateAdTab({
                     className={`w-full h-12 border rounded-xl px-4 outline-none focus:border-emerald-500 text-sm text-right font-bold transition-colors ${isDark ? "bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600" : "bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400"}`}
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                      }
+                    }}
                     id="ad-input-title"
                     dir="auto"
                     autoComplete="off"
@@ -719,6 +737,11 @@ export default function CreateAdTab({
                       className={`w-full h-11 border rounded-xl px-4 outline-none focus:border-emerald-500 text-xs font-bold text-right transition-colors ${isDark ? "bg-slate-950 border-slate-800 text-slate-200" : "bg-white border-slate-200 text-slate-900"}`}
                       value={price}
                       onChange={(e) => setPrice(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                        }
+                      }}
                       id="ad-input-price"
                     />
                   </div>
