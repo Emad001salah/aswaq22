@@ -193,5 +193,34 @@ export function PromoController() {
     }
   });
 
+  // POST /api/promo/:id/view - Increment views for promo reels
+  router.post('/:id/view', async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const updated = await prisma.reel.update({
+        where: { id },
+        data: { views: { increment: 1 } }
+      }).catch(() => null);
+      return res.json({ views: updated ? updated.views : 1 });
+    } catch {
+      return res.json({ views: 1 });
+    }
+  });
+
+  // POST /api/promo/:id/like - Increment/decrement likes for promo reels
+  router.post('/:id/like', authMiddleware as any, async (req: any, res: Response) => {
+    try {
+      const { id } = req.params;
+      const action = req.body?.action;
+      const updated = await prisma.reel.update({
+        where: { id },
+        data: { likes: action === 'unlike' ? { decrement: 1 } : { increment: 1 } }
+      }).catch(() => null);
+      return res.json({ likes: updated ? Math.max(0, updated.likes) : 1 });
+    } catch {
+      return res.json({ likes: 1 });
+    }
+  });
+
   return router;
 }

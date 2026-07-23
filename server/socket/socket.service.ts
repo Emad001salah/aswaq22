@@ -84,6 +84,7 @@ export class SocketService {
         if (role === 'broadcaster') {
           stream.broadcasterId = socket.id;
           this.io.to(`stream_${streamId}`).emit('broadcaster-ready', { broadcasterId: socket.id });
+          this.io.to(`stream_${streamId}`).emit('stream-broadcaster-online', { broadcasterId: socket.id });
 
           socket.broadcast.emit('live-stream-notification', {
             streamId,

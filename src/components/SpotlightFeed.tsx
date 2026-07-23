@@ -1485,10 +1485,10 @@ export default function SpotlightFeed({
     const activeAd = displayAds[activeIndex];
     if (activeAd) {
       const currentId = activeAd.id;
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      if (typeof currentId === 'string' && uuidRegex.test(currentId) && !viewedAdIdsRef.current.has(currentId)) {
+      if (typeof currentId === 'string' && currentId.trim().length > 0 && !viewedAdIdsRef.current.has(currentId)) {
         viewedAdIdsRef.current.add(currentId);
-        apiFetch(`/api/ads/${currentId}/view`, { method: "POST" })
+        const endpoint = activeAd.isPromo ? `/api/promo/${currentId}/view` : `/api/ads/${currentId}/view`;
+        apiFetch(endpoint, { method: "POST" })
           .then(res => res.json())
           .then(data => {
             if (data && typeof data.views === 'number') {
@@ -1559,9 +1559,10 @@ export default function SpotlightFeed({
     }
 
     // Fire real endpoint hit to persist to database and return real count
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (uuidRegex.test(adId)) {
-      apiFetch(`/api/ads/${adId}/like`, { 
+    if (typeof adId === 'string' && adId.trim().length > 0) {
+      const targetAd = displayAds.find(a => a.id === adId);
+      const endpoint = targetAd?.isPromo ? `/api/promo/${adId}/like` : `/api/ads/${adId}/like`;
+      apiFetch(endpoint, { 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: !isLiked ? 'like' : 'unlike' })
