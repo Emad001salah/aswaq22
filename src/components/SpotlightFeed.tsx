@@ -2292,7 +2292,7 @@ export default function SpotlightFeed({
                 }`}>
                   {(ad.promoType === 'system' || ad.userName === 'إدارة أسواق')
                     ? (isRtl ? 'إدارة\nأسواق' : 'Aswaq\nMgmt')
-                    : (ad.user?.name?.split(' ')[0] || ad.userName?.split(' ')[0] || (isRtl ? 'بائع' : 'Seller'))
+                    : sanitizeName(ad.user?.name || ad.userName || (isRtl ? 'بائع' : 'Seller')).split(' ')[0]
                   }
                 </span>
 

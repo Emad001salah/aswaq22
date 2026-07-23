@@ -41,7 +41,7 @@ import { useNavigate } from 'react-router-dom';
 import { Ad, User, ChatMessage } from '../types.ts';
 import { Market, getCurrencyAr, getCurrencyNameAr } from '../markets.ts';
 import { INITIAL_USERS, CATEGORIES } from '../data.ts';
-import { Avatar } from './Avatar.tsx';
+import { Avatar, sanitizeName } from './Avatar.tsx';
 import { apiFetch } from '../lib/api';
 
 const getYoutubeEmbedUrl = (url?: string): string | null => {
@@ -130,7 +130,8 @@ export default function AdModal({
   const categoryObject = CATEGORIES.find(c => c.id === ad.category);
   const categoryName = categoryObject?.nameAr || 'القسم';
 
-  const sellerName = ad.user?.name || ad.userName || (isRtl ? 'بائع أسواق' : 'Aswaq Seller');
+  const rawSellerName = ad.user?.name || ad.userName || (isRtl ? 'بائع أسواق' : 'Aswaq Seller');
+  const sellerName = sanitizeName(rawSellerName);
   const sellerAvatar = ad.user?.avatar || ad.userAvatar;
   const [showReportForm, setShowReportForm] = useState(false);
   const [reportReason, setReportReason] = useState('');
