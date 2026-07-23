@@ -1843,17 +1843,25 @@ export class App {
       }
     };
 
-    /** Empty but valid urlset — MUST contain at least one <url> tag for Google Search Console */
-    const emptyUrlset = (extraNs = '') =>
-      `<?xml version="1.0" encoding="UTF-8"?>
+    /** Empty but valid urlset — MUST contain at least one <url> tag and matching extension tags for Google Search Console */
+    const emptyUrlset = (extraNs = '') => {
+      let extraTag = '';
+      if (extraNs.includes('sitemap-image')) {
+        extraTag = `\n    <image:image>\n      <image:loc>https://www.aswaq22.com/aswaq-icon-512.png</image:loc>\n      <image:title>أسواق</image:title>\n    </image:image>`;
+      } else if (extraNs.includes('sitemap-video')) {
+        extraTag = `\n    <video:video>\n      <video:thumbnail_loc>https://www.aswaq22.com/aswaq-icon-512.png</video:thumbnail_loc>\n      <video:title>منصة أسواق</video:title>\n      <video:description>منصة أسواق للإعلانات التفاعلية</video:description>\n      <video:content_loc>https://www.aswaq22.com/aswaq-icon-512.png</video:content_loc>\n      <video:publication_date>${new Date().toISOString()}</video:publication_date>\n    </video:video>`;
+      }
+
+      return `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"${extraNs}>
   <url>
     <loc>https://www.aswaq22.com/</loc>
     <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>
     <changefreq>daily</changefreq>
-    <priority>1.0</priority>
+    <priority>1.0</priority>${extraTag}
   </url>
 </urlset>`;
+    };
 
     /** Build a <url> block */
     const urlBlock = (loc: string, lastmod: string, changefreq: string, priority: string) =>
