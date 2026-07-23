@@ -2859,28 +2859,39 @@ Sitemap: ${BASE_URL}/sitemap.xml
         server: { middlewareMode: true },
         appType: 'spa',
       });
-      // Vite serves React SPA (including / and all client routes)
-      this.app.use(vite.middlewares);
+      // Vite serves React SPA — bypass for sitemaps & robots.txt so Express handles XML responses
+      this.app.use((req, res, next) => {
+        if (req.path === '/robots.txt' || req.path.startsWith('/sitemap')) {
+          return next();
+        }
+        vite.middlewares(req, res, next);
+      });
     } else {
       const distPath = path.join(process.cwd(), 'dist');
-      this.app.use(express.static(distPath, {
-        setHeaders: (res, filePath) => {
-          if (filePath.endsWith('.html')) {
-            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-            res.setHeader('Pragma', 'no-cache');
-            res.setHeader('Expires', '0');
-          } else {
-            res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-          }
+      this.app.use((req, res, next) => {
+        if (req.path === '/robots.txt' || req.path.startsWith('/sitemap')) {
+          return next();
         }
-      }));
+        express.static(distPath, {
+          setHeaders: (resHeader, filePath) => {
+            if (filePath.endsWith('.html')) {
+              resHeader.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+              resHeader.setHeader('Pragma', 'no-cache');
+              resHeader.setHeader('Expires', '0');
+            } else {
+              resHeader.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+            }
+          }
+        })(req, res, next);
+      });
+
       // SPA fallback — skip for server-generated files
       this.app.get('*', (req, res) => {
         // Let server routes handle these — do NOT serve index.html for them
         if (
           req.path === '/robots.txt' ||
           req.path === '/sitemap.xml' ||
-          req.path.startsWith('/sitemaps/')
+          req.path.startsWith('/sitemaps')
         ) {
           return res.status(404).end();
         }
