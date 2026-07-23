@@ -1487,7 +1487,15 @@ export class App {
           skip: cursor ? 1 : 0,
           cursor: cursor ? { id: String(cursor) } : undefined,
           where: {
-            ...(market && market !== 'all' ? { countryId: market } : {}),
+            deletedAt: null,
+            // Only filter by countryId when a regular ADMIN is managing a specific country
+            // SUPER_ADMIN sees ALL users regardless of countryId
+            ...(market && market !== 'all' && adminUser.role !== 'SUPER_ADMIN' ? {
+              OR: [
+                { countryId: market },
+                { countryId: null }
+              ]
+            } : {}),
             ...(search ? { 
               OR: [
                 { name: { contains: String(search) } },
@@ -1503,7 +1511,11 @@ export class App {
             phone: true,
             email: true,
             role: true,
+            avatar: true,
             isVerified: true,
+            phoneVerified: true,
+            emailVerified: true,
+            countryId: true,
             createdAt: true,
             lastLoginAt: true,
             deletedAt: true,
@@ -1516,14 +1528,6 @@ export class App {
                 walletBalance: true,
                 totalDeliveries: true,
                 rating: true,
-              }
-            },
-            uploadedMedia: {
-              select: {
-                id: true,
-                url: true,
-                type: true,
-                createdAt: true,
               }
             },
             _count: {
