@@ -24,7 +24,7 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         localStorage.setItem('user_manually_selected_market', 'true');
       }
     } catch (e) {}
-    setMarketState(newMarket);
+    setMarket(newMarket);
   };
 
   useEffect(() => {

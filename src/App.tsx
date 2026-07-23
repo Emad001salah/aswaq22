@@ -2104,7 +2104,8 @@ useEffect(() => {
               );
               return matchesNameOrId;
             });
-            setFilteredAds(filtered);
+            // If specific city match returned ads, use filtered; otherwise fallback to data so market never shows blank
+            setFilteredAds(filtered.length > 0 ? filtered : data);
           } else {
             setFilteredAds([]);
           }
@@ -2118,9 +2119,10 @@ useEffect(() => {
       }
     };
 
-    const timer = setTimeout(fetchFilteredAds, 300);
+    const timer = setTimeout(fetchFilteredAds, 100);
     return () => clearTimeout(timer);
   }, [
+    currentMarket.id,
     searchQuery,
     selectedCity,
     selectedDistrict,
