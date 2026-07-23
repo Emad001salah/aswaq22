@@ -12,7 +12,7 @@ import { Market, getCurrencyAr, getCurrencyNameAr } from '../markets.ts';
 import { useTranslation } from 'react-i18next';
 import { CATEGORIES } from '../data.ts';
 import toast from 'react-hot-toast';
-import { Avatar } from './Avatar.tsx';
+import { Avatar, sanitizeName } from './Avatar.tsx';
 
 interface AdCardProps {
   key?: string;
@@ -136,9 +136,10 @@ export default React.memo(function AdCard({ ad, onClick, onLikeToggle, isFavorit
   const cityObj = currentMarket?.cities?.find((c) => c.id === ad.city);
   const cityName = cityObj ? (isRtl ? cityObj.nameAr : cityObj.nameEn) : ad.city;
   
-  // Dynamically resolve localized category name
+  // Dynamically resolve localized category name (hide raw UUIDs)
+  const isUuidCategory = !!(ad.category && (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(ad.category) || ad.category.length > 25));
   const catObj = CATEGORIES?.find?.((c: any) => c.id === ad.category);
-  const categoryName = catObj ? (isRtl ? catObj.nameAr : catObj.nameEn) : ad.category;
+  const categoryName = catObj ? (isRtl ? catObj.nameAr : catObj.nameEn) : (isUuidCategory ? '' : ad.category);
   const districtName = ad.district;
 
   const handleLikeClick = (e: MouseEvent) => {
@@ -346,9 +347,11 @@ export default React.memo(function AdCard({ ad, onClick, onLikeToggle, isFavorit
         )}
 
         {/* Category Label Overlay */}
-        <span className={`absolute bottom-2 sm:bottom-3 z-10 bg-white/90 dark:bg-slate-900/90 backdrop-blur border border-slate-200 dark:border-slate-700/35 text-slate-600 dark:text-slate-300 font-bold text-[8px] sm:text-[10px] px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md sm:rounded-lg ${isRtl ? 'right-2 sm:right-4' : 'left-2 sm:left-4'}`}>
-          {categoryName}
-        </span>
+        {categoryName && categoryName.trim() !== '' && (
+          <span className={`absolute bottom-2 sm:bottom-3 z-10 bg-white/90 dark:bg-slate-900/90 backdrop-blur border border-slate-200 dark:border-slate-700/35 text-slate-600 dark:text-slate-300 font-bold text-[8px] sm:text-[10px] px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md sm:rounded-lg ${isRtl ? 'right-2 sm:right-4' : 'left-2 sm:left-4'}`}>
+            {categoryName}
+          </span>
+        )}
       </div>
 
       {/* STATUS Watermark / Indicators */}
@@ -374,27 +377,32 @@ export default React.memo(function AdCard({ ad, onClick, onLikeToggle, isFavorit
       <div className="p-3 sm:p-5 flex flex-col justify-between flex-grow min-h-0 sm:h-auto">
         <div className="space-y-1 sm:space-y-2">
           {/* User & Trust Row */}
-          <div className="flex items-center gap-2 mb-2 pb-2 border-b border-slate-100 dark:border-slate-800/40">
-             <div className="relative flex items-center justify-center">
-                <Avatar 
-                  src={ad.userAvatar} 
-                  name={ad.userName || (isRtl ? 'مستخدم أسواق' : 'Aswaq Client')}
-                  sizeClassName="w-5 h-5 sm:w-6 sm:h-6"
-                  className="rounded-full border border-slate-200 dark:border-slate-700"
-                />
-                {ad.userVerified && (
-                  <div className="absolute -bottom-0.5 -right-0.5 bg-emerald-500 rounded-full p-0.5 border border-white dark:border-slate-900">
-                    <ShieldCheck className="w-1.5 h-1.5 sm:w-2 sm:h-2 text-white" />
-                  </div>
-                )}
-             </div>
-             <div className="flex flex-col">
-                   <span className={`text-[8px] sm:text-[10px] font-bold truncate max-w-[80px] ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
-                   {ad.userName || (isRtl ? 'مستخدم أسواق' : 'Aswaq Client')}
-                 </span>
-                {ad.userVerified && <span className="text-[6px] sm:text-[8px] font-black text-emerald-600 dark:text-emerald-500 uppercase tracking-tighter">{isRtl ? 'موثوق' : 'Verified'}</span>}
-             </div>
-          </div>
+          {(() => {
+            const cleanUserDisplayName = sanitizeName(ad.userName);
+            return (
+              <div className="flex items-center gap-2 mb-2 pb-2 border-b border-slate-100 dark:border-slate-800/40">
+                <div className="relative flex items-center justify-center">
+                  <Avatar 
+                    src={ad.userAvatar} 
+                    name={cleanUserDisplayName}
+                    sizeClassName="w-5 h-5 sm:w-6 sm:h-6"
+                    className="rounded-full border border-slate-200 dark:border-slate-700"
+                  />
+                  {ad.userVerified && (
+                    <div className="absolute -bottom-0.5 -right-0.5 bg-emerald-500 rounded-full p-0.5 border border-white dark:border-slate-900">
+                      <ShieldCheck className="w-1.5 h-1.5 sm:w-2 sm:h-2 text-white" />
+                    </div>
+                  )}
+                </div>
+                <div className="flex flex-col">
+                  <span className={`text-[8px] sm:text-[10px] font-bold truncate max-w-[80px] ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
+                    {cleanUserDisplayName}
+                  </span>
+                  {ad.userVerified && <span className="text-[6px] sm:text-[8px] font-black text-emerald-600 dark:text-emerald-500 uppercase tracking-tighter">{isRtl ? 'موثوق' : 'Verified'}</span>}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Micro Information Line */}
           <div className={`flex items-center justify-between gap-1 text-[8px] sm:text-[10px] font-mono ${isDark ? 'text-slate-300' : 'text-slate-500'} ${isRtl ? 'flex-row' : 'flex-row-reverse'}`}>
