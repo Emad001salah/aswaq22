@@ -11,6 +11,7 @@ import { getDeterministicUuid } from '../utils/db-helpers.ts';
 import { admin } from '../lib/firebase-admin.ts';
 import { firebaseAuthLimiter } from '../middleware/phone-rate-limit.ts';
 import { getFlag, isInRollout, isFeatureEnabled } from '../lib/feature-flags.ts';
+import { EmailService } from '../services/email.service.ts';
 
 export function AuthController() {
   const router = Router();
@@ -97,6 +98,11 @@ export function AuthController() {
 
       const tokens = await authService.generateTokens(user.id, user.email, user.role);
 
+      // Async send welcome email
+      if (user.email) {
+        EmailService.sendWelcomeEmail(user.email, user.name).catch(() => null);
+      }
+
       res.status(201).json({
         success: true,
         message: 'تم إنشاء الحساب بنجاح.',
@@ -116,6 +122,95 @@ export function AuthController() {
         error:   'Registration Error',
         message: isProd ? 'حدث خطأ أثناء إنشاء الحساب. يرجى المحاولة لاحقاً.' : e.message,
       });
+    }
+  });
+
+  // POST /api/v1/auth/password/forgot - Request Password Reset Email
+  router.post('/password/forgot', async (req: Request, res: Response) => {
+    try {
+      const { email } = req.body;
+      if (!email || typeof email !== 'string') {
+        return res.status(400).json({ error: 'البريد الإلكتروني مطلوب.' });
+      }
+
+      const user = await prisma.user.findUnique({ where: { email: email.toLowerCase().trim() } });
+      if (!user) {
+        // Return generic success to prevent email enumeration
+        return res.json({ success: true, message: 'إذا كان البريد مسجلاً، فستصلك تعليمات إعادة الضبط.' });
+      }
+
+      // Generate 6-digit PIN code + Token Hash
+      const resetPin = Math.floor(100000 + Math.random() * 900000).toString();
+      const tokenHash = crypto.createHash('sha256').update(resetPin).digest('hex');
+      const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 mins
+
+      await prisma.passwordResetToken.create({
+        data: {
+          userId: user.id,
+          tokenHash,
+          expiresAt,
+        }
+      });
+
+      const frontendUrl = process.env.FRONTEND_URL || 'https://aswaq.app';
+      const resetUrl = `${frontendUrl}?resetToken=${resetPin}&email=${encodeURIComponent(user.email)}`;
+
+      await EmailService.sendPasswordResetEmail(user.email, resetPin, resetUrl);
+
+      res.json({ success: true, message: 'تم إرسال تعليمات إعادة ضبط كلمة المرور إلى بريدك الإلكتروني.' });
+    } catch (err: any) {
+      res.status(500).json({ error: 'حدث خطأ أثناء إرسال البريد الإلكتروني.' });
+    }
+  });
+
+  // POST /api/v1/auth/password/reset - Perform Password Reset
+  router.post('/password/reset', async (req: Request, res: Response) => {
+    try {
+      const { email, resetToken, newPassword } = req.body;
+      if (!email || !resetToken || !newPassword) {
+        return res.status(400).json({ error: 'جميع الحقول مطلوبة.' });
+      }
+      if (newPassword.length < 8) {
+        return res.status(400).json({ error: 'كلمة المرور يجب أن تكون 8 أحرف على الأقل.' });
+      }
+
+      const user = await prisma.user.findUnique({ where: { email: email.toLowerCase().trim() } });
+      if (!user) {
+        return res.status(400).json({ error: 'الرمز غير صحيح أو منتهي الصلاحية.' });
+      }
+
+      const tokenHash = crypto.createHash('sha256').update(resetToken).digest('hex');
+      const validToken = await prisma.passwordResetToken.findFirst({
+        where: {
+          userId: user.id,
+          tokenHash,
+          usedAt: null,
+          expiresAt: { gt: new Date() }
+        }
+      });
+
+      if (!validToken) {
+        return res.status(400).json({ error: 'رمز التحقق غير صحيح أو انتهت صلاحيته.' });
+      }
+
+      // Hash new password and mark token used
+      const salt = await bcrypt.genSalt(10);
+      const newPasswordHash = await bcrypt.hash(newPassword, salt);
+
+      await prisma.$transaction([
+        prisma.user.update({
+          where: { id: user.id },
+          data: { password: newPasswordHash }
+        }),
+        prisma.passwordResetToken.update({
+          where: { id: validToken.id },
+          data: { usedAt: new Date() }
+        })
+      ]);
+
+      res.json({ success: true, message: 'تم تغيير كلمة المرور بنجاح. يمكنك الآن تسجيل الدخول.' });
+    } catch (err: any) {
+      res.status(500).json({ error: 'حدث خطأ أثناء إعادة ضبط كلمة المرور.' });
     }
   });
 

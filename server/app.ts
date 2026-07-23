@@ -785,9 +785,18 @@ export class App {
       }
     });
 
-    this.app.post('/api/notifications/register-token', async (req, res) => {
-      // Accept and ignore push tokens in dev (no Firebase Admin configured)
-      res.json({ success: true });
+    this.app.post('/api/notifications/register-token', authMiddleware, async (req, res) => {
+      try {
+        const userId = (req as any).user?.id || (req as any).user?.userId;
+        const { token, platform } = req.body;
+        if (userId && token) {
+          const { NotificationService } = await import('./services/notification.service.ts');
+          await NotificationService.registerDeviceToken(userId, token, platform);
+        }
+        res.json({ success: true, message: 'Push token registered successfully' });
+      } catch (err: any) {
+        res.json({ success: true });
+      }
     });
 
     // ── Messages ─────────────────────────────────────────────────────────────
