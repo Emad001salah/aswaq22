@@ -131,6 +131,12 @@ export class App {
   private initializeMiddlewares(): void {
     // 1. Canonical Domain & URL Redirection Middleware (HTTP->HTTPS, non-www -> www, lowercase paths in exactly 1 hop)
     this.app.use((req, res, next) => {
+      // NOTE: Do NOT redirect sitemaps (even if they have trailing slashes like /sitemaps/news.xml/)
+      // Google Search Console does NOT follow 301 redirects for submitted sitemaps and treats 301 HTML body as "Sitemap is an HTML page".
+      if (req.path.startsWith('/sitemaps') || req.path.startsWith('/sitemap.xml')) {
+        return next();
+      }
+
       const host = req.headers.host || '';
       const isLocal = host.includes('localhost') || host.includes('127.0.0.1') || process.env.NODE_ENV === 'test';
       
@@ -1825,16 +1831,31 @@ export class App {
     const sitemapHeaders = (res: any, cacheSeconds = 3600) => {
       res.setHeader('Content-Type', 'application/xml; charset=utf-8');
       res.setHeader('Cache-Control', `public, max-age=${cacheSeconds}, stale-while-revalidate=86400`);
-      res.setHeader('X-Robots-Tag', 'noindex');   // prevent sitemap files from appearing in results
+      // NOTE: Do NOT add X-Robots-Tag here — that would prevent Google from reading the sitemap
     };
+
+    /** Safely URL-encode (RFC 3986) and XML-escape location URLs for Google Sitemaps */
+    const safeLoc = (url: string) => {
+      try {
+        return escapeXml(encodeURI(url));
+      } catch {
+        return escapeXml(url);
+      }
+    };
+
+    /** Empty but valid urlset — returned when a sitemap has no entries */
+    const emptyUrlset = (extraNs = '') =>
+      `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"${extraNs}>
+</urlset>`;
 
     /** Build a <url> block */
     const urlBlock = (loc: string, lastmod: string, changefreq: string, priority: string) =>
-      `  <url>\n    <loc>${escapeXml(loc)}</loc>\n    <lastmod>${lastmod}</lastmod>\n    <changefreq>${changefreq}</changefreq>\n    <priority>${priority}</priority>\n  </url>`;
+      `  <url>\n    <loc>${safeLoc(loc)}</loc>\n    <lastmod>${lastmod}</lastmod>\n    <changefreq>${changefreq}</changefreq>\n    <priority>${priority}</priority>\n  </url>`;
 
     /** Build a <sitemap> entry in sitemap index */
     const sitemapEntry = (loc: string, lastmod: string) =>
-      `  <sitemap>\n    <loc>${escapeXml(loc)}</loc>\n    <lastmod>${lastmod}</lastmod>\n  </sitemap>`;
+      `  <sitemap>\n    <loc>${safeLoc(loc)}</loc>\n    <lastmod>${lastmod}</lastmod>\n  </sitemap>`;
 
     /** XML declaration + urlset wrapper */
     const urlsetXml = (urls: string[], extraNs = '') =>
@@ -1857,7 +1878,7 @@ Sitemap: ${BASE_URL}/sitemap.xml
     });
 
     // ── MAIN SITEMAP INDEX (Dynamic — lists ad pages based on count) ─────
-    this.app.get('/sitemap.xml', async (req, res) => {
+    this.app.get(['/sitemap.xml', '/sitemap.xml/'], async (req, res) => {
       try {
         const today = new Date().toISOString().split('T')[0];
 
@@ -1883,13 +1904,13 @@ Sitemap: ${BASE_URL}/sitemap.xml
         sitemapHeaders(res, 1800);
         res.send(xml);
       } catch (err) {
-        res.setHeader('Content-Type', 'application/xml; charset=utf-8');
-        res.status(500).send('<?xml version="1.0"?><sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"/>');
+        sitemapHeaders(res, 60);
+        res.send('<?xml version="1.0" encoding="UTF-8"?><sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></sitemapindex>');
       }
     });
 
     // ── STATIC PAGES ────────────────────────────────────────────────────
-    this.app.get('/sitemaps/static.xml', async (req, res) => {
+    this.app.get(['/sitemaps/static.xml', '/sitemaps/static.xml/'], async (req, res) => {
       try {
         const today = new Date().toISOString().split('T')[0];
 
@@ -1916,13 +1937,13 @@ Sitemap: ${BASE_URL}/sitemap.xml
         sitemapHeaders(res, 7200);
         res.send(urlsetXml(urls));
       } catch (err) {
-        res.setHeader('Content-Type', 'application/xml; charset=utf-8');
-        res.status(500).send('<?xml version="1.0"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"/>');
+        sitemapHeaders(res, 60);
+        res.send(emptyUrlset());
       }
     });
 
     // ── COUNTRIES MARKET PAGES ──────────────────────────────────────────
-    this.app.get('/sitemaps/countries.xml', async (req, res) => {
+    this.app.get(['/sitemaps/countries.xml', '/sitemaps/countries.xml/'], async (req, res) => {
       try {
         const today = new Date().toISOString().split('T')[0];
         const countries = await prisma.country.findMany({ where: { active: true } });
@@ -1934,13 +1955,13 @@ Sitemap: ${BASE_URL}/sitemap.xml
         sitemapHeaders(res, 7200);
         res.send(urlsetXml(urls));
       } catch (err) {
-        res.setHeader('Content-Type', 'application/xml; charset=utf-8');
-        res.status(500).send('<?xml version="1.0"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"/>');
+        sitemapHeaders(res, 60);
+        res.send(emptyUrlset());
       }
     });
 
     // ── CATEGORIES PER COUNTRY ──────────────────────────────────────────
-    this.app.get('/sitemaps/categories.xml', async (req, res) => {
+    this.app.get(['/sitemaps/categories.xml', '/sitemaps/categories.xml/'], async (req, res) => {
       try {
         const today = new Date().toISOString().split('T')[0];
 
@@ -1986,13 +2007,13 @@ Sitemap: ${BASE_URL}/sitemap.xml
         sitemapHeaders(res, 3600);
         res.send(urlsetXml(urls));
       } catch (err) {
-        res.setHeader('Content-Type', 'application/xml; charset=utf-8');
-        res.status(500).send('<?xml version="1.0"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"/>');
+        sitemapHeaders(res, 60);
+        res.send(emptyUrlset());
       }
     });
 
     // ── CITIES × CATEGORIES ─────────────────────────────────────────────
-    this.app.get('/sitemaps/cities.xml', async (req, res) => {
+    this.app.get(['/sitemaps/cities.xml', '/sitemaps/cities.xml/'], async (req, res) => {
       try {
         const today = new Date().toISOString().split('T')[0];
 
@@ -2030,13 +2051,13 @@ Sitemap: ${BASE_URL}/sitemap.xml
         sitemapHeaders(res, 3600);
         res.send(urlsetXml(urls));
       } catch (err) {
-        res.setHeader('Content-Type', 'application/xml; charset=utf-8');
-        res.status(500).send('<?xml version="1.0"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"/>');
+        sitemapHeaders(res, 60);
+        res.send(emptyUrlset());
       }
     });
 
     // ── NEWS SITEMAP (last 2 days — for Google News fast indexing) ───────
-    this.app.get('/sitemaps/news.xml', async (req, res) => {
+    this.app.get(['/sitemaps/news.xml', '/sitemaps/news.xml/'], async (req, res) => {
       try {
         const twoDaysAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
 
@@ -2063,20 +2084,20 @@ Sitemap: ${BASE_URL}/sitemap.xml
           const safeTitle   = escapeXml(ad.title);
 
           urls.push(
-            `  <url>\n    <loc>${escapeXml(loc)}</loc>\n    <news:news>\n      <news:publication>\n        <news:name>أسواق</news:name>\n        <news:language>ar</news:language>\n      </news:publication>\n      <news:publication_date>${pubDate}</news:publication_date>\n      <news:title>${safeTitle}</news:title>\n    </news:news>\n  </url>`
+            `  <url>\n    <loc>${safeLoc(loc)}</loc>\n    <news:news>\n      <news:publication>\n        <news:name>أسواق</news:name>\n        <news:language>ar</news:language>\n      </news:publication>\n      <news:publication_date>${pubDate}</news:publication_date>\n      <news:title>${safeTitle}</news:title>\n    </news:news>\n  </url>`
           );
         }
 
         sitemapHeaders(res, 900); // 15 min cache — news changes fast
         res.send(urlsetXml(urls, NS));
       } catch (err) {
-        res.setHeader('Content-Type', 'application/xml; charset=utf-8');
-        res.status(500).send('<?xml version="1.0"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"/>');
+        sitemapHeaders(res, 60);
+        res.send(emptyUrlset());
       }
     });
 
     // ── PAGINATED ADS SITEMAP (/sitemaps/ads-1.xml, ads-2.xml, ...) ──────
-    this.app.get('/sitemaps/ads-:page.xml', async (req, res) => {
+    this.app.get(['/sitemaps/ads-:page.xml', '/sitemaps/ads-:page.xml/'], async (req, res) => {
       try {
         const page = Math.max(1, parseInt(req.params.page) || 1);
         const skip = (page - 1) * ADS_PAGE_SIZE;
@@ -2093,8 +2114,9 @@ Sitemap: ${BASE_URL}/sitemap.xml
         ]);
 
         if (ads.length === 0) {
-          res.setHeader('Content-Type', 'application/xml; charset=utf-8');
-          return res.status(404).send('<?xml version="1.0"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"/>');
+          // Return a valid EMPTY urlset with 200 — never return 404 for a sitemap Google knows about
+          sitemapHeaders(res, 900);
+          return res.send(emptyUrlset());
         }
 
         const cityMap = new Map(cities.map(c => [c.id, c]));
@@ -2113,13 +2135,86 @@ Sitemap: ${BASE_URL}/sitemap.xml
         sitemapHeaders(res, 3600);
         res.send(urlsetXml(urls));
       } catch (err) {
-        res.setHeader('Content-Type', 'application/xml; charset=utf-8');
-        res.status(500).send('<?xml version="1.0"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"/>');
+        sitemapHeaders(res, 60);
+        res.send(emptyUrlset());
       }
     });
 
     // ── IMAGE SITEMAP (/sitemaps/images.xml) ────────────────────────────
-    this.app.get('/sitemaps/images.xml', async (req, res) => {
+    this.app.get(['/sitemaps/images.xml', '/sitemaps/images.xml/'], async (req, res) => {
+      const NS = ` xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"`;
+      try {
+        const [ads, cities] = await Promise.all([
+          prisma.ad.findMany({
+            where: { status: 'ACTIVE' },
+            include: { category: true, images: { take: 5 } },
+            orderBy: { updatedAt: 'desc' },
+            take: 20000
+          }),
+          prisma.city.findMany({ include: { country: true } })
+        ]);
+
+        const cityMap    = new Map(cities.map(c => [c.id, c]));
+        const cityByName = new Map(cities.flatMap(c => [[c.nameAr, c], [c.nameEn.toLowerCase(), c]]));
+        const urls: string[] = [];
+
+        for (const ad of ads) {
+          if (ad.images.length === 0) continue;
+          const city = cityMap.get(ad.city) ?? cityByName.get(ad.city) ?? cityByName.get(ad.city.toLowerCase());
+          const cc   = city?.country?.countryCode?.toLowerCase() || 'ye';
+          const loc  = `${BASE_URL}/${cc}/${ad.category.nameEn.toLowerCase()}/${slugify(ad.title)}-${ad.id}`;
+          const safe = escapeXml(ad.title);
+
+          const imageTags = ad.images.map(img => {
+            const imgUrl = img.url.startsWith('http') ? img.url : `${BASE_URL}${img.url}`;
+            return `    <image:image>\n      <image:loc>${safeLoc(imgUrl)}</image:loc>\n      <image:title>${safe}</image:title>\n    </image:image>`;
+          }).join('\n');
+
+          urls.push(`  <url>\n    <loc>${safeLoc(loc)}</loc>\n${imageTags}\n  </url>`);
+        }
+
+        sitemapHeaders(res, 7200);
+        res.send(urls.length > 0 ? urlsetXml(urls, NS) : emptyUrlset(NS));
+      } catch (err) {
+        sitemapHeaders(res, 60);
+        res.send(emptyUrlset(NS));
+      }
+    });
+
+    // ── VIDEO SITEMAP (/sitemaps/videos.xml) ────────────────────────────
+    this.app.get(['/sitemaps/videos.xml', '/sitemaps/videos.xml/'], async (req, res) => {
+      try {
+        const reels = await prisma.reel.findMany({
+          orderBy: { createdAt: 'desc' },
+          take: 1000
+        });
+
+        const NS = ` xmlns:video="http://www.google.com/schemas/sitemap-video/1.1"`;
+        const urls: string[] = [];
+
+        for (const reel of reels) {
+          const videoUrl   = reel.videoUrl.startsWith('http') ? reel.videoUrl : `${BASE_URL}${reel.videoUrl}`;
+          const safeVideo  = safeLoc(videoUrl);
+          const safeTitle  = escapeXml(reel.title || 'فيديو ترويجي - أسواق');
+          const safeThumb  = `${BASE_URL}/aswaq-icon-512.png`;
+
+          urls.push(
+            `  <url>\n    <loc>${safeLoc(BASE_URL + '/')}</loc>\n    <video:video>\n      <video:thumbnail_loc>${safeLoc(safeThumb)}</video:thumbnail_loc>\n      <video:title>${safeTitle}</video:title>\n      <video:description>فيديو ريلز ترويجي على منصة أسواق</video:description>\n      <video:content_loc>${safeVideo}</video:content_loc>\n      <video:publication_date>${reel.createdAt.toISOString()}</video:publication_date>\n    </video:video>\n  </url>`
+          );
+        }
+
+        sitemapHeaders(res, 7200);
+        res.send(urls.length > 0 ? urlsetXml(urls, NS) : emptyUrlset(NS));
+      } catch (err) {
+        sitemapHeaders(res, 60);
+        res.send(emptyUrlset(` xmlns:video="http://www.google.com/schemas/sitemap-video/1.1"`));
+      }
+    });
+
+    // ── LEGACY ROUTES — served as real handlers, NOT redirects ────────────
+    // Google Search Console does NOT follow redirects for submitted sitemaps.
+    // These must serve real XML content at the EXACT URL that was submitted.
+    this.app.get(['/sitemaps/image-sitemap.xml', '/sitemaps/image-sitemap.xml/'], async (req, res) => {
       try {
         const [ads, cities] = await Promise.all([
           prisma.ad.findMany({
@@ -2145,53 +2240,38 @@ Sitemap: ${BASE_URL}/sitemap.xml
 
           const imageTags = ad.images.map(img => {
             const imgUrl = img.url.startsWith('http') ? img.url : `${BASE_URL}${img.url}`;
-            return `    <image:image>\n      <image:loc>${escapeXml(imgUrl)}</image:loc>\n      <image:title>${safe}</image:title>\n    </image:image>`;
+            return `    <image:image>\n      <image:loc>${safeLoc(imgUrl)}</image:loc>\n      <image:title>${safe}</image:title>\n    </image:image>`;
           }).join('\n');
 
-          urls.push(`  <url>\n    <loc>${escapeXml(loc)}</loc>\n${imageTags}\n  </url>`);
+          urls.push(`  <url>\n    <loc>${safeLoc(loc)}</loc>\n${imageTags}\n  </url>`);
         }
 
         sitemapHeaders(res, 7200);
-        res.send(urlsetXml(urls, NS));
+        res.send(urls.length > 0 ? urlsetXml(urls, NS) : emptyUrlset(NS));
       } catch (err) {
-        res.setHeader('Content-Type', 'application/xml; charset=utf-8');
-        res.status(500).send('<?xml version="1.0"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"/>');
+        sitemapHeaders(res, 60);
+        res.send(emptyUrlset(` xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"`));
       }
     });
 
-    // ── VIDEO SITEMAP (/sitemaps/videos.xml) ────────────────────────────
-    this.app.get('/sitemaps/videos.xml', async (req, res) => {
+    this.app.get(['/sitemaps/video-sitemap.xml', '/sitemaps/video-sitemap.xml/'], async (req, res) => {
       try {
-        const reels = await prisma.reel.findMany({
-          orderBy: { createdAt: 'desc' },
-          take: 1000
-        });
-
+        const reels = await prisma.reel.findMany({ orderBy: { createdAt: 'desc' }, take: 1000 });
         const NS = ` xmlns:video="http://www.google.com/schemas/sitemap-video/1.1"`;
         const urls: string[] = [];
-
         for (const reel of reels) {
-          const videoUrl   = reel.videoUrl.startsWith('http') ? reel.videoUrl : `${BASE_URL}${reel.videoUrl}`;
-          const safeVideo  = escapeXml(videoUrl);
-          const safeTitle  = escapeXml(reel.title || 'فيديو ترويجي - أسواق');
-          const safeThumb  = `${BASE_URL}/aswaq-icon-512.png`;
-
-          urls.push(
-            `  <url>\n    <loc>${BASE_URL}/</loc>\n    <video:video>\n      <video:thumbnail_loc>${safeThumb}</video:thumbnail_loc>\n      <video:title>${safeTitle}</video:title>\n      <video:description>فيديو ريلز ترويجي على منصة أسواق</video:description>\n      <video:content_loc>${safeVideo}</video:content_loc>\n      <video:publication_date>${reel.createdAt.toISOString()}</video:publication_date>\n    </video:video>\n  </url>`
-          );
+          const videoUrl  = reel.videoUrl.startsWith('http') ? reel.videoUrl : `${BASE_URL}${reel.videoUrl}`;
+          const safeVideo = safeLoc(videoUrl);
+          const safeTitle = escapeXml(reel.title || 'فيديو ترويجي - أسواق');
+          urls.push(`  <url>\n    <loc>${safeLoc(BASE_URL + '/')}</loc>\n    <video:video>\n      <video:thumbnail_loc>${safeLoc(BASE_URL + '/aswaq-icon-512.png')}</video:thumbnail_loc>\n      <video:title>${safeTitle}</video:title>\n      <video:description>فيديو ريلز ترويجي على منصة أسواق</video:description>\n      <video:content_loc>${safeVideo}</video:content_loc>\n      <video:publication_date>${reel.createdAt.toISOString()}</video:publication_date>\n    </video:video>\n  </url>`);
         }
-
         sitemapHeaders(res, 7200);
-        res.send(urlsetXml(urls, NS));
+        res.send(urls.length > 0 ? urlsetXml(urls, NS) : emptyUrlset(NS));
       } catch (err) {
-        res.setHeader('Content-Type', 'application/xml; charset=utf-8');
-        res.status(500).send('<?xml version="1.0"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"/>');
+        sitemapHeaders(res, 60);
+        res.send(emptyUrlset(` xmlns:video="http://www.google.com/schemas/sitemap-video/1.1"`));
       }
     });
-
-    // Legacy alias: /sitemaps/image-sitemap.xml → /sitemaps/images.xml
-    this.app.get('/sitemaps/image-sitemap.xml', (req, res) => res.redirect(301, '/sitemaps/images.xml'));
-    this.app.get('/sitemaps/video-sitemap.xml',  (req, res) => res.redirect(301, '/sitemaps/videos.xml'));
 
     // ── Admin Settings ────────────────────────────────────────────────────────
 
