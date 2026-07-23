@@ -1194,11 +1194,8 @@ export class App {
           status: 'success',
         })));
       } catch (err) {
-        // Return dummy/fallback logs if table is empty or error
-        res.json([
-          { action: 'تغيير إعدادات العمولة الجمركية', target: 'النظام العام', admin: 'مدير المنصة', time: '11:15:22', ip: '10.0.0.1', status: 'success' },
-          { action: 'نسخ احتياطي لقواعد البيانات', target: 'Storage-Primary', admin: 'System Scheduler', time: '04:00:00', ip: 'Static', status: 'success' }
-        ]);
+        // Propagate real errors instead of hiding them with fake data
+        next(err);
       }
     });
 
@@ -1563,7 +1560,7 @@ export class App {
           data: documents.map((url: string) => ({
             url,
             type: 'VERIFICATION_DOC',
-            uploaderId: userId,
+            uploadedBy: userId,
           }))
         });
 
@@ -1761,35 +1758,26 @@ export class App {
 
     this.app.get('/api/admin/reports', ...adminAccessGuards, async (req, res, next) => {
       try {
+        // PERFORMANCE FIX: Use single findMany with includes instead of N+1 queries
         const reports = await prisma.report.findMany({
-          orderBy: { timestamp: 'desc' }
+          orderBy: { timestamp: 'desc' },
+          include: {
+            reporter: { select: { name: true, email: true } },
+            ad: { select: { title: true, status: true, userId: true } }
+          }
         });
 
-        // Resolve details dynamically for response representation
-        const resolvedReports = await Promise.all(
-          reports.map(async (r) => {
-            const reporter = await prisma.user.findUnique({
-              where: { id: r.reporterId },
-              select: { name: true, email: true }
-            });
-            const ad = await prisma.ad.findUnique({
-              where: { id: r.adId },
-              select: { title: true, status: true, userId: true }
-            });
-
-            return {
-              id: r.id,
-              type: 'بلاغ عن إعلان مخالف',
-              reason: r.reason,
-              status: r.status,
-              severity: 'high',
-              reporter: reporter?.name || reporter?.email || 'مستخدم غير معروف',
-              targetName: ad?.title || 'إعلان محذوف',
-              adId: r.adId,
-              date: new Date(r.timestamp).toLocaleDateString('ar'),
-            };
-          })
-        );
+        const resolvedReports = reports.map((r: any) => ({
+          id: r.id,
+          type: 'بلاغ عن إعلان مخالف',
+          reason: r.reason,
+          status: r.status,
+          severity: 'high',
+          reporter: r.reporter?.name || r.reporter?.email || 'مستخدم غير معروف',
+          targetName: r.ad?.title || 'إعلان محذوف',
+          adId: r.adId,
+          date: new Date(r.timestamp).toLocaleDateString('ar'),
+        }));
 
         res.json(resolvedReports);
       } catch (err) {
@@ -2375,7 +2363,8 @@ Sitemap: ${BASE_URL}/sitemap.xml
       }
     };
 
-    this.app.get('/api/admin/settings', async (req, res) => {
+    // SECURITY FIX: All settings routes are now properly admin-guarded
+    this.app.get('/api/admin/settings', ...adminAccessGuards, async (req, res) => {
       try {
         const settings = await getPlatformSettings();
         res.json(settings);
@@ -2384,7 +2373,7 @@ Sitemap: ${BASE_URL}/sitemap.xml
       }
     });
 
-    this.app.patch('/api/admin/settings', async (req, res) => {
+    this.app.patch('/api/admin/settings', ...adminAccessGuards, async (req, res) => {
       try {
         const currentSettings = await getPlatformSettings();
         const updatedSettings = { ...currentSettings, ...req.body };
@@ -2395,7 +2384,7 @@ Sitemap: ${BASE_URL}/sitemap.xml
       }
     });
 
-    this.app.put('/api/admin/settings', async (req, res) => {
+    this.app.put('/api/admin/settings', ...adminAccessGuards, async (req, res) => {
       try {
         await savePlatformSettings(req.body);
         res.json({ success: true, ...req.body });
