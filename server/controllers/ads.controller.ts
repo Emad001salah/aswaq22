@@ -345,14 +345,19 @@ export const AdsController = () => {
         const catUuid = uuidRegex.test(catRaw) ? catRaw : getDeterministicUuid(catSlug);
 
         let category = await tx.category.findFirst({
-          where: { OR: [{ id: catUuid }, { slug: catSlug }] }
+          where: {
+            OR: [
+              { id: catUuid },
+              { nameEn: { equals: catRaw, mode: 'insensitive' } },
+              { nameAr: { equals: catRaw, mode: 'insensitive' } }
+            ]
+          }
         });
 
         if (!category) {
           category = await tx.category.create({
             data: {
               id: catUuid,
-              slug: catSlug,
               nameAr: catRaw,
               nameEn: catRaw,
               icon: 'folder'
@@ -369,7 +374,13 @@ export const AdsController = () => {
           const subUuid = uuidRegex.test(subRaw) ? subRaw : getDeterministicUuid(subSlug);
 
           let subCategory = await tx.subCategory.findFirst({
-            where: { OR: [{ id: subUuid }, { slug: subSlug }] }
+            where: {
+              OR: [
+                { id: subUuid },
+                { nameEn: { equals: subRaw, mode: 'insensitive' } },
+                { nameAr: { equals: subRaw, mode: 'insensitive' } }
+              ]
+            }
           });
 
           if (!subCategory) {
@@ -377,7 +388,6 @@ export const AdsController = () => {
               data: {
                 id: subUuid,
                 categoryId: categoryId,
-                slug: subSlug,
                 nameAr: subRaw,
                 nameEn: subRaw
               }
