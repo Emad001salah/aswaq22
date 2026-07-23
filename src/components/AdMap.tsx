@@ -187,23 +187,37 @@ export default forwardRef<AdMapHandle, AdMapProps>(function AdMap(props, ref) {
 
     const activeAds = ads.filter(ad => ad.status?.toLowerCase() === 'active');
 
-    // Ads markers
+    // Group ads by location to prevent marker click blocking
+    const adsByLocation: Map<string, Ad[]> = new Map();
     activeAds.forEach(ad => {
       const cityKey = (ad.city || '').toLowerCase();
       const matchedCity = CITIES.find(c => c.id === ad.city || c.id === cityKey || c.nameAr === ad.city);
-      const lat = Number(ad.latitude) || (ad.city && marketCityCoords[ad.city]?.lat) || (ad.city && marketCityCoords[cityKey]?.lat) || matchedCity?.lat || marketCenter.lat || 15.3694;
-      const lng = Number(ad.longitude) || (ad.city && marketCityCoords[ad.city]?.lng) || (ad.city && marketCityCoords[cityKey]?.lng) || matchedCity?.lng || marketCenter.lng || 44.1910;
+      const lat = (Number(ad.latitude) || (ad.city && marketCityCoords[ad.city]?.lat) || (ad.city && marketCityCoords[cityKey]?.lat) || matchedCity?.lat || marketCenter.lat || 15.3694).toFixed(5);
+      const lng = (Number(ad.longitude) || (ad.city && marketCityCoords[ad.city]?.lng) || (ad.city && marketCityCoords[cityKey]?.lng) || matchedCity?.lng || marketCenter.lng || 44.1910).toFixed(5);
+      const key = `${lat}_${lng}`;
+      if (!adsByLocation.has(key)) adsByLocation.set(key, []);
+      adsByLocation.get(key)!.push(ad);
+    });
 
-      const icon = L.divIcon({
-        className: '',
-        html: `<div style="background:#10b981;color:#020617;font-weight:900;font-size:10px;padding:4px 8px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.2);white-space:nowrap;cursor:pointer">${ad.price.toLocaleString()} ${getCurrencyAr(ad.currency)}</div>`,
-        iconSize: [70, 28],
-        iconAnchor: [35, 14]
+    adsByLocation.forEach((locAds, key) => {
+      const [bLat, bLng] = key.split('_').map(Number);
+      locAds.forEach((ad, i) => {
+        const offset = locAds.length > 1 ? 0.0003 : 0;
+        const angle = (i / locAds.length) * 2 * Math.PI;
+        const lat = bLat + (Math.sin(angle) * offset);
+        const lng = bLng + (Math.cos(angle) * offset);
+
+        const icon = L.divIcon({
+          className: '',
+          html: `<div style="background:#10b981;color:#020617;font-weight:900;font-size:10px;padding:4px 8px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.2);white-space:nowrap;cursor:pointer">${ad.price.toLocaleString()} ${getCurrencyAr(ad.currency)}${locAds.length > 1 ? ` (${i+1}/${locAds.length})` : ''}</div>`,
+          iconSize: [85, 28],
+          iconAnchor: [42, 14]
+        });
+
+        L.marker([lat, lng], { icon })
+          .addTo(map)
+          .on('click', () => onSelectAd(ad));
       });
-
-      L.marker([lat, lng], { icon })
-        .addTo(map)
-        .on('click', () => onSelectAd(ad));
     });
 
     // Reference point

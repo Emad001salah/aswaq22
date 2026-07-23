@@ -96,12 +96,14 @@ export default React.memo(function AdCard({ ad, onClick, onLikeToggle, isFavorit
     if (!safeImages || safeImages.length === 0) {
       return 'https://images.unsplash.com/photo-1496181130204-755241544e35?auto=format&fit=crop&w=800&q=80';
     }
-    // Find the first local uploaded image string starting with /uploads/
-    const localImg = safeImages.find(img => typeof img === 'string' && img.startsWith('/uploads/'));
-    if (localImg) return localImg;
-    // Otherwise, first string image in the array
-    const firstString = safeImages.find(img => typeof img === 'string' && img.length > 0);
-    return firstString || 'https://images.unsplash.com/photo-1496181130204-755241544e35?auto=format&fit=crop&w=800&q=80';
+    const raw = safeImages.find(img => typeof img === 'string' && img.trim().length > 0) || safeImages[0];
+    if (!raw || typeof raw !== 'string') return 'https://images.unsplash.com/photo-1496181130204-755241544e35?auto=format&fit=crop&w=800&q=80';
+    const trimmed = raw.trim();
+    if (trimmed.startsWith('data:') || trimmed.startsWith('blob:') || trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      return trimmed;
+    }
+    if (trimmed.startsWith('/')) return trimmed;
+    return `/${trimmed}`;
   };
 
   const [imgSrc, setImgSrc] = useState(getDisplayImage());
@@ -291,16 +293,12 @@ export default React.memo(function AdCard({ ad, onClick, onLikeToggle, isFavorit
 
       {/* Ad Cover Image Container */}
       <div className="relative w-28 h-28 sm:w-full sm:aspect-video shrink-0 overflow-hidden bg-slate-100 dark:bg-slate-950">
-        {!isImgLoaded && (
-          <div className="absolute inset-0 z-10 bg-slate-200 dark:bg-slate-900 animate-shimmer" />
-        )}
         <img
           src={imgSrc}
           alt={ad.title}
-          className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ease-in-out ${isImgLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-110'}`}
+          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ease-in-out opacity-100 scale-100"
           referrerPolicy="no-referrer"
           loading="lazy"
-          onLoad={() => setIsImgLoaded(true)}
           onError={handleImageError}
         />
         {/* Shadow Overlay */}

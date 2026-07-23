@@ -282,15 +282,41 @@ const AdMap = forwardRef<AdMapHandle, AdMapProps>(function AdMap(props, ref) {
         const count = cluster.ads.length;
         const icon = L.divIcon({
           className: '',
-          html: `<div style="width:36px; height:36px; background:#10b981; border:3px solid white; border-radius:50%; box-shadow:0 3px 10px rgba(16,185,129,0.5); color:white; font-size:11px; font-weight:900; display:flex; align-items:center; justify-content:center; cursor:pointer;" class="flex items-center justify-center font-black animate-pulse-subtle">${count}</div>`,
-          iconSize: [36, 36],
-          iconAnchor: [18, 18]
+          html: `<div style="width:38px; height:38px; background:#10b981; border:3px solid white; border-radius:50%; box-shadow:0 4px 12px rgba(16,185,129,0.6); color:white; font-size:12px; font-weight:900; display:flex; align-items:center; justify-content:center; cursor:pointer;" class="flex items-center justify-center font-black animate-pulse-subtle">${count}</div>`,
+          iconSize: [38, 38],
+          iconAnchor: [19, 19]
         });
         const marker = L.marker([cluster.centerLat, cluster.centerLng], { icon }).addTo(map);
         marker.on('click', () => {
-          // Zoom in to expand cluster
           const currentZoom = map.getZoom();
-          map.setView([cluster.centerLat, cluster.centerLng], Math.min(currentZoom + 2, 18), { animate: true });
+          if (currentZoom < 14) {
+            map.setView([cluster.centerLat, cluster.centerLng], 14, { animate: true });
+          } else {
+            // Build interactive popup list of all ads at this location
+            const popupContainer = document.createElement('div');
+            popupContainer.className = 'p-2 space-y-2 max-w-[220px] text-right font-sans';
+            popupContainer.innerHTML = `<div style="font-weight:900;font-size:11px;color:#10b981;margin-bottom:6px;border-bottom:1px solid #e2e8f0;padding-bottom:4px;direction:rtl;">📍 إعلانات في هذا الموقع (${count})</div>`;
+            
+            cluster.ads.forEach((adItem, i) => {
+              const btn = document.createElement('div');
+              btn.style.cssText = 'padding:6px 8px;margin-bottom:4px;border-radius:8px;background:#f8fafc;border:1px solid #cbd5e1;cursor:pointer;direction:rtl;text-align:right;';
+              btn.innerHTML = `
+                <div style="font-weight:700;font-size:11px;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${i + 1}. ${adItem.title}</div>
+                <div style="font-weight:900;font-size:11px;color:#059669;margin-top:2px;">${adItem.price.toLocaleString()} ${getCurrencyAr(adItem.currency)}</div>
+              `;
+              btn.onclick = (e) => {
+                e.stopPropagation();
+                onSelectAd(adItem);
+                map.closePopup();
+              };
+              popupContainer.appendChild(btn);
+            });
+
+            L.popup({ offset: [0, -15], closeButton: true })
+              .setLatLng([cluster.centerLat, cluster.centerLng])
+              .setContent(popupContainer)
+              .openOn(map);
+          }
         });
         markersRef.current.push(marker);
       }
