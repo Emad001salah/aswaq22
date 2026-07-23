@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -622,7 +622,7 @@ export default function CreateAdTab({
             ))}
           </div>
 
-          <form onSubmit={handleCreateAdSubmit} className="space-y-6">
+          <form onSubmit={handleCreateAdSubmit} className="space-y-6 notranslate" translate="no">
             {adStep === 1 && (
               <div className="space-y-4 animate-in fade-in slide-in-from-bottom duration-300">
                 {/* Title */}
@@ -639,6 +639,10 @@ export default function CreateAdTab({
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     id="ad-input-title"
+                    dir="auto"
+                    autoComplete="off"
+                    autoCorrect="off"
+                    spellCheck={false}
                   />
                 </div>
 
@@ -675,6 +679,10 @@ export default function CreateAdTab({
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     id="ad-input-desc"
+                    dir="auto"
+                    autoComplete="off"
+                    autoCorrect="off"
+                    spellCheck={false}
                   />
                 </div>
 
