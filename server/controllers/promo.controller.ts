@@ -20,13 +20,14 @@ const INTERNAL_HOSTNAME_REGEX = /^https?:\/\/(postgres|redis|meilisearch|adminer
 
 function validateMediaUrl(url: string): { valid: boolean; reason?: string } {
   const trimmed = url.trim();
+  const rawMedia = trimmed.split('||')[0].trim();
 
-  if (ALLOWED_LIVE_MARKERS.has(trimmed.toLowerCase())) return { valid: true };
+  if (ALLOWED_LIVE_MARKERS.has(rawMedia.toLowerCase())) return { valid: true };
   if (trimmed.length > 2048) return { valid: false, reason: 'URL طويل جداً' };
 
   let parsed: URL;
   try {
-    parsed = new URL(trimmed);
+    parsed = new URL(rawMedia);
   } catch {
     return { valid: false, reason: 'رابط URL غير صالح' };
   }
@@ -39,7 +40,7 @@ function validateMediaUrl(url: string): { valid: boolean; reason?: string } {
     return { valid: false, reason: 'عناوين IP الداخلية غير مسموح بها' };
   }
 
-  if (INTERNAL_HOSTNAME_REGEX.test(trimmed)) {
+  if (INTERNAL_HOSTNAME_REGEX.test(rawMedia)) {
     return { valid: false, reason: 'مضيف داخلي غير مسموح' };
   }
 

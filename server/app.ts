@@ -454,16 +454,17 @@ export class App {
 
     function validateMediaUrl(url: string): { valid: boolean; reason?: string } {
       const trimmed = url.trim();
+      const rawMedia = trimmed.split('||')[0].trim();
 
       // Allow live-stream marker values (not real URLs)
-      if (ALLOWED_LIVE_MARKERS.has(trimmed.toLowerCase())) return { valid: true };
+      if (ALLOWED_LIVE_MARKERS.has(rawMedia.toLowerCase())) return { valid: true };
 
       // Length guard
       if (trimmed.length > 2048) return { valid: false, reason: 'URL طويل جداً' };
 
       let parsed: URL;
       try {
-        parsed = new URL(trimmed);
+        parsed = new URL(rawMedia);
       } catch {
         return { valid: false, reason: 'رابط URL غير صالح' };
       }
@@ -479,7 +480,7 @@ export class App {
       }
 
       // Block known internal Docker service names
-      if (INTERNAL_HOSTNAME_REGEX.test(trimmed)) {
+      if (INTERNAL_HOSTNAME_REGEX.test(rawMedia)) {
         return { valid: false, reason: 'مضيف داخلي غير مسموح' };
       }
 
