@@ -212,6 +212,7 @@ export function AuthController() {
               name: name || 'User',
               avatar: avatar || null,
               phone: phone || null,
+              phoneVerified: !!phone,
               password: passwordHash,
               role: 'USER',
               isVerified: 'none'
