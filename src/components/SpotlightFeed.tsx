@@ -206,6 +206,8 @@ function WebcamStreamPlayer({
           localStreamRef.current = stream;
           if (videoRef.current) {
             videoRef.current.srcObject = stream;
+            videoRef.current.muted = true;
+            videoRef.current.volume = 0;
 
             // Apply Torch if available
             const track = stream.getVideoTracks()[0];
