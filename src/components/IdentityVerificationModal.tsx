@@ -103,7 +103,7 @@ export default function IdentityVerificationModal({
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className={`w-full max-w-xl overflow-hidden rounded-[2.5rem] border shadow-2xl relative ${
+          className={`w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-[2rem] sm:rounded-[2.5rem] border shadow-2xl relative ${
             isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
           } ${isRtl ? 'dir-rtl text-right' : 'dir-ltr text-left'}`}
         >
@@ -124,7 +124,7 @@ export default function IdentityVerificationModal({
           </button>
 
           {step === 1 && (
-            <div className="p-8 md:p-12">
+            <div className="p-5 sm:p-8 md:p-12">
               <div className="flex flex-col items-center text-center mb-8">
                 <div className="w-20 h-20 rounded-[2rem] bg-emerald-500/10 flex items-center justify-center text-emerald-500 mb-6 relative">
                    {targetRole === 'merchant' ? <Briefcase className="w-10 h-10" /> : 
@@ -224,7 +224,7 @@ export default function IdentityVerificationModal({
           )}
 
           {step === 2 && (
-            <div className="p-8 md:p-12">
+            <div className="p-5 sm:p-8 md:p-12">
               <div className="mb-8">
                 <h3 className={`text-xl font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>رفع الوثائق والمستندات</h3>
                 <p className="text-xs text-slate-500 font-bold mt-1">يمكنك رفع صور بصيغة JPG, PNG أو ملفات PDF</p>
@@ -292,7 +292,7 @@ export default function IdentityVerificationModal({
           )}
 
           {step === 3 && (
-            <div className="p-8 md:p-12 text-center flex flex-col items-center">
+            <div className="p-5 sm:p-8 md:p-12 text-center flex flex-col items-center">
               <div className="w-24 h-24 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center mb-8 shadow-2xl shadow-emerald-500/30">
                 <CheckCircle2 className="w-12 h-12" />
               </div>
