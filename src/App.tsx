@@ -2096,16 +2096,20 @@ useEffect(() => {
         const response = await fetch(`/api/ads/search?${params.toString()}`);
         if (response.ok) {
           const data = await response.json();
-          // Filter by market cities in client as a temporary fallback before backend fully handles market scoping
           if (Array.isArray(data)) {
             const filtered = data.filter((ad: Ad) => {
-              const matchesNameOrId = currentMarket.cities.some(
-                  c => c.id === ad.city || c.nameAr === ad.city || c.nameEn === ad.city
+              // 1. If ad specifies an explicit countryCode, check if it matches current market or is ALL
+              if (ad.countryCode && ad.countryCode.toUpperCase() !== 'ALL') {
+                return ad.countryCode.toUpperCase() === currentMarket.countryCode.toUpperCase();
+              }
+              // 2. Check if ad city matches any city in the current market
+              const matchesCity = currentMarket.cities.some(
+                c => c.id === ad.city || c.nameAr === ad.city || c.nameEn === ad.city
               );
-              return matchesNameOrId;
+              return matchesCity;
             });
-            // If specific city match returned ads, use filtered; otherwise fallback to data so market never shows blank
-            setFilteredAds(filtered.length > 0 ? filtered : data);
+            // Strictly display only ads belonging to this country market
+            setFilteredAds(filtered);
           } else {
             setFilteredAds([]);
           }

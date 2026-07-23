@@ -183,7 +183,7 @@ export const AdsController = () => {
    *               $ref: '#/components/schemas/ErrorResponse'
    */
   router.get('/search', async (req, res) => {
-    const { q, city, category, minPrice, maxPrice, limit = '20' } = req.query;
+    const { q, city, category, minPrice, maxPrice, market, limit = '20' } = req.query;
     const searchLimit = parseInt(limit as string);
     const searchQuery = q ? String(q) : '';
 
@@ -219,10 +219,11 @@ export const AdsController = () => {
       }
 
       // 2. Database Fallback (Prisma full-text query)
-      console.log(`[Search] Meilisearch offline/returned null. Querying database using Prisma...`);
+      console.log(`[Search] Querying database using Prisma for market: ${market || 'ALL'}...`);
       const ads = await prisma.ad.findMany({
         where: {
           status: 'ACTIVE',
+          ...(market && market !== 'ALL' ? { countryCode: String(market).toUpperCase() } : {}),
           city: city ? String(city) : undefined,
           categoryId: category ? (uuidRegex.test(String(category)) ? String(category) : getDeterministicUuid(String(category))) : undefined,
           price: {
