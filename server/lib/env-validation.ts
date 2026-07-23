@@ -95,6 +95,11 @@ export interface ValidationResult {
  * In development, logs warnings but allows the server to start.
  */
 export function validateEnvironment(): ValidationResult {
+  // Auto-fallback JWT_REFRESH_SECRET to JWT_SECRET if missing to prevent boot failure in production
+  if (!process.env.JWT_REFRESH_SECRET && process.env.JWT_SECRET) {
+    process.env.JWT_REFRESH_SECRET = process.env.JWT_SECRET + '_refresh_secret_key';
+  }
+
   const isProd   = process.env.NODE_ENV === 'production';
   const errors:   string[] = [];
   const warnings: string[] = [];
