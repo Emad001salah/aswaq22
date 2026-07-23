@@ -874,16 +874,6 @@ export default function SpotlightFeed({
     return initial;
   });
 
-  useEffect(() => {
-    if (favorites) {
-      const updated: Record<string, boolean> = {};
-      favorites.forEach(id => {
-        updated[id] = true;
-      });
-      setLikedAds(updated);
-    }
-  }, [favorites]);
-
   const [savedAds, setSavedAds] = useState<Record<string, boolean>>({});
   const [adViews, setAdViews] = useState<Record<string, number>>({});
   const [adComments, setAdComments] = useState<Record<string, { id: string, author: string, text: string, time: string }[]>>({});
@@ -893,6 +883,7 @@ export default function SpotlightFeed({
   const isScrollingRef = useRef(false);
   const scrollTimeoutRef = useRef<any>(null);
   const lastUpdatedByScrollRef = useRef(false);
+  const viewedAdIdsRef = useRef<Set<string>>(new Set());
 
   const [showHeart, setShowHeart] = useState<{ x: number, y: number, id: number } | null>(null);
 
@@ -1322,18 +1313,6 @@ export default function SpotlightFeed({
 
   useEffect(() => {
     const activeAd = displayAds[activeIndex];
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (activeAd && uuidRegex.test(activeAd.id)) {
-      const currentId = activeAd.id;
-      apiFetch(`/api/ads/${currentId}/view`, { method: 'POST' })
-        .then(res => res.json())
-        .then(data => {
-          if (data && typeof data.views === 'number') {
-            setAdViews(prev => ({ ...prev, [currentId]: data.views }));
-          }
-        })
-        .catch(() => {});
-    }
 
     if (activeAd && activeAd.isLive) {
       // 1. Join the stream room
@@ -1480,9 +1459,9 @@ export default function SpotlightFeed({
     const activeAd = displayAds[activeIndex];
     if (activeAd) {
       const currentId = activeAd.id;
-      // Record real view in server database
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      if (typeof currentId === 'string' && uuidRegex.test(currentId)) {
+      if (typeof currentId === 'string' && uuidRegex.test(currentId) && !viewedAdIdsRef.current.has(currentId)) {
+        viewedAdIdsRef.current.add(currentId);
         apiFetch(`/api/ads/${currentId}/view`, { method: "POST" })
           .then(res => res.json())
           .then(data => {
@@ -1493,7 +1472,7 @@ export default function SpotlightFeed({
           .catch(() => {});
       }
     }
-  }, [activeIndex]);
+  }, [activeIndex, displayAds]);
 
   const showToast = (message: string) => {
     setToastMessage(message);

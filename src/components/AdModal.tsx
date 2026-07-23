@@ -208,18 +208,21 @@ export default function AdModal({
     setInternalViews(ad.views || 0);
   }, [ad.id, ad.views]);
 
+const sessionViewedAdsSet = new Set<string>();
+
   useEffect(() => {
-    // Increment view count in backend on API
-    apiFetch(`/api/ads/${ad.id}/view`, { method: 'POST' })
-      .then(res => res.json())
-      .then(data => {
-        if (data && typeof data.views === 'number') {
-          setInternalViews(data.views);
-        }
-      })
-      .catch(() => {
-        setInternalViews(prev => prev + 1);
-      });
+    // Increment view count in backend on API strictly ONCE per ad per session
+    if (ad.id && !sessionViewedAdsSet.has(ad.id)) {
+      sessionViewedAdsSet.add(ad.id);
+      apiFetch(`/api/ads/${ad.id}/view`, { method: 'POST' })
+        .then(res => res.json())
+        .then(data => {
+          if (data && typeof data.views === 'number') {
+            setInternalViews(data.views);
+          }
+        })
+        .catch(() => {});
+    }
   }, [ad.id]);
 
   const sendDirectMessage = async (customText: string, isVerification = false) => {
