@@ -86,6 +86,20 @@ export function slugify(text: string): string {
     .replace(/-+$/, '');           // Trim - from end
 }
 
+/**
+ * Escape special XML characters to prevent malformed XML in sitemaps.
+ * Arabic text in ad titles/descriptions can contain &, <, >, " etc.
+ */
+export function escapeXml(unsafe: string): string {
+  if (!unsafe) return '';
+  return String(unsafe)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
 export class App {
   public app: express.Application;
   public httpServer: ReturnType<typeof createServer>;
@@ -1962,14 +1976,11 @@ ${urls.join('\n')}
           const countryCode = city?.country?.countryCode?.toLowerCase() || 'ye';
           const categorySlug = ad.category.nameEn.toLowerCase();
           const adSlug = slugify(ad.title);
+          const safeTitle = escapeXml(ad.title);
+          const safeDesc = escapeXml((ad.description || '').substring(0, 150));
 
           const url = `https://www.aswaq22.com/${countryCode}/${categorySlug}/${adSlug}-${ad.id}`;
-          urls.push(`  <url>
-    <loc>${url}</loc>
-    <lastmod>${new Date(ad.updatedAt).toISOString().split('T')[0]}</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.6</priority>
-  </url>`);
+          urls.push(`  <url>\n    <loc>${url}</loc>\n    <lastmod>${new Date(ad.updatedAt).toISOString().split('T')[0]}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.6</priority>\n  </url>`);
         }
 
         const xml = `<?xml version="1.0" encoding="UTF-8"?>
@@ -2004,18 +2015,14 @@ ${urls.join('\n')}
           const adSlug = slugify(ad.title);
           const url = `https://www.aswaq22.com/${countryCode}/${categorySlug}/${adSlug}-${ad.id}`;
 
+          const safeTitle = escapeXml(ad.title);
           const imageTags = ad.images.map(img => {
             const absoluteImgUrl = img.url.startsWith('http') ? img.url : `https://www.aswaq22.com${img.url}`;
-            return `    <image:image>
-      <image:loc>${absoluteImgUrl}</image:loc>
-      <image:title>${ad.title}</image:title>
-    </image:image>`;
+            const safeImgUrl = escapeXml(absoluteImgUrl);
+            return `    <image:image>\n      <image:loc>${safeImgUrl}</image:loc>\n      <image:title>${safeTitle}</image:title>\n    </image:image>`;
           }).join('\n');
 
-          urls.push(`  <url>
-    <loc>${url}</loc>
-${imageTags}
-  </url>`);
+          urls.push(`  <url>\n    <loc>${url}</loc>\n${imageTags}\n  </url>`);
         }
 
         const xml = `<?xml version="1.0" encoding="UTF-8"?>
@@ -2041,19 +2048,11 @@ ${urls.join('\n')}
 
         for (const reel of reels) {
           const absoluteVideoUrl = reel.videoUrl.startsWith('http') ? reel.videoUrl : `https://www.aswaq22.com${reel.videoUrl}`;
-          const title = reel.title || 'فيديو ترويجي - أسواق';
+          const safeVideoUrl = escapeXml(absoluteVideoUrl);
+          const safeTitle = escapeXml(reel.title || 'فيديو ترويجي - أسواق');
           const thumbnail = 'https://www.aswaq22.com/aswaq-icon-512.png';
           
-          urls.push(`  <url>
-    <loc>https://www.aswaq22.com/</loc>
-    <video:video>
-      <video:thumbnail_loc>${thumbnail}</video:thumbnail_loc>
-      <video:title>${title}</video:title>
-      <video:description>فيديو ريلز ترويجي على منصة أسواق</video:description>
-      <video:content_loc>${absoluteVideoUrl}</video:content_loc>
-      <video:publication_date>${reel.createdAt.toISOString()}</video:publication_date>
-    </video:video>
-  </url>`);
+          urls.push(`  <url>\n    <loc>https://www.aswaq22.com/</loc>\n    <video:video>\n      <video:thumbnail_loc>${thumbnail}</video:thumbnail_loc>\n      <video:title>${safeTitle}</video:title>\n      <video:description>فيديو ريلز ترويجي على منصة أسواق</video:description>\n      <video:content_loc>${safeVideoUrl}</video:content_loc>\n      <video:publication_date>${reel.createdAt.toISOString()}</video:publication_date>\n    </video:video>\n  </url>`);
         }
 
         const xml = `<?xml version="1.0" encoding="UTF-8"?>
@@ -2335,9 +2334,14 @@ ${urls.join('\n')}
         // Render index.html with pre-injected tags (Universal Rendering)
         let html = getHtmlTemplate();
         
+        // Safe versions of text for HTML attribute/content injection
+        const safeTitle    = escapeXml(ad.title);
+        const safeDesc     = escapeXml((ad.description || '').substring(0, 150));
+        const safeCountry  = escapeXml(city?.country?.labelAr || '');
+
         // Inject Title
-        const title = `${ad.title} | أسواق ${city?.country?.labelAr || ''}`;
-        html = html.replace(/<title>.*?<\/title>/, `<title>${title}</title>`);
+        const titleText = `${ad.title} | أسواق ${city?.country?.labelAr || ''}`;
+        html = html.replace(/<title>.*?<\/title>/, `<title>${safeTitle} | أسواق ${safeCountry}</title>`);
         
         // Inject Canonical Tag
         const canonicalTag = `<link rel="canonical" href="${canonicalUrl}" />`;
@@ -2348,7 +2352,7 @@ ${urls.join('\n')}
         }
 
         // Inject Description Tag
-        const descTag = `<meta name="description" content="${ad.description.substring(0, 150)}..." />`;
+        const descTag = `<meta name="description" content="${safeDesc}..." />`;
         if (html.includes('name="description"')) {
           html = html.replace(/<meta name="description"[^>]*>/, descTag);
         } else {
@@ -2383,17 +2387,18 @@ ${urls.join('\n')}
           ? (ad as any).images[0].url 
           : 'https://www.aswaq22.com/aswaq-icon-512.png';
         const absoluteImageUrl = firstAdImage.startsWith('http') ? firstAdImage : `https://www.aswaq22.com${firstAdImage}`;
+        const safeImageUrl = escapeXml(absoluteImageUrl);
         
         const ogTags = `
-  <meta property="og:title" content="${ad.title}" />
-  <meta property="og:description" content="${ad.description.substring(0, 150)}..." />
-  <meta property="og:image" content="${absoluteImageUrl}" />
+  <meta property="og:title" content="${safeTitle}" />
+  <meta property="og:description" content="${safeDesc}..." />
+  <meta property="og:image" content="${safeImageUrl}" />
   <meta property="og:url" content="${canonicalUrl}" />
   <meta property="og:type" content="article" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="${ad.title}" />
-  <meta name="twitter:description" content="${ad.description.substring(0, 150)}..." />
-  <meta name="twitter:image" content="${absoluteImageUrl}" />
+  <meta name="twitter:title" content="${safeTitle}" />
+  <meta name="twitter:description" content="${safeDesc}..." />
+  <meta name="twitter:image" content="${safeImageUrl}" />
 `;
         html = html.replace('</head>', `${ogTags}\n</head>`);
 
