@@ -1292,19 +1292,15 @@ export default function SpotlightFeed({
   const [likesCount, setLikesCount] = useState<Record<string, number>>({});
 
   useEffect(() => {
-    // Sync initial likes and views from localStorage
+    // Sync initial likes and views directly from database ad properties
     const initialLikes: Record<string, number> = {};
     const initialViews: Record<string, number> = {};
     displayAds.forEach(ad => {
-      const storedLikesKey = `aswaq_likes_${ad.id}`;
-      const storedViewsKey = `aswaq_views_${ad.id}`;
-      const l = localStorage.getItem(storedLikesKey);
-      const v = localStorage.getItem(storedViewsKey);
-      initialLikes[ad.id] = l ? parseInt(l, 10) : (ad.likes || 0);
-      initialViews[ad.id] = v ? parseInt(v, 10) : (ad.views || 0);
+      initialLikes[ad.id] = ad.likes || 0;
+      initialViews[ad.id] = ad.views || 0;
     });
     setLikesCount(initialLikes);
-    setAdViews(prev => ({ ...prev, ...initialViews }));
+    setAdViews(initialViews);
 
     const handleLikeUpdate = ({ adId, likes }: { adId: string, likes: number }) => {
       setLikesCount(prev => ({ ...prev, [adId]: likes }));
@@ -1484,20 +1480,7 @@ export default function SpotlightFeed({
     const activeAd = displayAds[activeIndex];
     if (activeAd) {
       const currentId = activeAd.id;
-      // Record view in local state (only increment ONCE when active index changes to this slide)
-      setAdViews(prev => {
-        const storedViewsKey = `aswaq_views_${currentId}`;
-        const storedVal = localStorage.getItem(storedViewsKey);
-        const currentCount = storedVal ? parseInt(storedVal, 10) : (activeAd.views || 0);
-        const newCount = prev[currentId] ? prev[currentId] : currentCount + 1;
-        localStorage.setItem(storedViewsKey, newCount.toString());
-        return { 
-          ...prev, 
-          [currentId]: newCount
-        };
-      });
-      
-      // POST view to server (only if it is a valid UUID ad)
+      // Record real view in server database
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       if (typeof currentId === 'string' && uuidRegex.test(currentId)) {
         apiFetch(`/api/ads/${currentId}/view`, { method: "POST" })
@@ -1510,7 +1493,7 @@ export default function SpotlightFeed({
           .catch(() => {});
       }
     }
-  }, [activeIndex, displayAds]);
+  }, [activeIndex]);
 
   const showToast = (message: string) => {
     setToastMessage(message);
@@ -1546,16 +1529,13 @@ export default function SpotlightFeed({
       return;
     }
 
-    const isLiked = likedAds[adId];
-    setLikedAds(prev => ({ ...prev, [adId]: !prev[adId] }));
+    const isLiked = !!likedAds[adId];
+    setLikedAds(prev => ({ ...prev, [adId]: !isLiked }));
     
-    // Optimistically update likes count
+    // Optimistically update likes count (+1 when liking, -1 when unliking)
     setLikesCount(prev => {
-      const storedLikesKey = `aswaq_likes_${adId}`;
-      const storedVal = localStorage.getItem(storedLikesKey);
-      const currentCount = storedVal ? parseInt(storedVal, 10) : (prev[adId] !== undefined ? prev[adId] : Number(displayAds.find(a => a.id === adId)?.likes || 0));
+      const currentCount = prev[adId] !== undefined ? prev[adId] : Number(displayAds.find(a => a.id === adId)?.likes || 0);
       const newCount = isLiked ? Math.max(0, currentCount - 1) : currentCount + 1;
-      localStorage.setItem(storedLikesKey, newCount.toString());
       return { ...prev, [adId]: newCount };
     });
     
@@ -1573,14 +1553,21 @@ export default function SpotlightFeed({
       onLikeToggle(adId);
     }
 
-    // Fire real endpoint hit in background to persist to database (only for valid UUID ads)
+    // Fire real endpoint hit to persist to database and return real count
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (uuidRegex.test(adId)) {
       apiFetch(`/api/ads/${adId}/like`, { 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: !isLiked ? 'like' : 'unlike' })
-      }).catch(() => {});
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data && typeof data.likes === 'number') {
+          setLikesCount(prev => ({ ...prev, [adId]: data.likes }));
+        }
+      })
+      .catch(() => {});
     }
 
     // Emit socket event for real-time sync across all clients

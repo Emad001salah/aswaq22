@@ -624,6 +624,10 @@ export const AdsController = () => {
       }
       
       const likesCount = await prisma.adLike.count({ where: { adId } });
+      await prisma.ad.update({
+        where: { id: adId },
+        data: { likes: likesCount }
+      }).catch(() => {});
       res.json({ likes: likesCount });
     } catch (e: any) {
       console.error('[Ads] Like Error:', e);
