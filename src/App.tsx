@@ -1951,7 +1951,7 @@ useEffect(() => {
     setLoading(true);
     setNextCursor(undefined);
     try {
-      const response = await fetch(`/api/ads?limit=50&market=${currentMarket.countryCode}`);
+      const response = await fetch("/api/ads?limit=20");
       const contentType = response.headers.get("content-type");
       if (response.ok && contentType && contentType.includes("application/json")) {
         const data = await response.json();
@@ -1959,11 +1959,10 @@ useEffect(() => {
         const adsArray: Ad[] = Array.isArray(data) ? data : (data.ads || []);
         const cursor: string | undefined = data.nextCursor;
         const marketFiltered = adsArray.filter((ad: Ad) =>
-          !currentMarket?.cities?.length || currentMarket.cities.some(c => c.id === ad.city || c.nameAr === ad.city || c.nameEn === ad.city || (ad as any).market === currentMarket.countryCode)
+          currentMarket.cities.some(c => c.id === ad.city || c.nameAr === ad.city || c.nameEn === ad.city)
         );
-        const finalAds = marketFiltered.length > 0 ? marketFiltered : adsArray;
-        setAds(finalAds);
-        setFilteredAds(finalAds);
+        setAds(marketFiltered);
+        setFilteredAds(marketFiltered);
         setNextCursor(cursor);
         setHasMore(!!cursor);
       } else {
@@ -2064,6 +2063,12 @@ useEffect(() => {
       fetchNotifications();
     });
   }, [currentUser]);
+
+  // Reset city & district filters when changing country markets so the new market loads cleanly
+  useEffect(() => {
+    setSelectedCity("");
+    setSelectedDistrict("");
+  }, [currentMarket.id]);
 
   // Apply filters and sorting in server
   useEffect(() => {
