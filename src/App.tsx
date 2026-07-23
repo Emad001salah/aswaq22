@@ -2251,7 +2251,7 @@ useEffect(() => {
         }
       }
 
-      const response = await apiFetch(`/api/v1/users/me`, {
+      const response = await apiFetch(`/api/users/me`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(finalData),

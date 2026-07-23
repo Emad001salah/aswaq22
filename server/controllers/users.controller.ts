@@ -255,6 +255,8 @@ export const UsersController = () => {
 
   router.put('/me', authMiddleware, handleUserUpdate);
   router.patch('/me', authMiddleware, handleUserUpdate);
+  router.patch('/profile', authMiddleware, handleUserUpdate);
+  router.put('/profile', authMiddleware, handleUserUpdate);
   router.patch('/me/avatar', authMiddleware, handleUserUpdate);
   router.put('/:id', authMiddleware, handleUserUpdate);
   router.patch('/:id', authMiddleware, handleUserUpdate);
