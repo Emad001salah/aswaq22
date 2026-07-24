@@ -222,5 +222,43 @@ export function PromoController() {
     }
   });
 
+  // PATCH /api/promo/reel/:id/thumbnail - Save real thumbnail from canvas capture
+  router.patch('/reel/:id/thumbnail', authMiddleware as any, async (req: any, res: Response, next: any) => {
+    try {
+      const { id } = req.params;
+      const { thumbnailUrl } = req.body;
+
+      if (!thumbnailUrl || typeof thumbnailUrl !== 'string') {
+        return res.status(400).json({ error: 'thumbnailUrl مطلوب' });
+      }
+
+      // Validate it's a relative /uploads path or a safe absolute URL
+      if (!thumbnailUrl.startsWith('/uploads/') && !thumbnailUrl.startsWith('https://')) {
+        return res.status(400).json({ error: 'مسار الصورة غير صالح' });
+      }
+
+      const existingReel = await prisma.reel.findUnique({ where: { id } });
+      if (!existingReel) {
+        return res.status(404).json({ error: 'الريل غير موجود' });
+      }
+
+      const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes((req.user?.role || '').toUpperCase());
+      if (existingReel.userId !== req.user?.id && !isAdmin) {
+        return res.status(403).json({ error: 'لا يمكنك تعديل ريل لا تملكه.' });
+      }
+
+      const updated = await prisma.reel.update({
+        where: { id },
+        data: { thumbnailUrl }
+      });
+
+      logger.info({ message: `Reel thumbnail updated: ${id}`, thumbnailUrl });
+      res.json({ success: true, thumbnailUrl: updated.thumbnailUrl });
+    } catch (err: any) {
+      logger.error({ message: `PATCH /api/promo/reel/thumbnail Error: ${err.message}`, error: err });
+      next(err);
+    }
+  });
+
   return router;
 }

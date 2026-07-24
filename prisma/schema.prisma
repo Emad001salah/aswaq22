@@ -320,13 +320,14 @@ model Review {
 }
 
 model Reel {
-  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId    String   @map("user_id") @db.Uuid
-  user      User     @relation(fields: [userId], references: [id])
-  videoUrl  String   @map("video_url")
-  ownerName String   @default("المدير")
-  title     String?
-  createdAt DateTime @default(now()) @map("created_at")
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  user         User     @relation(fields: [userId], references: [id])
+  videoUrl     String   @map("video_url")
+  thumbnailUrl String?  @map("thumbnail_url")   // Real thumbnail captured from live stream canvas
+  ownerName    String   @default("المدير")
+  title        String?
+  createdAt    DateTime @default(now()) @map("created_at")
 
   @@map("reels")
 }

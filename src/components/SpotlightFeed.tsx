@@ -51,7 +51,37 @@ import socket from '../lib/socket.ts';
 import { Avatar } from './Avatar.tsx';
 import { apiFetch } from '../lib/api';
 
+// ── WebRTC ICE Server Configuration ──────────────────────────────────────────
+// Includes free public TURN servers so WebRTC works on restrictive mobile
+// networks (symmetric NAT, carrier-grade NAT, 4G/5G with port blocking).
+//
+// Free TURN providers used:
+//  • openrelay.metered.ca  — provided by Metered.ca (free tier)
+//  • relay.metered.ca      — Metered.ca global TURN relay
+//  • openrelay.metered.ca  — secondary
+//
+// When you set up your own Coturn ($10/month), replace these with your own.
+const ICE_SERVERS: RTCIceServer[] = [
+  // STUN (NAT traversal, no relay — works for ~85% of connections)
+  { urls: 'stun:stun.l.google.com:19302' },
+  { urls: 'stun:stun1.l.google.com:19302' },
+  { urls: 'stun:stun2.l.google.com:19302' },
+  { urls: 'stun:global.stun.twilio.com:3478' },
+  // Free TURN relay — Metered.ca (works for remaining ~15% on restricted networks)
+  {
+    urls: [
+      'turn:openrelay.metered.ca:80',
+      'turn:openrelay.metered.ca:443',
+      'turn:openrelay.metered.ca:443?transport=tcp', // TCP fallback for firewalls
+      'turns:openrelay.metered.ca:443',              // TLS TURN for HTTPS-only proxies
+    ],
+    username: 'openrelayproject',
+    credential: 'openrelayproject',
+  },
+];
+
 const FILTERS = [
+
   { id: 'none', label: 'طبيعي', labelEn: 'Normal', filter: '' },
   { id: 'beauty', label: 'تجميل 💄', labelEn: 'Beauty', filter: 'brightness(1.1) saturate(1.1) contrast(1.05) blur(0.4px)' },
   { id: 'warm', label: 'دافئ 🍊', labelEn: 'Warm', filter: 'sepia(0.3) saturate(1.4) brightness(1.05)' },
@@ -189,12 +219,22 @@ function WebcamStreamPlayer({
 
       async function startBroadcasting() {
         try {
+          // 🎥 HD video + professional audio constraints
           const stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
+            video: {
+              facingMode,
+              width:  { ideal: 1920, min: 1280 },
+              height: { ideal: 1080, min: 720 },
+              frameRate: { ideal: 30, max: 30 },
+              aspectRatio: { ideal: 9/16 },
+            },
             audio: {
               echoCancellation: true,
               noiseSuppression: true,
-              autoGainControl: true
+              autoGainControl: true,
+              sampleRate: 48000,          // 48kHz — CD quality
+              channelCount: 1,            // Mono — better for voice
+              latency: 0.01,              // Ultra-low latency
             }
           });
           
@@ -246,13 +286,10 @@ function WebcamStreamPlayer({
             console.log(`[Stream] Viewer ${viewerId} joined. Creating peer connection.`);
             try {
               const pc = new RTCPeerConnection({
-                iceServers: [
-                  { urls: 'stun:stun.l.google.com:19302' },
-                  { urls: 'stun:stun1.l.google.com:19302' },
-                  { urls: 'stun:stun2.l.google.com:19302' },
-                  { urls: 'stun:stun3.l.google.com:19302' },
-                  { urls: 'stun:global.stun.twilio.com:3478' }
-                ]
+                iceServers: ICE_SERVERS,
+                iceTransportPolicy: 'all',
+                bundlePolicy: 'max-bundle',
+                rtcpMuxPolicy: 'require',
               });
 
               pcsRef.current.set(viewerId, pc);
@@ -277,13 +314,59 @@ function WebcamStreamPlayer({
                 }
               };
 
-              const offer = await pc.createOffer();
+              // 🎛️ Set video sender bitrate for HD quality
+              pc.onnegotiationneeded = async () => {
+                // Triggered when tracks change — renegotiate with viewer
+              };
+
+              const offer = await pc.createOffer({
+                offerToReceiveAudio: false,
+                offerToReceiveVideo: false,
+                voiceActivityDetection: true,
+              });
               await pc.setLocalDescription(offer);
               socket.emit('signal', { to: viewerId, signal: { type: 'offer', sdp: offer.sdp } });
+
+              // After connection established, apply max bitrate on video sender
+              pc.onconnectionstatechange = () => {
+                console.log(`[Broadcaster→${viewerId}] state: ${pc.connectionState}`);
+                if (pc.connectionState === 'connected') {
+                  // Set max bitrate 2.5Mbps video, 128kbps audio
+                  pc.getSenders().forEach(sender => {
+                    if (!sender.track) return;
+                    const params = sender.getParameters();
+                    if (!params.encodings) params.encodings = [{}];
+                    if (sender.track.kind === 'video') {
+                      params.encodings[0].maxBitrate = 2_500_000;  // 2.5 Mbps
+                      params.encodings[0].maxFramerate = 30;
+                    } else if (sender.track.kind === 'audio') {
+                      params.encodings[0].maxBitrate = 128_000;    // 128 kbps
+                    }
+                    sender.setParameters(params).catch(() => null);
+                  });
+                }
+                if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
+                  // ICE Restart — re-offer to reconnect automatically
+                  setTimeout(async () => {
+                    if (!pcsRef.current.has(viewerId)) return;
+                    try {
+                      const restartOffer = await pc.createOffer({ iceRestart: true });
+                      await pc.setLocalDescription(restartOffer);
+                      socket.emit('signal', { to: viewerId, signal: { type: 'offer', sdp: restartOffer.sdp } });
+                      console.log(`[Broadcaster] ICE Restart sent to ${viewerId}`);
+                    } catch { /* viewer likely left */ }
+                  }, 1500);
+                  if (pc.connectionState === 'failed') {
+                    pc.close();
+                    pcsRef.current.delete(viewerId);
+                    setViewerCount(prev => Math.max(0, prev - 1));
+                  }
+                }
+              };
             } catch (err) {
               console.error("[Broadcaster] Failed to negotiate with viewer:", err);
             }
-          };
+          }; // end handleViewerJoined
 
           const handleViewerLeft = ({ viewerId }: { viewerId: string }) => {
             console.log(`[Stream] Viewer ${viewerId} left.`);
@@ -392,15 +475,71 @@ function WebcamStreamPlayer({
       return () => {
         active = false;
         if (cleanupBroadcaster) cleanupBroadcaster();
-        socket.emit('leave-stream', { streamId: ad.id, role: 'broadcaster' });
-        
-        // Stop local streams
-        if (localStreamRef.current) {
-          localStreamRef.current.getTracks().forEach(track => track.stop());
-        }
-        // Close viewer peer connections
-        pcsRef.current.forEach(pc => pc.close());
-        pcsRef.current.clear();
+
+        // 📸 Capture real thumbnail from last video frame before stopping
+        const captureAndUploadThumbnail = async () => {
+          try {
+            const video = videoRef.current;
+            if (video && video.videoWidth > 0 && video.videoHeight > 0) {
+              const canvas = document.createElement('canvas');
+              canvas.width  = Math.min(video.videoWidth, 1280);
+              canvas.height = Math.min(video.videoHeight, 720);
+              const ctx = canvas.getContext('2d');
+              if (ctx) {
+                // Mirror if front camera
+                if (facingMode === 'user') {
+                  ctx.translate(canvas.width, 0);
+                  ctx.scale(-1, 1);
+                }
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                canvas.toBlob(async (blob) => {
+                  if (!blob) return;
+                  const formData = new FormData();
+                  formData.append('file', blob, `thumbnail_${ad.id}_${Date.now()}.jpg`);
+                  formData.append('adId', ad.id);
+                  try {
+                    const resp = await fetch('/api/v1/storage/upload', {
+                      method: 'POST',
+                      body: formData,
+                      headers: { Authorization: `Bearer ${localStorage.getItem('token') || ''}` }
+                    });
+                    if (resp.ok) {
+                      const data = await resp.json();
+                      console.log('[Stream] Thumbnail captured and uploaded:', data.url);
+                      // Save thumbnail URL to the reel/stream record
+                      if (data.url && ad.id) {
+                        await fetch(`/api/v1/promo/reel/${ad.id}/thumbnail`, {
+                          method: 'PATCH',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: `Bearer ${localStorage.getItem('token') || ''}`
+                          },
+                          body: JSON.stringify({ thumbnailUrl: data.url })
+                        }).catch(() => null);
+                      }
+                    }
+                  } catch (e) {
+                    console.warn('[Stream] Thumbnail upload failed (non-critical):', e);
+                  }
+                }, 'image/jpeg', 0.85); // 85% quality JPEG
+              }
+            }
+          } catch (e) {
+            console.warn('[Stream] Thumbnail capture failed (non-critical):', e);
+          }
+        };
+
+        captureAndUploadThumbnail().then(() => {
+          socket.emit('leave-stream', { streamId: ad.id, role: 'broadcaster' });
+
+          // Stop local streams
+          if (localStreamRef.current) {
+            localStreamRef.current.getTracks().forEach(track => track.stop());
+          }
+          // Close viewer peer connections
+          pcsRef.current.forEach(pc => pc.close());
+          pcsRef.current.clear();
+        });
       };
 
     } else {
@@ -413,13 +552,10 @@ function WebcamStreamPlayer({
         }
 
         const pc = new RTCPeerConnection({
-          iceServers: [
-            { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' },
-            { urls: 'stun:stun2.l.google.com:19302' },
-            { urls: 'stun:stun3.l.google.com:19302' },
-            { urls: 'stun:global.stun.twilio.com:3478' }
-          ]
+          iceServers: ICE_SERVERS,
+          iceTransportPolicy: 'all',
+          bundlePolicy: 'max-bundle',
+          rtcpMuxPolicy: 'require',
         });
 
         pcRef.current = pc;
@@ -444,7 +580,21 @@ function WebcamStreamPlayer({
           console.log("[Viewer] Connection state:", pc.connectionState);
           if (pc.connectionState === 'failed') {
             setStatusText(isRtl ? '⚠️ فشل الاتصال، جاري إعادة المحاولة...' : '⚠️ Connection failed, retrying...');
-            createPeerConnection(broadcasterId);
+            // Try ICE restart first before full reconnect
+            pc.restartIce();
+            setTimeout(() => {
+              if (pc.connectionState === 'failed' || pc.connectionState === 'closed') {
+                createPeerConnection(broadcasterId);
+                socket.emit('join-stream', { streamId: ad.id, role: 'viewer' });
+              }
+            }, 2000);
+          }
+          if (pc.connectionState === 'connected') {
+            setStatusText('');
+            setIsOffline(false);
+          }
+          if (pc.connectionState === 'disconnected') {
+            setStatusText(isRtl ? '⏳ جاري إعادة الاتصال...' : '⏳ Reconnecting...');
           }
         };
       };
