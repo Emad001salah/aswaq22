@@ -2559,7 +2559,7 @@ export default function SpotlightFeed({
                 </div>
               )}
 
-              <div className={`absolute bottom-24 sm:bottom-28 z-[200] flex flex-col gap-4 sm:gap-5 items-center pointer-events-auto ${isRtl ? 'left-2 sm:left-3' : 'right-2 sm:right-3'}`}>
+              <div className={`absolute bottom-[170px] sm:bottom-28 z-[200] flex flex-col gap-3 sm:gap-4 items-center pointer-events-auto ${isRtl ? 'left-2 sm:left-4' : 'right-2 sm:right-4'}`}>
                 
                 {/* 1. Avatar Profile */}
                 <div className="flex flex-col items-center gap-1 relative mb-2">

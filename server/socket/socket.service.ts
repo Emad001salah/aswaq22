@@ -82,6 +82,14 @@ export class SocketService {
         }
 
         if (role === 'broadcaster') {
+          // Clear any pending disconnect timeout for reconnection
+          const pendingTimeout = (stream as any).disconnectTimeout;
+          if (pendingTimeout) {
+            clearTimeout(pendingTimeout);
+            delete (stream as any).disconnectTimeout;
+            console.log(`[Stream] Broadcaster reconnected to stream ${streamId}. Cleared disconnect timeout.`);
+          }
+
           stream.broadcasterId = socket.id;
           this.io.to(`stream_${streamId}`).emit('broadcaster-ready', { broadcasterId: socket.id });
           this.io.to(`stream_${streamId}`).emit('stream-broadcaster-online', { broadcasterId: socket.id });
@@ -213,9 +221,18 @@ export class SocketService {
       socket.on('disconnect', () => {
         for (const [streamId, stream] of this.activeStreams.entries()) {
           if (stream.broadcasterId === socket.id) {
-            this.io.to(`stream_${streamId}`).emit('stream-ended');
-            this.activeStreams.delete(streamId);
-            autoArchiveStream(streamId);
+            // Reconnection grace period — 15 seconds before terminating live session
+            const timeoutId = setTimeout(() => {
+              const currentStream = this.activeStreams.get(streamId);
+              if (currentStream && currentStream.broadcasterId === socket.id) {
+                this.io.to(`stream_${streamId}`).emit('stream-ended');
+                this.activeStreams.delete(streamId);
+                autoArchiveStream(streamId);
+                console.log(`[Stream] Stream ${streamId} ended/archived after 15s broadcaster disconnect timeout.`);
+              }
+            }, 15000);
+            
+            (stream as any).disconnectTimeout = timeoutId;
           } else if (stream.viewers.has(socket.id)) {
             stream.viewers.delete(socket.id);
             if (stream.broadcasterId) {
