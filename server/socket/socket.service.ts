@@ -99,6 +99,53 @@ export class SocketService {
             sellerName: data.sellerName || 'تاجر',
             adTitle: data.adTitle || 'بث مباشر جديد',
           });
+
+          // Fetch the actual database reel and broadcast the full object as 'new-broadcast'
+          prisma.reel.findUnique({
+            where: { id: streamId },
+            include: { user: { select: { name: true, avatar: true } } }
+          }).then(dbReel => {
+            if (dbReel) {
+              const parts = dbReel.videoUrl.split('||');
+              const videoUrlParsed = parts[0] || '';
+              const audioUrlParsed = parts[1] && parts[1] !== 'none' ? parts[1] : '';
+              const descParsed = parts[2] || '';
+              const cityParsed = parts[3] || 'كافة المناطق';
+              const catParsed = parts[4] || 'عام';
+
+              const formattedAd = {
+                id: dbReel.id,
+                isPromo: true,
+                promoType: "db",
+                title: dbReel.title,
+                category: catParsed,
+                city: cityParsed,
+                price: 0,
+                currency: 'YER',
+                description: descParsed,
+                createdAt: dbReel.createdAt,
+                views: 0,
+                likes: 0,
+                userId: dbReel.userId,
+                userName: dbReel.user?.name || data.sellerName || 'تاجر أسواق',
+                userAvatar: dbReel.user?.avatar || '',
+                userVerified: true,
+                images: ["https://picsum.photos/seed/promo/800/400"],
+                videoUrl: videoUrlParsed,
+                audioUrl: audioUrlParsed,
+                isLive: true,
+                features: [
+                  "موثق وبث حي تفاعلي",
+                  "تواصل مباشر وبدون عمولات"
+                ],
+                ctaText: "استكشف العرض"
+              };
+
+              this.io.emit('new-broadcast', formattedAd);
+            }
+          }).catch(err => {
+            console.error('[Socket] Failed to broadcast new-broadcast event:', err);
+          });
         } else {
           stream.viewers.add(socket.id);
           if (stream.broadcasterId) {

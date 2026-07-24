@@ -78,7 +78,32 @@ export function PromoController() {
         userAvatar,
       } = req.body;
 
-      const effectiveUserId = req.user?.id || userId || "guest_user";
+      let effectiveUserId = req.user?.id || userId || "guest_user";
+
+      // Validate that effectiveUserId is a valid UUID
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      let isValidUuid = uuidRegex.test(effectiveUserId);
+
+      if (!isValidUuid) {
+        // Fallback to first superadmin or admin/user in database
+        const defaultUser = await prisma.user.findFirst({
+          where: { role: { in: ['SUPER_ADMIN', 'ADMIN', 'USER'] } }
+        });
+        if (defaultUser) {
+          effectiveUserId = defaultUser.id;
+        }
+      } else {
+        // Double check if the user actually exists in the database to prevent foreign key crash
+        const userExists = await prisma.user.findUnique({
+          where: { id: effectiveUserId }
+        });
+        if (!userExists) {
+          const defaultUser = await prisma.user.findFirst();
+          if (defaultUser) {
+            effectiveUserId = defaultUser.id;
+          }
+        }
+      }
 
       if (!title || typeof title !== 'string' || title.trim().length === 0) {
         return res.status(400).json({ error: 'العنوان مطلوب' });
@@ -107,7 +132,8 @@ export function PromoController() {
             user: { select: { name: true, avatar: true } },
           },
         });
-      } catch (dbErr) {
+      } catch (dbErr: any) {
+        logger.error({ message: 'Failed to create database Reel', error: dbErr.message });
         newReel = {
           id: `promo_fallback_${Date.now()}`,
           title: title.trim(),

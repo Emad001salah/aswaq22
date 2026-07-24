@@ -1663,6 +1663,9 @@ export default function SpotlightFeed({
   useEffect(() => {
     const activeAd = displayAds[activeIndex];
 
+    const activeAdId = activeAd?.id;
+    const activeAdIsLive = activeAd?.isLive;
+    
     if (activeAd && activeAd.isLive) {
       // 1. Join the stream room
       socket.emit('join-stream', { streamId: activeAd.id, role: 'viewer' });
@@ -1724,7 +1727,7 @@ export default function SpotlightFeed({
       setFloatingHearts([]);
       setPinnedProduct(null);
     }
-  }, [activeIndex, displayAds]);
+  }, [activeIndex, activeAdId, activeAdIsLive]);
 
   const sendLiveHeart = () => {
     const activeAd = displayAds[activeIndex];
