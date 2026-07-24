@@ -215,9 +215,7 @@ function WebcamStreamPlayer({
       (ad.isLive || (ad.videoUrl && (ad.videoUrl.includes('webcam') || ad.videoUrl.includes('camera')))) &&
       (
         myBroadcastingIds.includes(ad.id) ||
-        (currentUser && currentUser.id === ad.userId) ||
-        (ad.userId === "guest_user") ||
-        (!currentUser && ad.userId === "guest_user")
+        (currentUser && currentUser.id && currentUser.id === ad.userId && ad.userId !== "guest_user")
       )
     );
     setIsBroadcaster(isCreator);
