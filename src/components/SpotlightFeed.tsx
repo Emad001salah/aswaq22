@@ -173,7 +173,8 @@ function WebcamStreamPlayer({
   currentUser,
   onStreamEnded,
   pinnedProduct,
-  onPinProductClick
+  onPinProductClick,
+  myBroadcastingIds = []
 }: {
   isMuted: boolean;
   isRtl: boolean;
@@ -182,6 +183,7 @@ function WebcamStreamPlayer({
   onStreamEnded?: (adId: string, archiveUrl: string) => void;
   pinnedProduct?: { id: string; title: string; price: number; image: string } | null;
   onPinProductClick?: () => void;
+  myBroadcastingIds?: string[];
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -198,9 +200,7 @@ function WebcamStreamPlayer({
   const [realComments, setRealComments] = useState<any[]>([]);
   const [commentInput, setCommentInput] = useState<string>('');
 
-  
   // Broadcaster Refs & Local Session Tracking
-  const [myBroadcastingIds, setMyBroadcastingIds] = useState<string[]>([]);
   const localStreamRef = useRef<MediaStream | null>(null);
   const pcsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
 
@@ -1138,6 +1138,7 @@ export default function SpotlightFeed({
   const [audioUploading, setAudioUploading] = useState<boolean>(false);
   const [audioOriginalName, setAudioOriginalName] = useState<string>('');
   const [liveIntentMode, setLiveIntentMode] = useState<'offer' | 'request'>('offer');
+  const [myBroadcastingIds, setMyBroadcastingIds] = useState<string[]>([]);
 
   // Shoppable Instant Checkout drawer states
   const [showShoppablePanel, setShowShoppablePanel] = useState<boolean>(false);
@@ -2286,6 +2287,7 @@ export default function SpotlightFeed({
                               currentUser={currentUser} 
                               pinnedProduct={pinnedProduct} 
                               onPinProductClick={() => setShowPinProductModal(true)} 
+                              myBroadcastingIds={myBroadcastingIds}
                               onStreamEnded={(adId, archiveUrl, archiveThumb) => {
                                 const overrideUrl = `${archiveUrl}||none||${ad.description || ''}||${ad.city || ''}||${ad.category || ''}`;
                                 setLocalAdOverrides(prev => ({
