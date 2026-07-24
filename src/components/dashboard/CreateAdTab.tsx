@@ -1288,58 +1288,146 @@ export default function CreateAdTab({
                   </div>
                 )}
 
-                {/* Jobs Specific Advanced Fields */}
+                {/* Jobs & Opportunities Specific Advanced Fields */}
                 {category === "jobs" && (
                   <div className={`p-6 rounded-2xl space-y-6 text-right border transition-colors ${isDark ? "bg-slate-950/50 border-slate-800" : "bg-slate-50 border-slate-200 shadow-sm"}`}>
                     <div className="flex items-center gap-2 justify-end">
                       <Briefcase className="w-4 h-4 text-purple-400" />
-                      <h4 className="text-xs font-black text-white">تفاصيل الإعلان الوظيفي</h4>
+                      <h4 className="text-xs font-black text-white">تفاصيل بوابة الوظائف والفرص والمهن الحرفية</h4>
                     </div>
 
-                    <div className="flex gap-4">
-                      <button
-                        type="button"
-                        onClick={() => setJobType("hiring")}
-                        className={`flex-1 py-4 flex flex-col items-center gap-2 rounded-xl text-xs font-bold transition-all border cursor-pointer ${jobType === "hiring" ? "bg-purple-500/10 border-purple-500 text-purple-400" : "bg-slate-900 border-slate-800 text-slate-400"}`}
-                      >
-                        <span className="text-xl">🏢</span>
-                        <span>أصحاب العمل (مطلوب موظف/توظيف)</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setJobType("seeking")}
-                        className={`flex-1 py-4 flex flex-col items-center gap-2 rounded-xl text-xs font-bold transition-all border cursor-pointer ${jobType === "seeking" ? "bg-emerald-500/10 border-emerald-500 text-emerald-400" : "bg-slate-900 border-slate-800 text-slate-400"}`}
-                      >
-                        <span className="text-xl">👨‍💻</span>
-                        <span>سيرة ذاتية (أبحث عن عمل)</span>
-                      </button>
+                    {/* 1. Objective Selector */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-400 block">الهدف الرئيسي من الإعلان</label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5">
+                        {[
+                          { id: "hiring", icon: "🏢", label: "مطلوب موظفين (عرض توظيف)" },
+                          { id: "seeking", icon: "👨‍💻", label: "أبحث عن عمل (سيرة ذاتية)" },
+                          { id: "craft_daily", icon: "🛠️", label: "مهنة / حرفية / شغل باليومية" },
+                          { id: "freelance_project", icon: "💼", label: "عقد / مشروع عمل حُر" },
+                        ].map((item) => (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => {
+                              setJobType(item.id as any);
+                              setCustomFieldValues((prev) => ({ ...prev, jobObjective: item.id }));
+                            }}
+                            className={`p-3.5 rounded-xl text-xs font-bold transition-all border flex flex-col items-center justify-center gap-1.5 cursor-pointer text-center ${jobType === item.id || customFieldValues.jobObjective === item.id ? "bg-purple-500/15 border-purple-500 text-purple-300 shadow-lg shadow-purple-950/20" : "bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700"}`}
+                          >
+                            <span className="text-lg">{item.icon}</span>
+                            <span className="text-[11px] font-black">{item.label}</span>
+                          </button>
+                        ))}
+                      </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* 2. Field / Profession Category */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-slate-400 block">نظام العمل</label>
+                        <label className="text-xs font-bold text-slate-400 block">مجال التخصص / المهنة</label>
                         <select
-                          className={`w-full h-11 border rounded-xl px-4 outline-none text-xs text-right cursor-pointer ${isDark ? "bg-slate-950 border-slate-800 text-slate-300" : "bg-white border-slate-200 text-slate-900"}`}
+                          className={`w-full h-11 border rounded-xl px-4 outline-none text-xs text-right cursor-pointer font-bold ${isDark ? "bg-slate-950 border-slate-800 text-slate-200 focus:border-purple-500" : "bg-white border-slate-200 text-slate-900 focus:border-purple-500"}`}
+                          value={customFieldValues.jobField || "tech"}
+                          onChange={(e) => setCustomFieldValues((prev) => ({ ...prev, jobField: e.target.value }))}
+                        >
+                          <option value="tech">💻 برمجة وتقنية وميديا</option>
+                          <option value="sales">🏢 مبيعات وتسويق وإدارة</option>
+                          <option value="medical">🩺 طب وصيدلة وتمريض</option>
+                          <option value="engineering">🏗️ هندسة ومقاولات وديكور</option>
+                          <option value="drivers">🚚 سائقين وتوصيل ولوجستيات</option>
+                          <option value="crafts">🛠️ حرف وسباكة وكهرباء وصيانة</option>
+                          <option value="teaching">🎓 تعليم وتدريس واستشارات</option>
+                          <option value="hospitality">🍽️ مطاعم وفنادق وحراسة وأمن</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-400 block">نظام وساعات العمل</label>
+                        <select
+                          className={`w-full h-11 border rounded-xl px-4 outline-none text-xs text-right cursor-pointer font-bold ${isDark ? "bg-slate-950 border-slate-800 text-slate-200 focus:border-purple-500" : "bg-white border-slate-200 text-slate-900 focus:border-purple-500"}`}
                           value={jobSchedule}
                           onChange={(e) => setJobSchedule(e.target.value)}
                         >
-                          <option value="full_time">دوام كامل</option>
-                          <option value="part_time">دوام جزئي</option>
-                          <option value="remote">عمل عن بعد</option>
-                          <option value="freelance">مشروع / عمل حر</option>
+                          <option value="full_time">دوام كامل (رسمي)</option>
+                          <option value="part_time">دوام جزئي (ساعات)</option>
+                          <option value="daily">شغل باليومية (أجرة يومية)</option>
+                          <option value="remote">عمل عن بُعد (من المنزل)</option>
+                          <option value="project">بالقطعة / بالمشروع</option>
                         </select>
                       </div>
+
                       <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-slate-400 block">مستوى الخبرة المطلوبة</label>
+                        <label className="text-xs font-bold text-slate-400 block">مستوى الخبرة / المؤهل</label>
                         <select
-                          className={`w-full h-11 border rounded-xl px-4 outline-none text-xs text-right cursor-pointer ${isDark ? "bg-slate-950 border-slate-800 text-slate-300" : "bg-white border-slate-200 text-slate-900"}`}
+                          className={`w-full h-11 border rounded-xl px-4 outline-none text-xs text-right cursor-pointer font-bold ${isDark ? "bg-slate-950 border-slate-800 text-slate-200 focus:border-purple-500" : "bg-white border-slate-200 text-slate-900 focus:border-purple-500"}`}
                           value={jobExperience}
                           onChange={(e) => setJobExperience(e.target.value)}
                         >
                           <option value="entry">حديث التخرج / بدون خبرة</option>
                           <option value="intermediate">خبرة متوسطة (1-3 سنوات)</option>
-                          <option value="senior">خبرة عالية (5+ سنوات)</option>
+                          <option value="senior">خبير / قيادي (5+ سنوات)</option>
+                          <option value="craftsman">حرفي متمكن / أسطى معلم</option>
                         </select>
+                      </div>
+                    </div>
+
+                    {/* 3. Salary & Pay Structure */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-400 block">طريقة الراتب / الأجرة</label>
+                        <select
+                          className={`w-full h-11 border rounded-xl px-4 outline-none text-xs text-right cursor-pointer font-bold ${isDark ? "bg-slate-950 border-slate-800 text-slate-200 focus:border-purple-500" : "bg-white border-slate-200 text-slate-900 focus:border-purple-500"}`}
+                          value={customFieldValues.salaryModel || "monthly"}
+                          onChange={(e) => setCustomFieldValues((prev) => ({ ...prev, salaryModel: e.target.value }))}
+                        >
+                          <option value="monthly">راتب شهري ثابت</option>
+                          <option value="daily">أجرة يومية حاسبة</option>
+                          <option value="hourly">بالساعة العمل</option>
+                          <option value="commission">عمولة على المبيعات / الإنجاز</option>
+                          <option value="negotiable">قابل للتفاوض حسب الاتفاق</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-400 block">المسمى الوظيفي / التخصص التفصيلي</label>
+                        <input
+                          type="text"
+                          placeholder="مثال: محاسب قانوني، فني تكييف، مبرمج، سائق رافعة..."
+                          className={`w-full h-11 border rounded-xl px-4 outline-none text-xs text-right font-medium ${isDark ? "bg-slate-950 border-slate-800 text-slate-200 focus:border-purple-500" : "bg-white border-slate-200 text-slate-900 focus:border-purple-500"}`}
+                          value={customFieldValues.detailedTitle || ""}
+                          onChange={(e) => setCustomFieldValues((prev) => ({ ...prev, detailedTitle: e.target.value }))}
+                        />
+                      </div>
+                    </div>
+
+                    {/* 4. Benefits & Job Perks */}
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-slate-400 block">المميزات وبدلات العمل المتوفرة</label>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        {[
+                          { id: "housing", label: "🏠 يوفر سكن للموظف" },
+                          { id: "transport", label: "🚌 بدل مواصلات / تنقلات" },
+                          { id: "medical_ins", label: "🩺 تأمين طبي شامل" },
+                          { id: "transferable", label: "✈️ نقل كفالة / جاهز للعمل" },
+                        ].map((item) => (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => {
+                              const existing = customFieldValues.jobPerks || [];
+                              const updated = existing.includes(item.id) ? existing.filter((i: string) => i !== item.id) : [...existing, item.id];
+                              setCustomFieldValues((prev) => ({ ...prev, jobPerks: updated }));
+                            }}
+                            className={`px-3 py-2.5 rounded-xl text-[11px] font-bold transition-all border cursor-pointer ${
+                              (customFieldValues.jobPerks || []).includes(item.id)
+                                ? "bg-purple-500/10 border-purple-500 text-purple-300"
+                                : "bg-slate-900 border-slate-800 text-slate-500"
+                            }`}
+                          >
+                            {item.label}
+                          </button>
+                        ))}
                       </div>
                     </div>
                   </div>
