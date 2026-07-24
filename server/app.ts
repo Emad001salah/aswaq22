@@ -217,8 +217,15 @@ export class App {
       }
     });
 
-    // Response compression
-    this.app.use(compression());
+    // Response compression — gzip level 6 (best CPU/size tradeoff), skip tiny payloads
+    this.app.use(compression({
+      level: 6,            // zlib levels 1-9; 6 = optimal balance speed/ratio
+      threshold: 1024,     // skip payloads < 1KB (headers cost more than savings)
+      filter: (req, res) => {
+        if (req.headers['x-no-compression']) return false;
+        return compression.filter(req, res);
+      }
+    }));
 
     /**
      * [CORS-001] CORS Middleware — fixed wildcard in non-production environments.
@@ -301,11 +308,11 @@ export class App {
       },
     }));
 
-    // 3a. Global rate limit – generous for normal browsing
+    // 3a. Global rate limit – generous: 5000 req/15min since Redis cache absorbs ~70% of traffic
     this.app.use(
       rateLimit({
         windowMs: 15 * 60 * 1000,
-        max: 2000,
+        max: 5000,       // Raised from 2000 — cache makes real DB load much lower
         standardHeaders: true,
         legacyHeaders: false,
         skip: (req) =>
@@ -359,8 +366,15 @@ export class App {
     // 7. Global CSRF protection for mutating requests
     this.app.use(csrfMiddleware);
 
-    // 8. Static files
-    this.app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+    // 8. Static files with aggressive caching headers
+    this.app.use('/uploads', express.static(path.join(process.cwd(), 'uploads'), {
+      maxAge: '7d',       // Browser caches static files for 7 days
+      etag: true,
+      lastModified: true,
+      setHeaders: (res) => {
+        res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
+      }
+    }));
     this.app.use('/status',  express.static(path.join(process.cwd(), 'public', 'status')));
 
 

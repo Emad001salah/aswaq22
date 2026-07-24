@@ -71,15 +71,21 @@ export const AdsController = () => {
    */
   router.get('/', async (req, res) => {
     const { city, cursor, limit = '20', category } = req.query;
-    const take = parseInt(limit as string);
+    const take = Math.min(parseInt(limit as string) || 20, 100); // Cap at 100
 
-    // Try Redis cache if no cursor/category is requested (caching general homepage feeds)
-    const cacheKey = `ads:latest:${city || 'all'}:${category || 'all'}:${limit}`;
+    // Try Redis cache if no cursor (caching general homepage feeds)
+    const cacheKey = `ads:latest:${city || 'all'}:${category || 'all'}:${take}`;
     if (!cursor) {
       const cachedData = await redis.get(cacheKey);
       if (cachedData) {
-        const parsed = JSON.parse(cachedData);
-        return res.json(parsed);
+        const etag = `"ads-${cacheKey.length}-${cachedData.length}"`;
+        if (req.headers['if-none-match'] === etag) {
+          return res.status(304).end();
+        }
+        res.setHeader('ETag', etag);
+        res.setHeader('X-Cache', 'HIT');
+        res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=120');
+        return res.json(JSON.parse(cachedData));
       }
     }
 
@@ -121,9 +127,14 @@ export const AdsController = () => {
       const nextCursor = mappedAds.length === take ? mappedAds[mappedAds.length - 1].id : undefined;
       const responseData = { ads: mappedAds, nextCursor };
 
-      // Save to cache for 60 seconds if no pagination cursor was used
+      // Cache for 120 seconds — higher than before, still fresh enough
       if (!cursor) {
-        await redis.set(cacheKey, JSON.stringify(responseData), 60);
+        const payload = JSON.stringify(responseData);
+        await redis.set(cacheKey, payload, 120);
+        const etag = `"ads-${cacheKey.length}-${payload.length}"`;
+        res.setHeader('ETag', etag);
+        res.setHeader('X-Cache', 'MISS');
+        res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=120');
       }
 
       res.json(responseData);
