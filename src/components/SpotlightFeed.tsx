@@ -3418,8 +3418,55 @@ export default function SpotlightFeed({
                           {isRtl ? cat.nameAr : cat.nameEn}
                         </option>
                       ))}
+                      <option value="أخرى (اكتب قسماً مخصصاً ✏️)">{isRtl ? 'أخرى (اكتب قسماً مخصصاً ✏️)' : 'Other Custom Category'}</option>
                     </select>
                   </div>
+                </div>
+
+                {/* 4.5 Universal Ad Intent (Offer vs Request) for Live Stream */}
+                <div className="flex flex-col gap-1.5 bg-slate-950/80 p-2.5 rounded-xl border border-white/5 text-right">
+                  <label className="text-[10px] font-black text-pink-400 block">
+                    🎯 {isRtl ? 'غرض وطبيعة البث / المحتوى:' : 'Broadcast Intent:'}
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setCustomFieldValues((prev: any) => ({ ...prev, liveIntent: "offer" }))}
+                      className={`py-2 px-3 rounded-lg text-[10px] font-black transition-all border cursor-pointer flex items-center justify-center gap-1 ${
+                        customFieldValues.liveIntent !== "request"
+                          ? "bg-emerald-500/20 border-emerald-500 text-emerald-300"
+                          : "bg-slate-900 border-white/5 text-slate-400"
+                      }`}
+                    >
+                      <span>🏷️</span>
+                      <span>{isRtl ? 'عرض (للبيع / للبث / تقديم)' : 'Offer / Showcase'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCustomFieldValues((prev: any) => ({ ...prev, liveIntent: "request" }))}
+                      className={`py-2 px-3 rounded-lg text-[10px] font-black transition-all border cursor-pointer flex items-center justify-center gap-1 ${
+                        customFieldValues.liveIntent === "request"
+                          ? "bg-amber-500/20 border-amber-500 text-amber-300"
+                          : "bg-slate-900 border-white/5 text-slate-400"
+                      }`}
+                    >
+                      <span>🙋‍♂️</span>
+                      <span>{isRtl ? 'مطلوب (طلب شراء / خدمة)' : 'Request / Seeking'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* 4.8 Free-text Custom Details & Specifications for Stream */}
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] font-black text-emerald-400">
+                    ✏️ {isRtl ? 'ميزات أو تفاصيل ومواصفات إضافية مخصصة (حرية كتابة صاحب الإعلان):' : 'Custom Additional Details / Specs:'}
+                  </label>
+                  <input
+                    type="text"
+                    name="customLiveSpecs"
+                    placeholder={isRtl ? 'اكتب أي ميزة أو مواصفة خاصة غير موجودة بالخيارات لتعرض للبث...' : 'Write any extra specs or details for your audience...'}
+                    className="bg-slate-950 border border-emerald-500/30 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-600 outline-none focus:border-emerald-400 font-bold"
+                  />
                 </div>
 
                 {/* 5. URL Path and Presets */}
