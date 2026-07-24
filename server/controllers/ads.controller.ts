@@ -433,7 +433,9 @@ export const AdsController = () => {
             longitude: dto.longitude,
             contactNumber: dto.contactNumber,
             userId: req.user!.id, // Securely mapped from JWT
-            status: ((dto as any).status ? (dto as any).status.toString().toUpperCase() : 'PENDING') as any,
+            status: (['ADMIN', 'SUPER_ADMIN'].includes(req.user!.role.toUpperCase())
+              ? 'ACTIVE'
+              : ((dto as any).status ? (dto as any).status.toString().toUpperCase() : 'PENDING')) as any,
           }
         });
 

@@ -33,8 +33,14 @@ export const PollsController = () => {
       return res.status(400).json({ error: 'Option index is required' });
     }
 
-    // SECURITY: Rate-limit votes by IP — 1 vote per poll per IP per 24h
-    const voterIp = req.ip || req.socket.remoteAddress || 'unknown';
+    // Extract real client IP behind proxies (Cloudflare, Render, etc.)
+    const forwardHeader = req.headers['x-forwarded-for'];
+    const voterIp = req.headers['cf-connecting-ip'] || 
+                    (Array.isArray(forwardHeader) ? forwardHeader[0] : forwardHeader?.split(',')[0]) || 
+                    req.ip || 
+                    req.socket.remoteAddress || 
+                    'unknown';
+                    
     const voteKey = `poll_vote:${id}:${voterIp}`;
     try {
       const alreadyVoted = await redis.get(voteKey);

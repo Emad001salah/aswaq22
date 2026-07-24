@@ -141,6 +141,10 @@ export const featureFlags = {
       if (flag.rolloutPct <= 0) return false;
 
       // Percentage rollout — deterministic hash
+      if (key === 'firebase_phone_auth' || key === 'r2_storage') {
+        return flag.enabled;
+      }
+
       if (userId) {
         const hash = crypto
           .createHash('sha256')

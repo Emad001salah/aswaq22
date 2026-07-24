@@ -104,6 +104,12 @@ export async function isFeatureEnabled(key: string, userId?: string): Promise<bo
 
   if (!flag.enabled) return false;
   if (flag.rolloutPct >= 100) return true;
+  
+  // Allow phone auth for guest users or new signups if rollout is enabled
+  if (key === 'firebase_phone_auth' || key === 'r2_storage') {
+    return flag.enabled;
+  }
+
   if (!userId) return false;
 
   return isInRollout(userId, flag.rolloutPct, flag.allowedUsers);
