@@ -47,6 +47,7 @@ model User {
   refreshTokens    RefreshToken[]
   buyerOrders      Order[]             @relation("BuyerOrders")
   sellerOrders     Order[]             @relation("SellerOrders")
+  bids             Bid[]               @relation("UserBids")
   deliveryAgent    DeliveryAgent?
   sessions           Session[] @relation("UserSessions")
   passwordResetTokens PasswordResetToken[] @relation("UserPasswordResetTokens")
@@ -105,6 +106,11 @@ model Ad {
   comments      Comment[]
   videoUrl      String?
   contactNumber String?
+  isAuction     Boolean        @default(false)
+  startingPrice Float?        @map("starting_price")
+  minBidStep    Float?        @default(5) @map("min_bid_step")
+  auctionEndsAt DateTime?     @map("auction_ends_at")
+  bids          Bid[]
   orders        Order[]
   conversations Conversation[]
 
@@ -203,6 +209,20 @@ model Comment {
 
   @@index([adId])
   @@map("comments")
+}
+
+model Bid {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  amount    Float
+  adId      String   @map("ad_id") @db.Uuid
+  bidderId  String   @map("bidder_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  ad        Ad       @relation(fields: [adId], references: [id], onDelete: Cascade)
+  bidder    User     @relation("UserBids", fields: [bidderId], references: [id], onDelete: Cascade)
+
+  @@index([adId, amount(sort: Desc)])
+  @@index([bidderId])
+  @@map("bids")
 }
 
 model Conversation {

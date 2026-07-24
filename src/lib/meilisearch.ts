@@ -22,7 +22,7 @@ try {
       console.log('\x1b[32m[Meilisearch] Connected and healthy.\x1b[0m');
       
       // Update filters and sortable fields
-      await adsIndex.updateFilterableAttributes(['city', 'category', 'status']);
+      await adsIndex.updateFilterableAttributes(['city', 'category', 'status', 'price', 'condition']);
       await adsIndex.updateSortableAttributes(['price', 'createdAt']);
     })
     .catch((err) => {
@@ -76,7 +76,7 @@ export const searchEngine = {
 
   async search(
     query: string,
-    filters: { city?: string; category?: string; status?: string } = {},
+    filters: { city?: string; category?: string; status?: string; minPrice?: number; maxPrice?: number } = {},
     limit = 20
   ): Promise<any[] | null> {
     if (!isMeiliAvailable || !adsIndex) return null; // Let caller fallback to db
@@ -85,6 +85,8 @@ export const searchEngine = {
       if (filters.status) filterQueries.push(`status = "${filters.status}"`);
       if (filters.city) filterQueries.push(`city = "${filters.city}"`);
       if (filters.category) filterQueries.push(`category = "${filters.category}"`);
+      if (filters.minPrice !== undefined) filterQueries.push(`price >= ${filters.minPrice}`);
+      if (filters.maxPrice !== undefined) filterQueries.push(`price <= ${filters.maxPrice}`);
 
       const result = await adsIndex.search(query, {
         limit,

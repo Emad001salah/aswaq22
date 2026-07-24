@@ -194,8 +194,8 @@ export const AdsController = () => {
    *               $ref: '#/components/schemas/ErrorResponse'
    */
   router.get('/search', async (req, res) => {
-    const { q, city, category, minPrice, maxPrice, market, limit = '20' } = req.query;
-    const searchLimit = parseInt(limit as string);
+    const { q, city, category, minPrice, maxPrice, condition, hasImages, sortBy, market, limit = '20' } = req.query;
+    const searchLimit = Math.min(parseInt(limit as string) || 20, 100);
     const searchQuery = q ? String(q) : '';
 
     try {
@@ -206,6 +206,8 @@ export const AdsController = () => {
           city: city ? String(city) : undefined,
           category: category ? String(category) : undefined,
           status: 'ACTIVE',
+          minPrice: minPrice ? parseFloat(String(minPrice)) : undefined,
+          maxPrice: maxPrice ? parseFloat(String(maxPrice)) : undefined,
         }, searchLimit);
 
         if (hits && hits.length > 0) {
@@ -229,7 +231,13 @@ export const AdsController = () => {
         }
       }
 
-      // 2. Database Fallback (Prisma full-text query)
+      // Determine sorting order
+      let orderByClause: any = { createdAt: 'desc' };
+      if (sortBy === 'price_asc') orderByClause = { price: 'asc' };
+      if (sortBy === 'price_desc') orderByClause = { price: 'desc' };
+      if (sortBy === 'views') orderByClause = { views: 'desc' };
+
+      // 2. Database Fallback (Prisma full-text & filter query)
       console.log(`[Search] Querying database using Prisma for market: ${market || 'ALL'}...`);
       const ads = await prisma.ad.findMany({
         where: {
@@ -237,16 +245,18 @@ export const AdsController = () => {
           ...(market && market !== 'ALL' ? { countryCode: String(market).toUpperCase() } : {}),
           city: city ? String(city) : undefined,
           categoryId: category ? (uuidRegex.test(String(category)) ? String(category) : getDeterministicUuid(String(category))) : undefined,
-          price: {
+          price: (minPrice || maxPrice) ? {
             gte: minPrice ? parseFloat(String(minPrice)) : undefined,
             lte: maxPrice ? parseFloat(String(maxPrice)) : undefined,
-          },
+          } : undefined,
+          condition: condition ? String(condition) : undefined,
+          images: hasImages === 'true' ? { some: {} } : undefined,
           OR: searchQuery ? [
             { title: { contains: searchQuery, mode: 'insensitive' } },
             { description: { contains: searchQuery, mode: 'insensitive' } }
           ] : undefined,
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: orderByClause,
         include: { images: true, user: { select: { id: true, name: true, avatar: true, isVerified: true } } },
         take: searchLimit
       });
@@ -521,6 +531,13 @@ export const AdsController = () => {
         include: {
           images: { orderBy: { sortOrder: 'asc' } },
           user: { select: { id: true, name: true, avatar: true, phone: true, isVerified: true } },
+          bids: {
+            include: {
+              bidder: { select: { id: true, name: true, avatar: true } }
+            },
+            orderBy: { amount: 'desc' },
+            take: 10
+          },
           comments: {
             include: {
               author: { select: { id: true, name: true, avatar: true } }
@@ -533,9 +550,13 @@ export const AdsController = () => {
 
       if (!ad) return res.status(404).json({ error: 'Ad not found' });
 
+      const highestBid = (ad as any).bids && (ad as any).bids.length > 0 ? (ad as any).bids[0].amount : (ad.startingPrice || ad.price);
+
       const mappedAd = {
         ...ad,
         likes: ad._count?.likedBy || 0,
+        highestBid,
+        totalBids: (ad as any).bids ? (ad as any).bids.length : 0,
         userName: ad.user?.name,
         userAvatar: ad.user?.avatar,
         userVerified: ad.user?.isVerified === 'verified'
@@ -885,6 +906,79 @@ export const AdsController = () => {
       res.status(201).json({ success: true, message: 'تم إرسال البلاغ بنجاح للإدارة وسيتم مراجعته.', report });
     } catch (e: any) {
       res.status(500).json({ error: 'Report Failed', message: e.message });
+    }
+  });
+
+  // POST /api/ads/:id/bids - Place a bid on an auction ad
+  router.post('/:id/bids', authMiddleware, async (req: AuthenticatedRequest, res) => {
+    const { id } = req.params;
+    const { amount } = req.body;
+    const bidderId = req.user!.id;
+
+    const bidAmount = parseFloat(String(amount));
+    if (isNaN(bidAmount) || bidAmount <= 0) {
+      return res.status(400).json({ error: 'قيمة المزايدة يجب أن تكون رقماً أكبر من صفر.' });
+    }
+
+    try {
+      const ad = await prisma.ad.findUnique({
+        where: { id },
+        include: {
+          bids: { orderBy: { amount: 'desc' }, take: 1 }
+        }
+      });
+
+      if (!ad) return res.status(404).json({ error: 'الإعلان غير موجود' });
+      if (ad.userId === bidderId) {
+        return res.status(400).json({ error: 'لا يمكنك المزايدة على إعلانك الخاص.' });
+      }
+
+      const currentHighest = ad.bids && ad.bids.length > 0 ? ad.bids[0].amount : (ad.startingPrice || ad.price);
+      const minStep = ad.minBidStep || 5;
+
+      if (bidAmount < currentHighest + minStep) {
+        return res.status(400).json({
+          error: `يجب أن تكون قيمة المزايدة على الأقل ${currentHighest + minStep} (${currentHighest} + ${minStep} أدنى حد للزيادة)`
+        });
+      }
+
+      // Check auction expiration
+      if (ad.auctionEndsAt && new Date(ad.auctionEndsAt) < new Date()) {
+        return res.status(400).json({ error: 'عفواً، انتهى وقت المزاد لهذا الإعلان.' });
+      }
+
+      const newBid = await (prisma as any).bid.create({
+        data: {
+          adId: id,
+          bidderId,
+          amount: bidAmount
+        },
+        include: {
+          bidder: { select: { id: true, name: true, avatar: true } }
+        }
+      });
+
+      // Update ad price to current highest bid
+      await prisma.ad.update({
+        where: { id },
+        data: { price: bidAmount }
+      }).catch(() => null);
+
+      // Async notify ad owner
+      const { NotificationService } = await import('../services/notification.service.ts');
+      NotificationService.sendPushToUser(ad.userId, {
+        title: '🏷️ عرض مزايدة جديد!',
+        body: `قدم ${req.user!.name} مزايدة جديدة بقيمة ${bidAmount} على إعلانك "${ad.title}"`,
+        data: { adId: id, type: 'NEW_BID' }
+      }).catch(() => null);
+
+      res.status(201).json({
+        success: true,
+        message: 'تم تقديم المزايدة بنجاح! 🎯',
+        bid: newBid
+      });
+    } catch (e: any) {
+      res.status(500).json({ error: 'Bid Failed', message: e.message });
     }
   });
 
