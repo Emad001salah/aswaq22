@@ -48,7 +48,7 @@ import { Ad, User } from '../types.ts';
 import { INITIAL_USERS, CATEGORIES } from '../data.ts';
 import { getCurrencyAr, getCurrencyNameAr, MARKETS } from '../markets.ts';
 import socket from '../lib/socket.ts';
-import { Avatar } from './Avatar.tsx';
+import { Avatar, sanitizeName } from './Avatar.tsx';
 import { apiFetch } from '../lib/api';
 
 // ── WebRTC ICE Server Configuration ──────────────────────────────────────────
