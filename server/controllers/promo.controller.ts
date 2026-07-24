@@ -12,7 +12,7 @@
 import { Request, Response, Router } from 'express';
 import { prisma } from '../../src/lib/prisma.ts';
 import { logger } from '../lib/logger.ts';
-import { authMiddleware } from '../middleware/auth.ts';
+import { authMiddleware, optionalAuthMiddleware } from '../middleware/auth.ts';
 
 const ALLOWED_LIVE_MARKERS = new Set(['webcam', 'camera', 'screen', 'live', 'stream', 'rtmp', 'hls']);
 const PRIVATE_IP_REGEX = /^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|127\.|0\.|::1|localhost)/i;
@@ -49,6 +49,7 @@ function validateMediaUrl(url: string): { valid: boolean; reason?: string } {
 
 export function PromoController() {
   const router = Router();
+  router.use(optionalAuthMiddleware);
 
   // GET /api/promo - Fetch all promo reels
   router.get('/', async (req: Request, res: Response, next) => {
@@ -78,55 +79,33 @@ export function PromoController() {
         userAvatar,
       } = req.body;
 
+      // Extract current authenticated user or payload user ID
       let effectiveUserId = req.user?.id || userId || "guest_user";
+      const targetUserName = req.user?.name || userName || '';
+      const targetUserAvatar = req.user?.avatar || userAvatar || '';
 
-      // Validate that effectiveUserId is a valid UUID and check if it exists
+      // Validate if effectiveUserId is a valid UUID and exists in DB
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       let isValidUuid = uuidRegex.test(effectiveUserId);
       let userRecord = isValidUuid ? await prisma.user.findUnique({ where: { id: effectiveUserId } }) : null;
 
-      if (!userRecord) {
-        // If not found, let's try to search by userName or platform admin signatures
-        const targetName = userName || '';
-        let foundUser = null;
-        
-        if (targetName.trim().length > 0) {
-          foundUser = await prisma.user.findFirst({
-            where: { name: targetName, deletedAt: null }
-          });
+      if (!userRecord && targetUserName.trim().length > 0) {
+        // Try exact match by user name
+        const matchedByName = await prisma.user.findFirst({
+          where: { name: targetUserName.trim(), deletedAt: null }
+        });
+        if (matchedByName) {
+          userRecord = matchedByName;
+          effectiveUserId = matchedByName.id;
         }
-        
-        if (!foundUser) {
-          // Look for any user containing owner names (like عماد, emad, eee3327)
-          foundUser = await prisma.user.findFirst({
-            where: {
-              OR: [
-                { name: { contains: 'عماد' } },
-                { name: { contains: 'emad' } },
-                { email: { contains: 'emad' } },
-                { email: { contains: 'eee3327' } }
-              ],
-              deletedAt: null
-            }
-          });
-        }
+      }
 
-        if (!foundUser) {
-          // Fallback to first superadmin in database
-          foundUser = await prisma.user.findFirst({
-            where: { role: 'SUPER_ADMIN', deletedAt: null }
-          });
-        }
-
-        if (!foundUser) {
-          // Try to find any admin or regular user
-          foundUser = await prisma.user.findFirst({
-            where: { role: { in: ['SUPER_ADMIN', 'ADMIN', 'USER'] }, deletedAt: null }
-          });
-        }
-
-        if (foundUser) {
-          effectiveUserId = foundUser.id;
+      // If userRecord is still not found, find or fallback safely without re-assigning to random account
+      if (!userRecord && !isValidUuid) {
+        // Fallback to default user record if needed for FK constraint, but do NOT override targetUserName
+        const defaultUser = await prisma.user.findFirst({ where: { deletedAt: null } });
+        if (defaultUser) {
+          effectiveUserId = defaultUser.id;
         }
       }
 
@@ -139,6 +118,7 @@ export function PromoController() {
       if (title.trim().length > 200) {
         return res.status(400).json({ error: 'العنوان طويل جداً (الحد 200 حرف)' });
       }
+
 
       const urlCheck = validateMediaUrl(videoUrl);
       if (!urlCheck.valid) {
@@ -169,14 +149,17 @@ export function PromoController() {
         };
       }
 
+      const finalUserName = (userRecord && newReel.user?.name) ? newReel.user.name : (targetUserName || 'مستخدم أسواق');
+      const finalUserAvatar = (userRecord && newReel.user?.avatar) ? newReel.user.avatar : (targetUserAvatar || '');
+
       return res.status(201).json({
         ...newReel,
         isLive: !!isLive,
         description: description || '',
         city: city || 'كافة المناطق',
         category: category || 'عام',
-        userName: newReel.user?.name || userName || 'مستخدم',
-        userAvatar: newReel.user?.avatar || userAvatar || '',
+        userName: finalUserName,
+        userAvatar: finalUserAvatar,
       });
     } catch (err) {
       next(err);

@@ -181,15 +181,25 @@ function WebcamStreamPlayer({
   isRtl: boolean;
   ad: Ad;
   currentUser: User | null;
-  onStreamEnded?: (adId: string, archiveUrl: string) => void;
+  onStreamEnded?: (adId: string, archiveUrl: string, archiveThumb?: string) => void;
   pinnedProduct?: { id: string; title: string; price: number; image: string } | null;
   onPinProductClick?: () => void;
   myBroadcastingIds?: string[];
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const isCreator = !!(
+    ad &&
+    (ad.isLive || (ad.videoUrl && (ad.videoUrl.includes('webcam') || ad.videoUrl.includes('camera')))) &&
+    (
+      myBroadcastingIds.includes(ad.id) ||
+      (currentUser && currentUser.id && currentUser.id === ad.userId && ad.userId !== "guest_user") ||
+      (currentUser && currentUser.name && (currentUser.name === ad.userName || currentUser.name === ad.user?.name))
+    )
+  );
+
   const [error, setError] = useState<string | null>(null);
   const [statusText, setStatusText] = useState<string>('');
-  const [isBroadcaster, setIsBroadcaster] = useState<boolean>(false);
+  const [isBroadcaster, setIsBroadcaster] = useState<boolean>(isCreator);
   const [isOffline, setIsOffline] = useState<boolean>(false);
   const [viewerCount, setViewerCount] = useState<number>(0);
   const [activeFilter, setActiveFilter] = useState<string>('none');
@@ -209,15 +219,6 @@ function WebcamStreamPlayer({
   const pcRef = useRef<RTCPeerConnection | null>(null);
 
   useEffect(() => {
-    // Check if the current user is the owner/creator of this live stream
-    const isCreator = !!(
-      ad &&
-      (ad.isLive || (ad.videoUrl && (ad.videoUrl.includes('webcam') || ad.videoUrl.includes('camera')))) &&
-      (
-        myBroadcastingIds.includes(ad.id) ||
-        (currentUser && currentUser.id && currentUser.id === ad.userId && ad.userId !== "guest_user")
-      )
-    );
     setIsBroadcaster(isCreator);
     setIsOffline(false);
 
@@ -230,26 +231,29 @@ function WebcamStreamPlayer({
         try {
           let stream: MediaStream | null = null;
 
+          const advancedAudioConstraints = {
+            echoCancellation: { ideal: true },
+            noiseSuppression: { ideal: true },
+            autoGainControl: { ideal: true },
+            googEchoCancellation: true,
+            googAutoGainControl: true,
+            googNoiseSuppression: true,
+            googHighpassFilter: true,
+            googAudioMirroring: false
+          };
+
           // Acquire base stream
           try {
             stream = await navigator.mediaDevices.getUserMedia({
               video: { facingMode: 'user' },
-              audio: { 
-                echoCancellation: true, 
-                noiseSuppression: true,
-                autoGainControl: true
-              }
+              audio: advancedAudioConstraints
             });
           } catch (e1) {
             console.warn("First camera constraint failed, trying basic video+audio", e1);
             try {
               stream = await navigator.mediaDevices.getUserMedia({ 
                 video: true, 
-                audio: {
-                  echoCancellation: true,
-                  noiseSuppression: true,
-                  autoGainControl: true
-                }
+                audio: advancedAudioConstraints
               });
             } catch (e2) {
               console.warn("Audio+Video failed, trying video only", e2);
@@ -275,14 +279,17 @@ function WebcamStreamPlayer({
             setStatusText('');
           }, 1500);
 
+          const broadcasterName = currentUser?.name || ad.userName || ad.user?.name || (isRtl ? 'تاجر أسواق' : 'Aswaq Seller');
+
           // Register stream on socket and send notification info
           socket.emit('join-stream', { 
             streamId: ad.id, 
             role: 'broadcaster',
             sellerId: currentUser?.id,
-            sellerName: currentUser?.name || '',
+            sellerName: broadcasterName,
             adTitle: ad.title
           });
+
 
           // When a viewer joins, start a peer connection with them
           const handleViewerJoined = async ({ viewerId }: { viewerId: string }) => {
@@ -325,8 +332,8 @@ function WebcamStreamPlayer({
               const offer = await pc.createOffer({
                 offerToReceiveAudio: false,
                 offerToReceiveVideo: false,
-                voiceActivityDetection: true,
               });
+
               await pc.setLocalDescription(offer);
               socket.emit('signal', { to: viewerId, signal: { type: 'offer', sdp: offer.sdp } });
 
@@ -851,15 +858,22 @@ function WebcamStreamPlayer({
       )}
 
       <video
-        ref={videoRef}
+        ref={(el) => {
+          videoRef.current = el;
+          if (el && (isCreator || isBroadcaster)) {
+            el.muted = true;
+            el.volume = 0;
+          }
+        }}
         autoPlay
         playsInline
-        muted={isBroadcaster || isMuted}
+        muted={isCreator || isBroadcaster || isMuted}
         style={{ filter: finalFilter }}
         className={`w-full h-full object-cover brightness-[1.1] transition-all duration-300 ${
           statusText ? 'opacity-0 scale-95 blur-sm' : 'opacity-100 scale-100 blur-0'
         } ${(isBroadcaster && facingMode === 'user') ? 'scale-x-[-1]' : ''}`}
       />
+
 
       {/* Real-time Comments Overlay */}
       <div className={`absolute bottom-32 z-[40] w-[260px] sm:w-80 pointer-events-none flex flex-col gap-1 sm:gap-1.5 p-2 sm:p-3 bg-transparent scrollbar-none transition-opacity duration-500 ${statusText ? 'opacity-0' : 'opacity-100'} ${isRtl ? 'left-4 items-start' : 'right-4 items-end'}`}>

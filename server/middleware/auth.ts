@@ -119,6 +119,30 @@ export function authMiddleware(req: AuthenticatedRequest, res: Response, next: N
 }
 
 /**
+ * Optional Auth middleware: attaches req.user if valid JWT is present, but does not block if absent.
+ */
+export function optionalAuthMiddleware(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.split(' ')[1];
+    try {
+      const decoded: any = jwt.verify(token, getJwtSecret());
+      const role = decoded.role || 'USER';
+      const upperRole = role.toUpperCase() as UserRole;
+      req.user = {
+        id:          decoded.sub || decoded.id || '',
+        email:       decoded.email || '',
+        role:        role,
+        permissions: rolePermissions[upperRole] || [],
+      };
+    } catch {
+      // Token expired or invalid — ignore silently for optional auth
+    }
+  }
+  next();
+}
+
+/**
  * Role-based access guard.
  * Usage: router.get('/admin', authMiddleware, rolesGuard(['ADMIN', 'SUPER_ADMIN']), handler)
  */

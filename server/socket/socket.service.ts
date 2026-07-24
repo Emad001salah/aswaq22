@@ -96,7 +96,7 @@ export class SocketService {
 
           socket.broadcast.emit('live-stream-notification', {
             streamId,
-            sellerName: data.sellerName || 'تاجر',
+            sellerName: data.sellerName || 'تاجر أسواق',
             adTitle: data.adTitle || 'بث مباشر جديد',
           });
 
@@ -113,6 +113,10 @@ export class SocketService {
               const cityParsed = parts[3] || 'كافة المناطق';
               const catParsed = parts[4] || 'عام';
 
+              const actualUserName = data.sellerName && data.sellerName.trim().length > 0 && data.sellerName !== 'تاجر' 
+                ? data.sellerName 
+                : (dbReel.user?.name || 'تاجر أسواق');
+
               const formattedAd = {
                 id: dbReel.id,
                 isPromo: true,
@@ -127,7 +131,7 @@ export class SocketService {
                 views: 0,
                 likes: 0,
                 userId: dbReel.userId,
-                userName: dbReel.user?.name || data.sellerName || 'تاجر أسواق',
+                userName: actualUserName,
                 userAvatar: dbReel.user?.avatar || '',
                 userVerified: true,
                 images: ["https://picsum.photos/seed/promo/800/400"],
@@ -143,6 +147,7 @@ export class SocketService {
 
               this.io.emit('new-broadcast', formattedAd);
             }
+
           }).catch(err => {
             console.error('[Socket] Failed to broadcast new-broadcast event:', err);
           });
