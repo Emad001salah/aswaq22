@@ -1167,7 +1167,7 @@ export default function CreateAdTab({
                   <div className={`p-6 rounded-2xl space-y-6 text-right border transition-colors ${isDark ? "bg-slate-950/50 border-slate-800" : "bg-slate-50 border-slate-200 shadow-sm"}`}>
                     <div className="flex items-center gap-2 justify-end">
                       <Briefcase className="w-4 h-4 text-purple-400" />
-                      <h4 className="text-xs font-black text-white">نوع الإعلان الوظيفي</h4>
+                      <h4 className="text-xs font-black text-white">تفاصيل الإعلان الوظيفي</h4>
                     </div>
 
                     <div className="flex gap-4">
@@ -1187,6 +1187,237 @@ export default function CreateAdTab({
                         <span className="text-xl">👨‍💻</span>
                         <span>سيرة ذاتية (أبحث عن عمل)</span>
                       </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-400 block">نظام العمل</label>
+                        <select
+                          className={`w-full h-11 border rounded-xl px-4 outline-none text-xs text-right cursor-pointer ${isDark ? "bg-slate-950 border-slate-800 text-slate-300" : "bg-white border-slate-200 text-slate-900"}`}
+                          value={jobSchedule}
+                          onChange={(e) => setJobSchedule(e.target.value)}
+                        >
+                          <option value="full_time">دوام كامل</option>
+                          <option value="part_time">دوام جزئي</option>
+                          <option value="remote">عمل عن بعد</option>
+                          <option value="freelance">مشروع / عمل حر</option>
+                        </select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-400 block">مستوى الخبرة المطلوبة</label>
+                        <select
+                          className={`w-full h-11 border rounded-xl px-4 outline-none text-xs text-right cursor-pointer ${isDark ? "bg-slate-950 border-slate-800 text-slate-300" : "bg-white border-slate-200 text-slate-900"}`}
+                          value={jobExperience}
+                          onChange={(e) => setJobExperience(e.target.value)}
+                        >
+                          <option value="entry">حديث التخرج / بدون خبرة</option>
+                          <option value="intermediate">خبرة متوسطة (1-3 سنوات)</option>
+                          <option value="senior">خبرة عالية (5+ سنوات)</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Resorts & Chalets Specific Fields */}
+                {category === "resorts" && (
+                  <div className={`p-6 rounded-2xl space-y-6 text-right border transition-colors ${isDark ? "bg-slate-950/50 border-slate-800" : "bg-slate-50 border-slate-200 shadow-sm"}`}>
+                    <div className="flex items-center gap-2 justify-end">
+                      <Sliders className="w-4 h-4 text-emerald-400" />
+                      <h4 className="text-xs font-black text-white">تفاصيل الشاليه والمنتجع المتقدمة</h4>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-400 block">طريقة الحجز</label>
+                        <select
+                          className={`w-full h-11 border rounded-xl px-4 outline-none text-xs text-right cursor-pointer ${isDark ? "bg-slate-950 border-slate-800 text-slate-300" : "bg-white border-slate-200 text-slate-900"}`}
+                          value={bookingSystem}
+                          onChange={(e) => setBookingSystem(e.target.value)}
+                        >
+                          <option value="daily">حجز يومي (24 ساعة)</option>
+                          <option value="weekly">حجز أسبوعي</option>
+                          <option value="monthly">إيجار شهري</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-400 block">عدد الأسرة / الغرف</label>
+                        <input
+                          type="number"
+                          placeholder="مثلاً: 3 غرف"
+                          className={`w-full h-11 border rounded-xl px-4 outline-none text-xs text-right font-medium ${isDark ? "bg-slate-950 border-slate-800 text-slate-200" : "bg-white border-slate-200 text-slate-900"}`}
+                          value={hotelBeds}
+                          onChange={(e) => setHotelBeds(parseInt(e.target.value) || 1)}
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-400 block">نوع المنشأة</label>
+                        <select
+                          className={`w-full h-11 border rounded-xl px-4 outline-none text-xs text-right cursor-pointer ${isDark ? "bg-slate-950 border-slate-800 text-slate-300" : "bg-white border-slate-200 text-slate-900"}`}
+                          value={hotelType}
+                          onChange={(e) => setHotelType(e.target.value)}
+                        >
+                          <option value="chalet">شاليه خاص</option>
+                          <option value="resort">منتجع سياحي</option>
+                          <option value="farm">مزرعة عائلية</option>
+                          <option value="camp">مخيم ترفيهي</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-slate-400 block">المرافق والخدمات المتوفرة</label>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+                        {[
+                          { id: "pool", label: "مسبح خاص" },
+                          { id: "kids_area", label: "ألعاب أطفال" },
+                          { id: "bbq", label: "مكان مشاوٍ" },
+                          { id: "wifi", label: "إنترنت مجاني" },
+                          { id: "ac", label: "تكييف كامل" },
+                        ].map((item) => (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => {
+                              setHotelAmenities((prev) => (prev.includes(item.id) ? prev.filter((i) => i !== item.id) : [...prev, item.id]));
+                            }}
+                            className={`px-3 py-2 rounded-xl text-[11px] font-bold transition-all border cursor-pointer ${hotelAmenities.includes(item.id) ? "bg-emerald-500/10 border-emerald-500 text-emerald-400" : "bg-slate-900 border-slate-800 text-slate-500"}`}
+                          >
+                            {item.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Solar & Energy Specific Fields */}
+                {category === "solar" && (
+                  <div className={`p-6 rounded-2xl space-y-6 text-right border transition-colors ${isDark ? "bg-slate-950/50 border-slate-800" : "bg-slate-50 border-slate-200 shadow-sm"}`}>
+                    <div className="flex items-center gap-2 justify-end">
+                      <Sliders className="w-4 h-4 text-amber-400" />
+                      <h4 className="text-xs font-black text-white">تفاصيل منظومة الطاقة والمولدات</h4>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-400 block">حالة الجهاز / المنظومة</label>
+                        <select
+                          className={`w-full h-11 border rounded-xl px-4 outline-none text-xs text-right cursor-pointer ${isDark ? "bg-slate-950 border-slate-800 text-slate-300" : "bg-white border-slate-200 text-slate-900"}`}
+                          value={condition}
+                          onChange={(e) => setCondition(e.target.value)}
+                        >
+                          <option value="new">جديد بالكرتون مع الضمان</option>
+                          <option value="used_mint">مستخدم بنظافة ممتازة</option>
+                          <option value="used_good">مستخدم بحالة جيدة</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-400 block">القدرة / الطاقة (وات أو كيلو)</label>
+                        <input
+                          type="text"
+                          placeholder="مثال: 550 Watt أو 5KW"
+                          className={`w-full h-11 border rounded-xl px-4 outline-none text-xs text-right font-medium ${isDark ? "bg-slate-950 border-slate-800 text-slate-200" : "bg-white border-slate-200 text-slate-900"}`}
+                          value={customFieldValues.solarPower || ""}
+                          onChange={(e) => setCustomFieldValues((prev) => ({ ...prev, solarPower: e.target.value }))}
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-400 block">الماركة / الشركة المُنصعة</label>
+                        <input
+                          type="text"
+                          placeholder="مثال: Jinko, Felicity, Must..."
+                          className={`w-full h-11 border rounded-xl px-4 outline-none text-xs text-right font-medium ${isDark ? "bg-slate-950 border-slate-800 text-slate-200" : "bg-white border-slate-200 text-slate-900"}`}
+                          value={brand}
+                          onChange={(e) => setBrand(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Furniture Specific Fields */}
+                {category === "furniture" && (
+                  <div className={`p-6 rounded-2xl space-y-6 text-right border transition-colors ${isDark ? "bg-slate-950/50 border-slate-800" : "bg-slate-50 border-slate-200 shadow-sm"}`}>
+                    <div className="flex items-center gap-2 justify-end">
+                      <Sliders className="w-4 h-4 text-orange-400" />
+                      <h4 className="text-xs font-black text-white">تفاصيل الأثاث والمستلزمات</h4>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-400 block">حالة الأثاث</label>
+                        <select
+                          className={`w-full h-11 border rounded-xl px-4 outline-none text-xs text-right cursor-pointer ${isDark ? "bg-slate-950 border-slate-800 text-slate-300" : "bg-white border-slate-200 text-slate-900"}`}
+                          value={condition}
+                          onChange={(e) => setCondition(e.target.value)}
+                        >
+                          <option value="new">جديد غير مستخدم</option>
+                          <option value="used_mint">مستخدم شبه جديد</option>
+                          <option value="used_good">مستخدم بحالة جيدة</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-400 block">الخامة / المادة المصنوعة</label>
+                        <input
+                          type="text"
+                          placeholder="مثال: خشب ماليزي، جلد طبيعي، قماش مخمل..."
+                          className={`w-full h-11 border rounded-xl px-4 outline-none text-xs text-right font-medium ${isDark ? "bg-slate-950 border-slate-800 text-slate-200" : "bg-white border-slate-200 text-slate-900"}`}
+                          value={customFieldValues.material || ""}
+                          onChange={(e) => setCustomFieldValues((prev) => ({ ...prev, material: e.target.value }))}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Livestock Specific Fields */}
+                {category === "livestock" && (
+                  <div className={`p-6 rounded-2xl space-y-6 text-right border transition-colors ${isDark ? "bg-slate-950/50 border-slate-800" : "bg-slate-50 border-slate-200 shadow-sm"}`}>
+                    <div className="flex items-center gap-2 justify-end">
+                      <Sliders className="w-4 h-4 text-emerald-400" />
+                      <h4 className="text-xs font-black text-white">تفاصيل الحيوانات والمواشي</h4>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-400 block">العمر التقديري</label>
+                        <input
+                          type="text"
+                          placeholder="مثال: 6 أشهر، سنة واحدة..."
+                          className={`w-full h-11 border rounded-xl px-4 outline-none text-xs text-right font-medium ${isDark ? "bg-slate-950 border-slate-800 text-slate-200" : "bg-white border-slate-200 text-slate-900"}`}
+                          value={customFieldValues.animalAge || ""}
+                          onChange={(e) => setCustomFieldValues((prev) => ({ ...prev, animalAge: e.target.value }))}
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-400 block">السلالة / النوع الفرعي</label>
+                        <input
+                          type="text"
+                          placeholder="مثال: بلدي، نعيمي، هولندي..."
+                          className={`w-full h-11 border rounded-xl px-4 outline-none text-xs text-right font-medium ${isDark ? "bg-slate-950 border-slate-800 text-slate-200" : "bg-white border-slate-200 text-slate-900"}`}
+                          value={customFieldValues.breed || ""}
+                          onChange={(e) => setCustomFieldValues((prev) => ({ ...prev, breed: e.target.value }))}
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-400 block">الحالة الصحية والتحصينات</label>
+                        <select
+                          className={`w-full h-11 border rounded-xl px-4 outline-none text-xs text-right cursor-pointer ${isDark ? "bg-slate-950 border-slate-800 text-slate-300" : "bg-white border-slate-200 text-slate-900"}`}
+                          value={customFieldValues.healthStatus || "healthy"}
+                          onChange={(e) => setCustomFieldValues((prev) => ({ ...prev, healthStatus: e.target.value }))}
+                        >
+                          <option value="healthy">سليم ومحترس (مطعّم)</option>
+                          <option value="good">صحة جيدة</option>
+                        </select>
+                      </div>
                     </div>
                   </div>
                 )}

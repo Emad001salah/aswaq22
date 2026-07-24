@@ -60,48 +60,106 @@ export const DISTRICTS: District[] = [
 export const CATEGORIES: Category[] = [
   { id: 'cars', nameAr: 'سيارات ومركبات', nameEn: 'Vehicles', icon: 'Car' },
   { id: 'realestate', nameAr: 'عقارات وأراضي', nameEn: 'Real Estate', icon: 'Building2' },
-  { id: 'phones', nameAr: 'هواتف وأجهزة', nameEn: 'Electronics', icon: 'Smartphone' },
-  { id: 'jobs', nameAr: 'وظائف وأعمال', nameEn: 'Jobs', icon: 'Briefcase' },
-  { id: 'services', nameAr: 'خدمات وحرف', nameEn: 'Services', icon: 'Wrench' },
-  { id: 'livestock', nameAr: 'حيوانات ومواشي', nameEn: 'Animals', icon: 'PawPrint' },
-  { id: 'furniture', nameAr: 'أثاث ومستلزمات', nameEn: 'Furniture', icon: 'Armchair' },
-  { id: 'fashion', nameAr: 'موضة وجمال', nameEn: 'Fashion', icon: 'Shirt' },
+  { id: 'resorts', nameAr: 'شاليهات ومنتجعات', nameEn: 'Resorts & Chalets', icon: 'Palmtree' },
+  { id: 'phones', nameAr: 'هواتف وأجهزة', nameEn: 'Phones & Devices', icon: 'Smartphone' },
+  { id: 'electronics', nameAr: 'أجهزة منزلية وإلكترونيات', nameEn: 'Home Appliances & Electronics', icon: 'Tv' },
+  { id: 'furniture', nameAr: 'أثاث ومستلزمات منزلية', nameEn: 'Furniture & Home', icon: 'Armchair' },
+  { id: 'fashion', nameAr: 'موضة وجمال', nameEn: 'Fashion & Beauty', icon: 'Shirt' },
+  { id: 'livestock', nameAr: 'حيوانات ومواشي', nameEn: 'Animals & Livestock', icon: 'PawPrint' },
+  { id: 'solar', nameAr: 'طاقة شمسية ومولدات', nameEn: 'Solar & Generators', icon: 'Sun' },
+  { id: 'jobs', nameAr: 'وظائف وأعمال', nameEn: 'Jobs & Careers', icon: 'Briefcase' },
+  { id: 'services', nameAr: 'خدمات وحرف', nameEn: 'Services & Crafts', icon: 'Wrench' },
+  { id: 'car_rental', nameAr: 'تأجير سيارات', nameEn: 'Car Rental', icon: 'Key' },
+  { id: 'other', nameAr: 'أقسام مخصصة ومتنوعة', nameEn: 'Other & Miscellaneous', icon: 'MoreHorizontal' },
 ];
 
 export const SUB_CATEGORIES: Record<string, { id: string; nameAr: string; nameEn: string }[]> = {
-  resorts: [
-    { id: 'chalet', nameAr: 'شاليه', nameEn: 'Chalet' },
-    { id: 'farm', nameAr: 'مزرعة', nameEn: 'Farm' },
-    { id: 'camp', nameAr: 'مخيم', nameEn: 'Camp' },
-    { id: 'resort', nameAr: 'منتجع', nameEn: 'Resort' }
-  ],
-  car_rental: [
-    { id: 'daily', nameAr: 'يومي', nameEn: 'Daily' },
-    { id: 'weekly', nameAr: 'أسبوعي', nameEn: 'Weekly' },
-    { id: 'monthly', nameAr: 'شهري', nameEn: 'Monthly' },
-    { id: 'with_driver', nameAr: 'مع سائق', nameEn: 'With Driver' }
-  ],
   cars: [
     { id: 'sedan', nameAr: 'سيدان', nameEn: 'Sedan' },
-    { id: 'suv', nameAr: 'دفع رباعي', nameEn: 'SUV' },
-    { id: 'truck', nameAr: 'نقل', nameEn: 'Truck' },
-    { id: 'other', nameAr: 'أخرى', nameEn: 'Other' },
+    { id: 'suv', nameAr: 'دفع رباعي (SUV)', nameEn: 'SUV' },
+    { id: 'pickup', nameAr: 'بيك آب / باص', nameEn: 'Pickup / Bus' },
+    { id: 'truck', nameAr: 'شاحنات ومعدات ثقيلة', nameEn: 'Trucks & Heavy Duty' },
+    { id: 'motorcycle', nameAr: 'دراجات نارية', nameEn: 'Motorcycles' },
+    { id: 'car_parts', nameAr: 'قطع غيار واكسسوارات', nameEn: 'Spare Parts & Accessories' },
   ],
   realestate: [
-    { id: 'villa', nameAr: 'فيلا', nameEn: 'Villa' },
-    { id: 'apartment', nameAr: 'شقة', nameEn: 'Apartment' },
-    { id: 'land', nameAr: 'أرض', nameEn: 'Land' },
-    { id: 'building', nameAr: 'عمارة', nameEn: 'Building' },
-    { id: 'commercial', nameAr: 'تجاري', nameEn: 'Commercial' },
+    { id: 'apartment', nameAr: 'شقق للبيع والإيجار', nameEn: 'Apartments' },
+    { id: 'villa', nameAr: 'فلل ومنازل', nameEn: 'Villas & Houses' },
+    { id: 'land', nameAr: 'أراضي ومخططات', nameEn: 'Land & Plots' },
+    { id: 'building', nameAr: 'عمائر ومباني', nameEn: 'Buildings' },
+    { id: 'commercial', nameAr: 'محلات ومكاتب تجارية', nameEn: 'Commercial Shops & Offices' },
+  ],
+  resorts: [
+    { id: 'chalet', nameAr: 'شاليه عائلي', nameEn: 'Family Chalet' },
+    { id: 'resort', nameAr: 'منتجع سياحي', nameEn: 'Tourist Resort' },
+    { id: 'farm', nameAr: 'مزرعة واستراحة', nameEn: 'Farm & Rest House' },
+    { id: 'camp', nameAr: 'مخيم مخيمات', nameEn: 'Camp Site' }
   ],
   phones: [
     { id: 'smartphone', nameAr: 'هواتف ذكية', nameEn: 'Smartphones' },
-    { id: 'accessories', nameAr: 'اكسسوارات', nameEn: 'Accessories' },
+    { id: 'tablet', nameAr: 'آيباد وتابلت', nameEn: 'Tablets' },
+    { id: 'smartwatch', nameAr: 'ساعات ذكية', nameEn: 'Smart Watches' },
+    { id: 'accessories', nameAr: 'إكسسوارات وشواحن', nameEn: 'Accessories & Chargers' },
   ],
   electronics: [
-    { id: 'tv', nameAr: 'تلفزيونات', nameEn: 'TVs' },
-    { id: 'home_appliances', nameAr: 'أجهزة منزلية', nameEn: 'Home Appliances' },
+    { id: 'laptops', nameAr: 'كمبيوتر ولابتوب', nameEn: 'Computers & Laptops' },
+    { id: 'tv', nameAr: 'شاشات وتلفزيونات', nameEn: 'TVs & Displays' },
+    { id: 'home_appliances', nameAr: 'أجهزة منزلية ومطابخ', nameEn: 'Home Appliances' },
+    { id: 'cameras', nameAr: 'كاميرات وتصوير', nameEn: 'Cameras & Photography' },
+    { id: 'gaming', nameAr: 'بلايستيشن وألعاب فيديو', nameEn: 'Gaming Consoles & Games' },
   ],
+  furniture: [
+    { id: 'living_room', nameAr: 'مجالس وطقم كنبات', nameEn: 'Living Room & Sofas' },
+    { id: 'bedroom', nameAr: 'غرف نوم وأسرة', nameEn: 'Bedrooms & Beds' },
+    { id: 'kitchen', nameAr: 'مستلزمات مطبخ ومائدة', nameEn: 'Kitchen & Dining' },
+    { id: 'decor', nameAr: 'تحف وديكورات وإضاءة', nameAr: 'Decor & Antiques' },
+    { id: 'office', nameAr: 'أثاث مكتبي', nameEn: 'Office Furniture' },
+  ],
+  fashion: [
+    { id: 'men', nameAr: 'ملابس رجالية', nameEn: 'Men\'s Wear' },
+    { id: 'women', nameAr: 'ملابس نسائية وعبايات', nameEn: 'Women\'s Wear' },
+    { id: 'children', nameAr: 'مستلزمات أطفال', nameEn: 'Children & Baby' },
+    { id: 'perfumes', nameAr: 'عطور ومستحضرات تجميل', nameEn: 'Perfumes & Beauty' },
+    { id: 'watches', nameAr: 'ساعات ومجوهرات', nameEn: 'Watches & Jewelry' },
+  ],
+  livestock: [
+    { id: 'sheep', nameAr: 'أغنام ومواشي', nameEn: 'Sheep & Livestock' },
+    { id: 'birds', nameAr: 'طيور ودواجن', nameEn: 'Birds & Poultry' },
+    { id: 'horses', nameAr: 'خيول وأصائل', nameEn: 'Horses' },
+    { id: 'cats_dogs', nameAr: 'قطط وحيوانات أليفة', nameEn: 'Pets' },
+    { id: 'feed', nameAr: 'أعلاف ومستلزمات بيطرية', nameEn: 'Animal Feed & Veterinary' },
+  ],
+  solar: [
+    { id: 'panels', nameAr: 'ألواح طاقة شمسية', nameEn: 'Solar Panels' },
+    { id: 'batteries', nameAr: 'بطاريات طاقة', nameEn: 'Solar Batteries' },
+    { id: 'inverters', nameAr: 'محولات وانفرترات', nameEn: 'Inverters' },
+    { id: 'generators', nameAr: 'مولدات كهربائية', nameEn: 'Generators' },
+    { id: 'pumps', nameAr: 'غواطس ومضخات شمسية', nameEn: 'Solar Pumps' },
+  ],
+  jobs: [
+    { id: 'admin', nameAr: 'إدارة ومبيعات وتسويق', nameEn: 'Management & Sales' },
+    { id: 'tech', nameAr: 'برمجة وتقنية ومعلومات', nameEn: 'IT & Software' },
+    { id: 'medical', nameAr: 'طب وصيدلة وتمريض', nameEn: 'Medical & Healthcare' },
+    { id: 'engineering', nameAr: 'هندسة وإنشاءات', nameEn: 'Engineering' },
+    { id: 'driver_job', nameAr: 'سائقين وتوصيل', nameEn: 'Drivers & Delivery' },
+    { id: 'freelance', nameAr: 'عمل حُر وعن بُعد', nameEn: 'Freelance & Remote' },
+  ],
+  services: [
+    { id: 'maintenance', nameAr: 'صيانة منزلية وسباكة وكهرباء', nameEn: 'Home Maintenance' },
+    { id: 'car_repair', nameAr: 'صيانة سيارات وميكانيك', nameEn: 'Car Repair' },
+    { id: 'transport', nameAr: 'نقل عفش وشحن', nameEn: 'Movers & Shipping' },
+    { id: 'design', nameAr: 'تصميم ومونتاج ودعاية', nameEn: 'Design & Media' },
+    { id: 'events', nameAr: 'حفلات ومناسبات وتجهيزات', nameEn: 'Events & Catering' },
+  ],
+  car_rental: [
+    { id: 'daily', nameAr: 'تأجير يومي', nameEn: 'Daily Rental' },
+    { id: 'weekly', nameAr: 'تأجير أسبوعي', nameEn: 'Weekly Rental' },
+    { id: 'monthly', nameAr: 'تأجير شهري', nameEn: 'Monthly Rental' },
+    { id: 'with_driver', nameAr: 'تأجير مع سائق', nameEn: 'With Driver' }
+  ],
+  other: [
+    { id: 'custom', nameAr: 'قسم آخر مخصص', nameEn: 'Custom Section' }
+  ]
 };
 
 export const INITIAL_USERS: User[] = [];
