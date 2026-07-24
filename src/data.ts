@@ -112,7 +112,7 @@ export const SUB_CATEGORIES: Record<string, { id: string; nameAr: string; nameEn
     { id: 'living_room', nameAr: 'مجالس وطقم كنبات', nameEn: 'Living Room & Sofas' },
     { id: 'bedroom', nameAr: 'غرف نوم وأسرة', nameEn: 'Bedrooms & Beds' },
     { id: 'kitchen', nameAr: 'مستلزمات مطبخ ومائدة', nameEn: 'Kitchen & Dining' },
-    { id: 'decor', nameAr: 'تحف وديكورات وإضاءة', nameAr: 'Decor & Antiques' },
+    { id: 'decor', nameAr: 'تحف وديكورات وإضاءة', nameEn: 'Decor & Antiques' },
     { id: 'office', nameAr: 'أثاث مكتبي', nameEn: 'Office Furniture' },
   ],
   fashion: [
