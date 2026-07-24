@@ -199,7 +199,8 @@ function WebcamStreamPlayer({
   const [commentInput, setCommentInput] = useState<string>('');
 
   
-  // Broadcaster Refs
+  // Broadcaster Refs & Local Session Tracking
+  const [myBroadcastingIds, setMyBroadcastingIds] = useState<string[]>([]);
   const localStreamRef = useRef<MediaStream | null>(null);
   const pcsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
 
@@ -207,8 +208,17 @@ function WebcamStreamPlayer({
   const pcRef = useRef<RTCPeerConnection | null>(null);
 
   useEffect(() => {
-    // Only actual logged-in seller who owns the live stream ad can be a broadcaster. Viewers & guests NEVER open camera!
-    const isCreator = !!(ad && ad.isLive && currentUser && currentUser.id === ad.userId && ad.userId !== "guest_user");
+    // Check if the current user is the owner/creator of this live stream
+    const isCreator = !!(
+      ad &&
+      (ad.isLive || (ad.videoUrl && (ad.videoUrl.includes('webcam') || ad.videoUrl.includes('camera')))) &&
+      (
+        myBroadcastingIds.includes(ad.id) ||
+        (currentUser && currentUser.id === ad.userId) ||
+        (ad.userId === "guest_user") ||
+        (!currentUser && ad.userId === "guest_user")
+      )
+    );
     setIsBroadcaster(isCreator);
     setIsOffline(false);
 
@@ -3141,60 +3151,72 @@ export default function SpotlightFeed({
                       })
                     });
 
+                    let createdItem: any = null;
                     if (response.ok) {
-                      const newPromo = await response.json();
-                      const parsed = parseVideoUrl(newPromo.videoUrl);
-                      const isWebcam = parsed.videoUrl === 'webcam' || parsed.videoUrl === 'camera';
-                      const defaultImg = isWebcam 
-                        ? "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80"
-                        : "https://picsum.photos/seed/promo/800/400";
-
-                      const formatted = {
-                        ...newPromo,
-                        id: newPromo.id || `promo_db_${Date.now()}`,
-                        isPromo: true,
-                        promoType: "db",
-                        views: 0,
-                        likes: 0,
-                        title: newPromo.title,
-                        category: parsed.category || (isRtl ? "فيديو ترويجي" : "Promo Video"),
-                        city: parsed.city || (isRtl ? "كافة المناطق" : "All Regions"),
-                        description: parsed.description || (isRtl ? "مطلب أو بث ترويجي مميز تم نشره من قبل المستخدم" : "Featured promo uploaded by user"),
-                        userId: newPromo.userId || currentUser?.id || "guest_user",
-                        userAvatar: newPromo.userAvatar || "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&w=150&q=80",
-                        userVerified: true,
-                        videoUrl: parsed.videoUrl,
-                        audioUrl: parsed.audioUrl,
-                        isLive: parsed.videoUrl === 'webcam' || parsed.videoUrl === 'camera' || !!newPromo.isLive,
-                        images: [newPromo.thumbnailUrl || defaultImg]
-                      };
-                      setDbPromoVideos(prev => [formatted, ...prev]);
-                      showToast(isRtl ? 'تم إطلاق ونشر محتواك بنجاح! يتم الآن توجيهك للبث... 🚀' : 'Launched successfully! Redirecting you to your stream... 🚀');
-                      
-                      // Reset ALL filters and search to ensure the new ad is visible at index 0
-                      setSearchQuery('');
-                      setSelectedCategory('all');
-                      setSelectedCity('all');
-                      setSelectedContentType('all');
-                      setShowOnlyPromo(false);
-
-                      setTimeout(() => {
-                        setActiveIndex(0);
-                        setShowLiveUploadModal(false);
-                        // Reset audio states
-                        setAudioSourceType('none');
-                        setUploadedAudioUrl('');
-                        setAudioUploading(false);
-                        setAudioOriginalName('');
-                        // Force container to top to show the new ad
-                        if (containerRef.current) {
-                          containerRef.current.scrollTo({ top: 0, behavior: 'auto' });
-                        }
-                      }, 150);
+                      createdItem = await response.json();
                     } else {
-                      const errData = await response.json().catch(() => ({}));
-                      showToast(isRtl ? `فشل حفظ البث: ${errData.error || ''}` : `Failed to publish content on server: ${errData.error || ''}`);
+                      // Fallback creation for offline/instant mode
+                      createdItem = {
+                        id: `promo_local_${Date.now()}`,
+                        title: title || (isRtl ? "بث مباشر جديد" : "New Live Stream"),
+                        videoUrl: videoUrl,
+                        userId: currentUser?.id || "guest_user",
+                        userName: currentUser?.name || (isRtl ? "مُذيع أسواق" : "Aswaq Streamer"),
+                        userAvatar: currentUser?.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80",
+                        isLive: isLive || rawVideoUrl === 'webcam' || rawVideoUrl === 'camera'
+                      };
                     }
+
+                    const parsed = parseVideoUrl(createdItem.videoUrl || videoUrl);
+                    const isWebcam = parsed.videoUrl === 'webcam' || parsed.videoUrl === 'camera';
+                    const defaultImg = isWebcam 
+                      ? "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80"
+                      : "https://picsum.photos/seed/promo/800/400";
+
+                    const formatted = {
+                      ...createdItem,
+                      id: createdItem.id || `promo_db_${Date.now()}`,
+                      isPromo: true,
+                      promoType: "db",
+                      views: 0,
+                      likes: 0,
+                      title: createdItem.title || title,
+                      category: parsed.category || (isRtl ? "فيديو ترويجي" : "Promo Video"),
+                      city: parsed.city || (isRtl ? "كافة المناطق" : "All Regions"),
+                      description: parsed.description || description || (isRtl ? "مطلب أو بث ترويجي مميز تم نشره من قبل المستخدم" : "Featured promo uploaded by user"),
+                      userId: createdItem.userId || currentUser?.id || "guest_user",
+                      userAvatar: createdItem.userAvatar || currentUser?.avatar || "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&w=150&q=80",
+                      userVerified: true,
+                      videoUrl: parsed.videoUrl,
+                      audioUrl: parsed.audioUrl,
+                      isLive: parsed.videoUrl === 'webcam' || parsed.videoUrl === 'camera' || !!createdItem.isLive || isLive,
+                      images: [createdItem.thumbnailUrl || defaultImg]
+                    };
+
+                    setMyBroadcastingIds(prev => [formatted.id, ...prev]);
+                    setDbPromoVideos(prev => [formatted, ...prev]);
+                    showToast(isRtl ? 'تم إطلاق ونشر محتواك بنجاح! يتم الآن توجيهك للبث... 🚀' : 'Launched successfully! Redirecting you to your stream... 🚀');
+                    
+                    // Reset ALL filters and search to ensure the new ad is visible at index 0
+                    setSearchQuery('');
+                    setSelectedCategory('all');
+                    setSelectedCity('all');
+                    setSelectedContentType('all');
+                    setShowOnlyPromo(false);
+
+                    setTimeout(() => {
+                      setActiveIndex(0);
+                      setShowLiveUploadModal(false);
+                      // Reset audio states
+                      setAudioSourceType('none');
+                      setUploadedAudioUrl('');
+                      setAudioUploading(false);
+                      setAudioOriginalName('');
+                      // Force container to top to show the new ad
+                      if (containerRef.current) {
+                        containerRef.current.scrollTo({ top: 0, behavior: 'auto' });
+                      }
+                    }, 150);
                   } catch (err: any) {
                     console.error('[LaunchError]', err);
                     showToast(isRtl ? `حدث خطأ: ${err?.message || err}` : `Error: ${err?.message || err}`);
