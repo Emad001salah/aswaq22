@@ -149,7 +149,19 @@ export async function verifyPhoneOtp(
       throw new Error(err.message || 'فشل تسجيل الدخول عبر Firebase');
     }
 
-    return res.json();
+    const data = await res.json();
+    if (data.accessToken) {
+      localStorage.setItem('aswaq_access_token', data.accessToken);
+      localStorage.setItem('auth_token', data.accessToken);
+    }
+    if (data.refreshToken) {
+      localStorage.setItem('aswaq_refresh_token', data.refreshToken);
+    }
+    if (data.user) {
+      localStorage.setItem('aswaq_current_user', JSON.stringify(data.user));
+    }
+    return data;
+
   }
 
   // Legacy verify flow

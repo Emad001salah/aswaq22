@@ -44,9 +44,13 @@ export async function getFlag(key: string): Promise<FlagConfig> {
   try {
     const flag = await prisma.featureFlag.findUnique({ where: { key } });
     if (!flag) {
+      if (key === 'firebase_phone_auth') {
+        return { enabled: true, rolloutPct: 100, allowedUsers: [] };
+      }
       logger.warn({ message: `[FeatureFlag] Flag "${key}" not found in DB — defaulting to disabled` });
       return DEFAULT_FLAG;
     }
+
 
     const result: FlagConfig = {
       enabled: flag.enabled,

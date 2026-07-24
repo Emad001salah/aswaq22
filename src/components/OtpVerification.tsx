@@ -17,6 +17,7 @@ export const OtpVerification: React.FC<OtpVerificationProps> = ({ phoneNumber: i
   const [message, setMessage] = useState('');
   const [countdown, setCountdown] = useState(0);
   const [step, setStep] = useState<'phone' | 'otp'>(initialPhoneNumber ? 'otp' : 'phone');
+  const [confirmationResult, setConfirmationResult] = useState<any>(null);
 
   const sendOtpCode = async () => {
     if (!phoneNumber || phoneNumber.length < 9) {
@@ -32,6 +33,9 @@ export const OtpVerification: React.FC<OtpVerificationProps> = ({ phoneNumber: i
       const formattedPhone = cleanPhone.startsWith('+') ? cleanPhone : `+967${cleanPhone.replace(/^0+/, '')}`;
 
       const result = await sendPhoneOtp(formattedPhone);
+      if (result.confirmationResult) {
+        setConfirmationResult(result.confirmationResult);
+      }
       setCountdown(60);
       setStep('otp');
       if (result.devOtp) {
@@ -76,11 +80,14 @@ export const OtpVerification: React.FC<OtpVerificationProps> = ({ phoneNumber: i
       const cleanPhone = phoneNumber.replace(/[^\d+]/g, '');
       const formattedPhone = cleanPhone.startsWith('+') ? cleanPhone : `+967${cleanPhone.replace(/^0+/, '')}`;
 
-      const res = await verifyPhoneOtp(formattedPhone, verificationCode);
+      const res = await verifyPhoneOtp(formattedPhone, verificationCode, {
+        confirmationResult: confirmationResult || undefined
+      });
       
       // Update local storage if tokens are returned
       if (res.accessToken) {
         localStorage.setItem('aswaq_access_token', res.accessToken);
+        localStorage.setItem('auth_token', res.accessToken);
       }
       if (res.refreshToken) {
         localStorage.setItem('aswaq_refresh_token', res.refreshToken);
@@ -88,6 +95,7 @@ export const OtpVerification: React.FC<OtpVerificationProps> = ({ phoneNumber: i
       if (res.user) {
         localStorage.setItem('aswaq_current_user', JSON.stringify(res.user));
       }
+
 
       setMessage('تم التفعيل بنجاح!');
       setTimeout(() => {

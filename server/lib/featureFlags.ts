@@ -170,7 +170,13 @@ export const featureFlags = {
     }
 
     const flag = await prisma.featureFlag.findUnique({ where: { key } });
-    if (!flag) return null;
+    if (!flag) {
+      if (key === 'firebase_phone_auth') {
+        return { enabled: true, rolloutPct: 100, allowedUsers: [], cachedAt: now };
+      }
+      return null;
+    }
+
 
     const entry: CachedFlag = {
       enabled:      flag.enabled,
