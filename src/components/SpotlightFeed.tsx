@@ -234,12 +234,23 @@ function WebcamStreamPlayer({
           try {
             stream = await navigator.mediaDevices.getUserMedia({
               video: { facingMode: 'user' },
-              audio: { echoCancellation: true, noiseSuppression: true }
+              audio: { 
+                echoCancellation: true, 
+                noiseSuppression: true,
+                autoGainControl: true
+              }
             });
           } catch (e1) {
             console.warn("First camera constraint failed, trying basic video+audio", e1);
             try {
-              stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+              stream = await navigator.mediaDevices.getUserMedia({ 
+                video: true, 
+                audio: {
+                  echoCancellation: true,
+                  noiseSuppression: true,
+                  autoGainControl: true
+                }
+              });
             } catch (e2) {
               console.warn("Audio+Video failed, trying video only", e2);
               stream = await navigator.mediaDevices.getUserMedia({ video: true });
