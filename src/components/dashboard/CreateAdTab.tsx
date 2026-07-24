@@ -1377,47 +1377,267 @@ export default function CreateAdTab({
                   </div>
                 )}
 
-                {/* Livestock Specific Fields */}
-                {category === "livestock" && (
+                {/* Fashion & Perfumes & Watches Fields */}
+                {["fashion", "perfumes", "watches"].includes(category) && (
                   <div className={`p-6 rounded-2xl space-y-6 text-right border transition-colors ${isDark ? "bg-slate-950/50 border-slate-800" : "bg-slate-50 border-slate-200 shadow-sm"}`}>
                     <div className="flex items-center gap-2 justify-end">
-                      <Sliders className="w-4 h-4 text-emerald-400" />
-                      <h4 className="text-xs font-black text-white">تفاصيل الحيوانات والمواشي</h4>
+                      <Sliders className="w-4 h-4 text-pink-400" />
+                      <h4 className="text-xs font-black text-white">تفاصيل الموضة والعطور والساعات</h4>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-slate-400 block">العمر التقديري</label>
-                        <input
-                          type="text"
-                          placeholder="مثال: 6 أشهر، سنة واحدة..."
-                          className={`w-full h-11 border rounded-xl px-4 outline-none text-xs text-right font-medium ${isDark ? "bg-slate-950 border-slate-800 text-slate-200" : "bg-white border-slate-200 text-slate-900"}`}
-                          value={customFieldValues.animalAge || ""}
-                          onChange={(e) => setCustomFieldValues((prev) => ({ ...prev, animalAge: e.target.value }))}
-                        />
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-slate-400 block">السلالة / النوع الفرعي</label>
-                        <input
-                          type="text"
-                          placeholder="مثال: بلدي، نعيمي، هولندي..."
-                          className={`w-full h-11 border rounded-xl px-4 outline-none text-xs text-right font-medium ${isDark ? "bg-slate-950 border-slate-800 text-slate-200" : "bg-white border-slate-200 text-slate-900"}`}
-                          value={customFieldValues.breed || ""}
-                          onChange={(e) => setCustomFieldValues((prev) => ({ ...prev, breed: e.target.value }))}
-                        />
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-slate-400 block">الحالة الصحية والتحصينات</label>
+                        <label className="text-xs font-bold text-slate-400 block">الفئة الموجهة</label>
                         <select
                           className={`w-full h-11 border rounded-xl px-4 outline-none text-xs text-right cursor-pointer ${isDark ? "bg-slate-950 border-slate-800 text-slate-300" : "bg-white border-slate-200 text-slate-900"}`}
-                          value={customFieldValues.healthStatus || "healthy"}
-                          onChange={(e) => setCustomFieldValues((prev) => ({ ...prev, healthStatus: e.target.value }))}
+                          value={customFieldValues.targetAudience || "men"}
+                          onChange={(e) => setCustomFieldValues((prev) => ({ ...prev, targetAudience: e.target.value }))}
                         >
-                          <option value="healthy">سليم ومحترس (مطعّم)</option>
-                          <option value="good">صحة جيدة</option>
+                          <option value="men">رجالي</option>
+                          <option value="women">نسائي</option>
+                          <option value="kids">أطفال</option>
+                          <option value="unisex">للجنسين (مشترك)</option>
                         </select>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-400 block">الماركة / البراند</label>
+                        <input
+                          type="text"
+                          placeholder="مثال: Rolex, Zara, Chanel, العود الملكي..."
+                          className={`w-full h-11 border rounded-xl px-4 outline-none text-xs text-right font-medium ${isDark ? "bg-slate-950 border-slate-800 text-slate-200" : "bg-white border-slate-200 text-slate-900"}`}
+                          value={brand}
+                          onChange={(e) => setBrand(e.target.value)}
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-400 block">المقاس / الحجم</label>
+                        <input
+                          type="text"
+                          placeholder="مثال: L , XL , 100ml , مقاس 42..."
+                          className={`w-full h-11 border rounded-xl px-4 outline-none text-xs text-right font-medium ${isDark ? "bg-slate-950 border-slate-800 text-slate-200" : "bg-white border-slate-200 text-slate-900"}`}
+                          value={customFieldValues.itemSize || ""}
+                          onChange={(e) => setCustomFieldValues((prev) => ({ ...prev, itemSize: e.target.value }))}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Handicrafts & Antiques (Heritage, Janbiya, Agate) Fields */}
+                {["handicrafts", "antiques"].includes(category) && (
+                  <div className={`p-6 rounded-2xl space-y-6 text-right border transition-colors ${isDark ? "bg-slate-950/50 border-slate-800" : "bg-slate-50 border-slate-200 shadow-sm"}`}>
+                    <div className="flex items-center gap-2 justify-end">
+                      <Sliders className="w-4 h-4 text-amber-400" />
+                      <h4 className="text-xs font-black text-white">تفاصيل التراثيات والعقيق والجنابي والمشغولات</h4>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-400 block">نوع القطعة التراثية</label>
+                        <select
+                          className={`w-full h-11 border rounded-xl px-4 outline-none text-xs text-right cursor-pointer ${isDark ? "bg-slate-950 border-slate-800 text-slate-300" : "bg-white border-slate-200 text-slate-900"}`}
+                          value={customFieldValues.antiqueType || "janbiya"}
+                          onChange={(e) => setCustomFieldValues((prev) => ({ ...prev, antiqueType: e.target.value }))}
+                        >
+                          <option value="janbiya">جنبية / خنجر قديم أصيل</option>
+                          <option value="agate">عقيق يمني طبيعي (كبدي/مصور)</option>
+                          <option value="silver">فضة يمنية ومجوهرات تراثية</option>
+                          <option value="craft">مشغولات يدوية وتطريز</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-400 block">منشأ القطعة / المصدر</label>
+                        <input
+                          type="text"
+                          placeholder="مثال: صنعاء القديمة، آنس، مأرب، حضرموت..."
+                          className={`w-full h-11 border rounded-xl px-4 outline-none text-xs text-right font-medium ${isDark ? "bg-slate-950 border-slate-800 text-slate-200" : "bg-white border-slate-200 text-slate-900"}`}
+                          value={customFieldValues.origin || ""}
+                          onChange={(e) => setCustomFieldValues((prev) => ({ ...prev, origin: e.target.value }))}
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-400 block">ضمان الأصالة والجودة</label>
+                        <select
+                          className={`w-full h-11 border rounded-xl px-4 outline-none text-xs text-right cursor-pointer ${isDark ? "bg-slate-950 border-slate-800 text-slate-300" : "bg-white border-slate-200 text-slate-900"}`}
+                          value={customFieldValues.authenticityGuarantee || "original_100"}
+                          onChange={(e) => setCustomFieldValues((prev) => ({ ...prev, authenticityGuarantee: e.target.value }))}
+                        >
+                          <option value="original_100">أصلي طبيعي 100% مضمون</option>
+                          <option value="rare_heritage">تراثي نادر جداً</option>
+                          <option value="hand_made">صنع يدوي متقن</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Food & Honey & Coffee Fields */}
+                {category === "food" && (
+                  <div className={`p-6 rounded-2xl space-y-6 text-right border transition-colors ${isDark ? "bg-slate-950/50 border-slate-800" : "bg-slate-50 border-slate-200 shadow-sm"}`}>
+                    <div className="flex items-center gap-2 justify-end">
+                      <Sliders className="w-4 h-4 text-yellow-500" />
+                      <h4 className="text-xs font-black text-white">تفاصيل الأغذية والعسل والمنتجات العضوية</h4>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-400 block">نوع المنتج</label>
+                        <select
+                          className={`w-full h-11 border rounded-xl px-4 outline-none text-xs text-right cursor-pointer ${isDark ? "bg-slate-950 border-slate-800 text-slate-300" : "bg-white border-slate-200 text-slate-900"}`}
+                          value={customFieldValues.foodType || "honey"}
+                          onChange={(e) => setCustomFieldValues((prev) => ({ ...prev, foodType: e.target.value }))}
+                        >
+                          <option value="honey">عسل سدر / سلام يمني أصيل</option>
+                          <option value="coffee">بُن يمني ومكسرات</option>
+                          <option value="dates">تمور وفواكه طبيعية</option>
+                          <option value="home_cooked">أطباق ومأكولات منزلية</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-400 block">الوزن / العبوة</label>
+                        <input
+                          type="text"
+                          placeholder="مثال: 1 كيلو، جالون 5 لتر، طرد..."
+                          className={`w-full h-11 border rounded-xl px-4 outline-none text-xs text-right font-medium ${isDark ? "bg-slate-950 border-slate-800 text-slate-200" : "bg-white border-slate-200 text-slate-900"}`}
+                          value={customFieldValues.packageWeight || ""}
+                          onChange={(e) => setCustomFieldValues((prev) => ({ ...prev, packageWeight: e.target.value }))}
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-400 block">الفحص والجودة</label>
+                        <select
+                          className={`w-full h-11 border rounded-xl px-4 outline-none text-xs text-right cursor-pointer ${isDark ? "bg-slate-950 border-slate-800 text-slate-300" : "bg-white border-slate-200 text-slate-900"}`}
+                          value={customFieldValues.labTested || "tested"}
+                          onChange={(e) => setCustomFieldValues((prev) => ({ ...prev, labTested: e.target.value }))}
+                        >
+                          <option value="tested">بلدي طبيعي مفحوص مخبرياً</option>
+                          <option value="organic">عضوي بدون إضافة مواد حافظة</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Building Materials Fields */}
+                {category === "building_materials" && (
+                  <div className={`p-6 rounded-2xl space-y-6 text-right border transition-colors ${isDark ? "bg-slate-950/50 border-slate-800" : "bg-slate-50 border-slate-200 shadow-sm"}`}>
+                    <div className="flex items-center gap-2 justify-end">
+                      <Sliders className="w-4 h-4 text-stone-400" />
+                      <h4 className="text-xs font-black text-white">تفاصيل مواد البناء والمقاولات</h4>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-400 block">تصنيف المواد</label>
+                        <select
+                          className={`w-full h-11 border rounded-xl px-4 outline-none text-xs text-right cursor-pointer ${isDark ? "bg-slate-950 border-slate-800 text-slate-300" : "bg-white border-slate-200 text-slate-900"}`}
+                          value={customFieldValues.materialCategory || "steel"}
+                          onChange={(e) => setCustomFieldValues((prev) => ({ ...prev, materialCategory: e.target.value }))}
+                        >
+                          <option value="steel">حديد وإسمنت وبلوك</option>
+                          <option value="tiles">بلاط وباركيه ورخام</option>
+                          <option value="plumbing">أدوات سباكة وكهرباء</option>
+                          <option value="paints">دهانات وبويات وديكورات</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-400 block">الكمية المتاحة</label>
+                        <input
+                          type="text"
+                          placeholder="مثال: 50 طن، 200 متر مربع..."
+                          className={`w-full h-11 border rounded-xl px-4 outline-none text-xs text-right font-medium ${isDark ? "bg-slate-950 border-slate-800 text-slate-200" : "bg-white border-slate-200 text-slate-900"}`}
+                          value={customFieldValues.availableQuantity || ""}
+                          onChange={(e) => setCustomFieldValues((prev) => ({ ...prev, availableQuantity: e.target.value }))}
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-400 block">التوصيل والشحن</label>
+                        <select
+                          className={`w-full h-11 border rounded-xl px-4 outline-none text-xs text-right cursor-pointer ${isDark ? "bg-slate-950 border-slate-800 text-slate-300" : "bg-white border-slate-200 text-slate-900"}`}
+                          value={customFieldValues.deliveryAvailable || "yes"}
+                          onChange={(e) => setCustomFieldValues((prev) => ({ ...prev, deliveryAvailable: e.target.value }))}
+                        >
+                          <option value="yes">متوفر الشحن والتوصيل للموقع</option>
+                          <option value="pickup">استلام مباشر من المستودع</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Medical & Kids Supplies Fields */}
+                {["medical", "kids"].includes(category) && (
+                  <div className={`p-6 rounded-2xl space-y-6 text-right border transition-colors ${isDark ? "bg-slate-950/50 border-slate-800" : "bg-slate-50 border-slate-200 shadow-sm"}`}>
+                    <div className="flex items-center gap-2 justify-end">
+                      <Sliders className="w-4 h-4 text-cyan-400" />
+                      <h4 className="text-xs font-black text-white">تفاصيل المستلزمات الطبية والأطفال</h4>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-400 block">حالة المنتجات</label>
+                        <select
+                          className={`w-full h-11 border rounded-xl px-4 outline-none text-xs text-right cursor-pointer ${isDark ? "bg-slate-950 border-slate-800 text-slate-300" : "bg-white border-slate-200 text-slate-900"}`}
+                          value={condition}
+                          onChange={(e) => setCondition(e.target.value)}
+                        >
+                          <option value="new">جديد معقم ومغلف</option>
+                          <option value="used_mint">مستخدم بنظافة تامة</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-400 block">الماركة / الفئة الفرعية</label>
+                        <input
+                          type="text"
+                          placeholder="مثال: جهاز ضغط، أومرون، عربة مواليد، ألعاب ذكاء..."
+                          className={`w-full h-11 border rounded-xl px-4 outline-none text-xs text-right font-medium ${isDark ? "bg-slate-950 border-slate-800 text-slate-200" : "bg-white border-slate-200 text-slate-900"}`}
+                          value={brand}
+                          onChange={(e) => setBrand(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Books & Sports Fields */}
+                {["books", "sports"].includes(category) && (
+                  <div className={`p-6 rounded-2xl space-y-6 text-right border transition-colors ${isDark ? "bg-slate-950/50 border-slate-800" : "bg-slate-50 border-slate-200 shadow-sm"}`}>
+                    <div className="flex items-center gap-2 justify-end">
+                      <Sliders className="w-4 h-4 text-emerald-400" />
+                      <h4 className="text-xs font-black text-white">تفاصيل الكتب والمعدات الرياضية والتخييم</h4>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-400 block">حالة المنتج</label>
+                        <select
+                          className={`w-full h-11 border rounded-xl px-4 outline-none text-xs text-right cursor-pointer ${isDark ? "bg-slate-950 border-slate-800 text-slate-300" : "bg-white border-slate-200 text-slate-900"}`}
+                          value={condition}
+                          onChange={(e) => setCondition(e.target.value)}
+                        >
+                          <option value="new">جديد ممتاز</option>
+                          <option value="used_good">مستخدم بحالة جيدة</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-400 block">اسم المؤلّف / الماركة الرياضية</label>
+                        <input
+                          type="text"
+                          placeholder="مثال: ابن كثير، Nike، خيمة سفاري 4 أشخاص..."
+                          className={`w-full h-11 border rounded-xl px-4 outline-none text-xs text-right font-medium ${isDark ? "bg-slate-950 border-slate-800 text-slate-200" : "bg-white border-slate-200 text-slate-900"}`}
+                          value={brand}
+                          onChange={(e) => setBrand(e.target.value)}
+                        />
                       </div>
                     </div>
                   </div>
