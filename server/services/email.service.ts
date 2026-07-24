@@ -47,25 +47,7 @@ export class EmailService {
     const { to, subject, html, text } = options;
     const from = process.env.EMAIL_FROM || 'no-reply@aswaq.app';
 
-    // 1. Try Nodemailer SMTP
-    const transporter = await this.getTransporter();
-    if (transporter) {
-      try {
-        const info = await transporter.sendMail({
-          from: `منصة أسواق <${from}>`,
-          to,
-          subject,
-          html,
-          text: text || subject,
-        });
-        logger.info({ message: `Email sent via SMTP to ${to}, ID: ${info.messageId}` });
-        return { success: true, messageId: info.messageId };
-      } catch (err: any) {
-        logger.error({ message: `SMTP send error: ${err.message}` });
-      }
-    }
-
-    // 2. Try Resend API if key is present
+    // 1. Try Resend API if key is present
     const resendKey = process.env.RESEND_API_KEY;
     if (resendKey) {
       try {
@@ -86,9 +68,30 @@ export class EmailService {
           const resJson = await response.json();
           logger.info({ message: `Email sent via Resend to ${to}, ID: ${resJson.id}` });
           return { success: true, messageId: resJson.id };
+        } else {
+          const errText = await response.text();
+          logger.error({ message: `Resend API returned error: ${response.status} ${errText}` });
         }
       } catch (err: any) {
         logger.error({ message: `Resend API error: ${err.message}` });
+      }
+    }
+
+    // 2. Try Nodemailer SMTP
+    const transporter = await this.getTransporter();
+    if (transporter) {
+      try {
+        const info = await transporter.sendMail({
+          from: `منصة أسواق <${from}>`,
+          to,
+          subject,
+          html,
+          text: text || subject,
+        });
+        logger.info({ message: `Email sent via SMTP to ${to}, ID: ${info.messageId}` });
+        return { success: true, messageId: info.messageId };
+      } catch (err: any) {
+        logger.error({ message: `SMTP send error: ${err.message}` });
       }
     }
 
