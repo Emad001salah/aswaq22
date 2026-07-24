@@ -1207,7 +1207,7 @@ export default function CreateAdTab({
                           onChange={(e) => setMake(e.target.value)}
                         >
                           <option value="">اختر الماركة...</option>
-                          {["تويوتا", "لكزس", "نيسان", "كيا", "هيونداي", "فورد", "مرسيدس", "هوندا", "كاتربيلر", "كوماتسو", "دراجة هوائية/نارية"].map((m) => (
+                          {["تويوتا", "لكزس", "نيسان", "كيا", "هيونداي", "فورد", "مرسيدس", "هوندا", "كاتربيلر", "كوماتسو", "دراجة هوائية/نارية", "نوع / ماركة أخرى (اكتبها بالمربع الإضافي)"].map((m) => (
                             <option key={m} value={m}>
                               {m}
                             </option>
@@ -1996,6 +1996,25 @@ export default function CreateAdTab({
                     </div>
                   </div>
                 )}
+
+                {/* Universal Free-text Custom Details & Additional Specifications for ALL Categories */}
+                <div className={`p-5 rounded-2xl border transition-colors text-right space-y-2 ${isDark ? "bg-slate-900/40 border-slate-800" : "bg-white border-slate-200 shadow-sm"}`}>
+                  <label className="text-xs font-black text-emerald-400 flex items-center gap-1.5 justify-end">
+                    <span>✏️ ميزات أو تفاصيل ومواصفات إضافية مخصصة (حرية كتابة كاملة للمعلن):</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="اكتب هنا أي خيار أو ميزة أو مواصفة خاصة غير موجودة في الخيارات أعلاه..."
+                    className={`w-full h-11 border rounded-xl px-4 outline-none text-xs text-right font-medium transition-colors ${
+                      isDark ? "bg-slate-950 border-slate-800 focus:border-emerald-500 text-slate-200" : "bg-white border-slate-200 focus:border-emerald-500 text-slate-900"
+                    }`}
+                    value={customFieldValues.userFreeTextCustom || ""}
+                    onChange={(e) => setCustomFieldValues((prev) => ({ ...prev, userFreeTextCustom: e.target.value }))}
+                  />
+                  <p className="text-[10px] text-slate-500">
+                    اتركنا نمنحك الحرية المطلوبة! يمكنك إضافة أي تفصيلة أو خيار خاص إضافي لضمان شمولية إعلانك للباحثين.
+                  </p>
+                </div>
 
                 {/* Status Selection (Active / Sold / Expired) */}
                 <div className={`p-6 sm:p-8 rounded-3xl border transition-colors text-right ${isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200 shadow-sm"}`}>
