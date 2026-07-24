@@ -387,6 +387,8 @@ function WebcamStreamPlayer({
             }
           };
 
+          const pendingCandidatesMap = new Map<string, any[]>();
+
           const handleSignal = async ({ from, signal }: { from: string; signal: any }) => {
             try {
               const pc = pcsRef.current.get(from);
@@ -394,8 +396,23 @@ function WebcamStreamPlayer({
 
               if (signal.type === 'answer') {
                 await pc.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp: signal.sdp }));
+                const pending = pendingCandidatesMap.get(from) || [];
+                for (const cand of pending) {
+                  try {
+                    await pc.addIceCandidate(new RTCIceCandidate(cand));
+                  } catch (e) {
+                    console.warn("[Broadcaster] Candidate add warning:", e);
+                  }
+                }
+                pendingCandidatesMap.delete(from);
               } else if (signal.type === 'candidate' && signal.candidate) {
-                await pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
+                if (pc.remoteDescription && pc.remoteDescription.type) {
+                  await pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
+                } else {
+                  const existing = pendingCandidatesMap.get(from) || [];
+                  existing.push(signal.candidate);
+                  pendingCandidatesMap.set(from, existing);
+                }
               }
             } catch (err) {
               console.error("[Broadcaster] Error handling signal from viewer:", err);
@@ -608,6 +625,8 @@ function WebcamStreamPlayer({
         };
       };
 
+      const viewerPendingCandidates: any[] = [];
+
       const handleSignal = async ({ from, signal }: { from: string; signal: any }) => {
         try {
           if (signal.type === 'offer') {
@@ -617,12 +636,26 @@ function WebcamStreamPlayer({
             if (!pc) return;
 
             await pc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp: signal.sdp }));
+
+            // Process any early candidates received prior to setRemoteDescription
+            for (const cand of viewerPendingCandidates) {
+              try {
+                await pc.addIceCandidate(new RTCIceCandidate(cand));
+              } catch (e) {
+                console.warn("[Viewer] Candidate add warning:", e);
+              }
+            }
+            viewerPendingCandidates.length = 0;
+
             const answer = await pc.createAnswer();
             await pc.setLocalDescription(answer);
             socket.emit('signal', { to: from, signal: { type: 'answer', sdp: answer.sdp } });
           } else if (signal.type === 'candidate' && signal.candidate) {
-            if (pcRef.current) {
-              await pcRef.current.addIceCandidate(new RTCIceCandidate(signal.candidate));
+            const pc = pcRef.current;
+            if (pc && pc.remoteDescription && pc.remoteDescription.type) {
+              await pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
+            } else {
+              viewerPendingCandidates.push(signal.candidate);
             }
           }
         } catch (err) {
@@ -874,6 +907,69 @@ function WebcamStreamPlayer({
           </AnimatePresence>
           
           <div className="flex flex-col gap-3.5 p-2 bg-black/40 backdrop-blur-3xl rounded-full border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
+            {/* 🔴 Prominent Red Stop Stream Button */}
+            <button
+              type="button"
+              onClick={() => {
+                // End broadcast immediately
+                socket.emit('leave-stream', { streamId: ad.id, role: 'broadcaster' });
+                
+                // Capture real snapshot frame from camera feed
+                let snapshotUrl: string | null = null;
+                try {
+                  if (videoRef.current && videoRef.current.videoWidth > 0 && videoRef.current.videoHeight > 0) {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = videoRef.current.videoWidth;
+                    canvas.height = videoRef.current.videoHeight;
+                    const ctx = canvas.getContext('2d');
+                    if (ctx) {
+                      ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+                      snapshotUrl = canvas.toDataURL('image/jpeg', 0.85);
+                    }
+                  }
+                } catch (e) {
+                  console.error("Failed to capture webcam snapshot:", e);
+                }
+
+                const parsedVid = parseVideoUrl(ad.videoUrl).videoUrl;
+                const isWebcam = parsedVid === 'webcam' || parsedVid === 'camera';
+                
+                const archiveVideoUrl = isWebcam 
+                  ? "https://player.vimeo.com/external/434045526.sd.mp4?s=c19c968f44ff531ae7e77b105021e141aabccb8c&profile_id=165&oauth2_token_id=57447761"
+                  : ad.videoUrl;
+
+                const parsedUrl = `${archiveVideoUrl}||none||${ad.description || ''}||${ad.city || ''}||${ad.category || ''}`;
+
+                // Update status in backend using authenticated apiFetch with real snapshot
+                apiFetch(`/api/promo/${ad.id}`, {
+                  method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ 
+                    title: ad.title || '',
+                    videoUrl: parsedUrl,
+                    isLive: false,
+                    thumbnailUrl: snapshotUrl
+                  })
+                }).catch(() => null);
+
+                // Update local state so UI updates instantly
+                setIsOffline(true);
+                setIsBroadcaster(false);
+                if (onStreamEnded) {
+                  onStreamEnded(ad.id, archiveVideoUrl, snapshotUrl || '');
+                }
+
+                // Stop local media tracks
+                if (localStreamRef.current) {
+                  localStreamRef.current.getTracks().forEach(t => t.stop());
+                }
+              }}
+              className="w-12 h-12 rounded-full bg-rose-600 hover:bg-rose-500 text-white border-2 border-rose-400 flex items-center justify-center shadow-xl shadow-rose-600/60 animate-pulse transition-all active:scale-90 cursor-pointer"
+              title={isRtl ? 'إيقاف وإنهاء البث المباشر الآن ⏹️' : 'End Live Broadcast ⏹️'}
+            >
+              <Square className="w-5 h-5 fill-current text-white" />
+            </button>
+
             <button
               onClick={() => { setShowFilters(!showFilters); setShowBrightness(false); }}
               className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 relative group overflow-hidden ${
