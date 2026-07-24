@@ -11,7 +11,8 @@ import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Heart, 
-  MessageSquare, 
+  MessageSquare,
+  Square, 
   Share2, 
   User as UserIcon, 
   MapPin, 
