@@ -229,27 +229,26 @@ function WebcamStreamPlayer({
 
       async function startBroadcasting() {
         try {
-          // 🎥 HD video + professional audio constraints
-          const stream = await navigator.mediaDevices.getUserMedia({
-            video: {
-              facingMode,
-              width:  { ideal: 1920, min: 1280 },
-              height: { ideal: 1080, min: 720 },
-              frameRate: { ideal: 30, max: 30 },
-              aspectRatio: { ideal: 9/16 },
-            },
-            audio: {
-              echoCancellation: true,
-              noiseSuppression: true,
-              autoGainControl: true,
-              sampleRate: 48000,          // 48kHz — CD quality
-              channelCount: 1,            // Mono — better for voice
-              latency: 0.01,              // Ultra-low latency
+          let stream: MediaStream | null = null;
+
+          // Graceful getUserMedia degradation for 100% hardware compatibility
+          try {
+            stream = await navigator.mediaDevices.getUserMedia({
+              video: facingMode ? { facingMode } : true,
+              audio: { echoCancellation: true, noiseSuppression: true }
+            });
+          } catch (e1) {
+            console.warn("First camera constraint failed, trying basic video+audio", e1);
+            try {
+              stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            } catch (e2) {
+              console.warn("Audio+Video failed, trying video only", e2);
+              stream = await navigator.mediaDevices.getUserMedia({ video: true });
             }
-          });
+          }
           
-          if (!active) {
-            stream.getTracks().forEach(t => t.stop());
+          if (!active || !stream) {
+            if (stream) stream.getTracks().forEach(t => t.stop());
             return;
           }
 
@@ -258,6 +257,7 @@ function WebcamStreamPlayer({
             videoRef.current.srcObject = stream;
             videoRef.current.muted = true;
             videoRef.current.volume = 0;
+            videoRef.current.play().catch(err => console.error("Video play error:", err));
 
             // Apply Torch if available
             const track = stream.getVideoTracks()[0];
@@ -277,10 +277,9 @@ function WebcamStreamPlayer({
           }
 
           setStatusText(isRtl ? 'أنت الآن على المباشر! 🔴' : 'You are now LIVE! 🔴');
-          // Clear status text to show controls and video after 3 seconds
           setTimeout(() => {
             setStatusText('');
-          }, 3500);
+          }, 1500);
 
           // Register stream on socket and send notification info
           socket.emit('join-stream', { 
@@ -3107,7 +3106,7 @@ export default function SpotlightFeed({
                     
                     const title = (formData.get('liveTitle') || '').toString().trim();
                     const description = (formData.get('liveDesc') || '').toString().trim();
-                    const rawVideoUrl = (formData.get('liveUrl') || '').toString().trim();
+                    const rawVideoUrl = (formData.get('liveUrl') || '').toString().trim() || 'webcam';
                     
                     let audioUrl = 'none';
                     if (audioSourceType === 'file') {
@@ -3124,10 +3123,6 @@ export default function SpotlightFeed({
 
                     if (!title) {
                       showToast(isRtl ? 'يرجى إدخال عنوان الإعلان أو البث!' : 'Please enter a stream/reel title!');
-                      return;
-                    }
-                    if (!rawVideoUrl) {
-                      showToast(isRtl ? 'يرجى إدخال رابط الفيديو أو اختيار أحد الروابط الجاهزة!' : 'Please enter a video URL or select a preset!');
                       return;
                     }
 
