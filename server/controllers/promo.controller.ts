@@ -80,28 +80,53 @@ export function PromoController() {
 
       let effectiveUserId = req.user?.id || userId || "guest_user";
 
-      // Validate that effectiveUserId is a valid UUID
+      // Validate that effectiveUserId is a valid UUID and check if it exists
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       let isValidUuid = uuidRegex.test(effectiveUserId);
+      let userRecord = isValidUuid ? await prisma.user.findUnique({ where: { id: effectiveUserId } }) : null;
 
-      if (!isValidUuid) {
-        // Fallback to first superadmin or admin/user in database
-        const defaultUser = await prisma.user.findFirst({
-          where: { role: { in: ['SUPER_ADMIN', 'ADMIN', 'USER'] } }
-        });
-        if (defaultUser) {
-          effectiveUserId = defaultUser.id;
+      if (!userRecord) {
+        // If not found, let's try to search by userName or platform admin signatures
+        const targetName = userName || '';
+        let foundUser = null;
+        
+        if (targetName.trim().length > 0) {
+          foundUser = await prisma.user.findFirst({
+            where: { name: targetName, deletedAt: null }
+          });
         }
-      } else {
-        // Double check if the user actually exists in the database to prevent foreign key crash
-        const userExists = await prisma.user.findUnique({
-          where: { id: effectiveUserId }
-        });
-        if (!userExists) {
-          const defaultUser = await prisma.user.findFirst();
-          if (defaultUser) {
-            effectiveUserId = defaultUser.id;
-          }
+        
+        if (!foundUser) {
+          // Look for any user containing owner names (like عماد, emad, eee3327)
+          foundUser = await prisma.user.findFirst({
+            where: {
+              OR: [
+                { name: { contains: 'عماد' } },
+                { name: { contains: 'emad' } },
+                { email: { contains: 'emad' } },
+                { email: { contains: 'eee3327' } }
+              ],
+              deletedAt: null
+            }
+          });
+        }
+
+        if (!foundUser) {
+          // Fallback to first superadmin in database
+          foundUser = await prisma.user.findFirst({
+            where: { role: 'SUPER_ADMIN', deletedAt: null }
+          });
+        }
+
+        if (!foundUser) {
+          // Try to find any admin or regular user
+          foundUser = await prisma.user.findFirst({
+            where: { role: { in: ['SUPER_ADMIN', 'ADMIN', 'USER'] }, deletedAt: null }
+          });
+        }
+
+        if (foundUser) {
+          effectiveUserId = foundUser.id;
         }
       }
 
