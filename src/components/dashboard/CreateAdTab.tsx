@@ -951,24 +951,25 @@ export default function CreateAdTab({
                   </div>
                 )}
 
-                {/* Real Estate Specific Advanced Fields */}
-                {category === "realestate" && (
+                {/* Real Estate / Rent Housing / Hotels / Resorts Specific Advanced Fields */}
+                {["realestate", "rent_housing", "hotels", "resorts"].includes(category) && (
                   <div className={`p-6 rounded-2xl space-y-6 text-right border transition-colors ${isDark ? "bg-slate-950/50 border-slate-800" : "bg-slate-50 border-slate-200 shadow-sm"}`}>
                     <div className="flex items-center gap-2 justify-end">
                       <Sliders className="w-4 h-4 text-emerald-400" />
-                      <h4 className="text-xs font-black text-white">تفاصيل العقار المتقدمة</h4>
+                      <h4 className="text-xs font-black text-white">تفاصيل العقار / السكن والمنتجع المتقدمة</h4>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                       <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-slate-400 block">نوع العقار</label>
+                        <label className="text-xs font-bold text-slate-400 block">نوع العقار / المنشأة</label>
                         <div className="grid grid-cols-2 gap-2">
                           {[
                             { id: "villa", label: "فيلا" },
                             { id: "apartment", label: "شقة" },
                             { id: "land", label: "أرض / مقسم" },
                             { id: "building", label: "عمارة / بيت" },
-                            { id: "commercial", label: "تجاري" },
+                            { id: "commercial", label: "تجاري / محل" },
+                            { id: "resort", label: "شاليه / منتجع" },
                           ].map((item) => (
                             <button
                               key={item.id}
@@ -984,7 +985,7 @@ export default function CreateAdTab({
 
                       {propertyType !== "land" && (
                         <div className="space-y-1.5">
-                          <label className="text-xs font-bold text-slate-400 block">عدد الغرف</label>
+                          <label className="text-xs font-bold text-slate-400 block">عدد الغرف / الأسرة</label>
                           <div className="flex items-center gap-3 bg-slate-900 border border-slate-800 rounded-xl p-1.5 w-max">
                             <button
                               type="button"
@@ -1007,13 +1008,13 @@ export default function CreateAdTab({
                     </div>
 
                     <div className="space-y-2">
-                      <label className="text-xs font-bold text-slate-400 block">الخدمات الأساسية المتوفرة</label>
+                      <label className="text-xs font-bold text-slate-400 block">الخدمات والمرافق المتوفرة</label>
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
                         {[
                           { id: "water", label: "مشروع مياه" },
                           { id: "electricity", label: "كهرباء" },
                           { id: "solar", label: "طاقة شمسية" },
-                          { id: "well", label: "بئر / خزان" },
+                          { id: "pool", label: "مسبح خاص" },
                           { id: "fiber", label: "إنترنت فايبر" },
                           { id: "parking", label: "موقف سيارات" },
                         ].map((item) => (
@@ -1033,24 +1034,24 @@ export default function CreateAdTab({
                   </div>
                 )}
 
-                {/* Cars Specific Advanced Fields */}
-                {category === "cars" && (
+                {/* Cars / Rent / Bicycles / Heavy Equipment Specific Fields */}
+                {["cars", "car_rental", "bicycles", "heavy_equipment"].includes(category) && (
                   <div className={`p-6 rounded-2xl space-y-6 text-right border transition-colors ${isDark ? "bg-slate-950/50 border-slate-800" : "bg-slate-50 border-slate-200 shadow-sm"}`}>
                     <div className="flex items-center gap-2 justify-end">
                       <Sliders className="w-4 h-4 text-yellow-400" />
-                      <h4 className="text-xs font-black text-white">تفاصيل السيارة المتقدمة</h4>
+                      <h4 className="text-xs font-black text-white">تفاصيل المركبة والمعدة المتقدمة</h4>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                       <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-slate-400 block">ماركة السيارة</label>
+                        <label className="text-xs font-bold text-slate-400 block">ماركة المركبة / المعدة</label>
                         <select
                           className={`w-full h-11 border rounded-xl px-4 outline-none text-xs text-right cursor-pointer transition-colors ${isDark ? "bg-slate-950 border-slate-800 text-slate-300 focus:border-yellow-500" : "bg-white border-slate-200 text-slate-900 focus:border-yellow-500"}`}
                           value={make}
                           onChange={(e) => setMake(e.target.value)}
                         >
                           <option value="">اختر الماركة...</option>
-                          {["تويوتا", "لكزس", "نيسان", "كيا", "هيونداي", "فورد", "مرسيدس", "هوندا"].map((m) => (
+                          {["تويوتا", "لكزس", "نيسان", "كيا", "هيونداي", "فورد", "مرسيدس", "هوندا", "كاتربيلر", "كوماتسو", "دراجة هوائية/نارية"].map((m) => (
                             <option key={m} value={m}>
                               {m}
                             </option>
@@ -1066,7 +1067,7 @@ export default function CreateAdTab({
                           onChange={(e) => setModelYear(e.target.value ? parseInt(e.target.value) : "")}
                         >
                           <option value="">اختر السنة...</option>
-                          {Array.from({ length: 26 }, (_, i) => 2025 - i).map((year) => (
+                          {Array.from({ length: 27 }, (_, i) => 2026 - i).map((year) => (
                             <option key={year} value={year}>
                               {year}
                             </option>
@@ -1102,7 +1103,7 @@ export default function CreateAdTab({
                             { id: "gasoline", label: "بترول" },
                             { id: "diesel", label: "ديزل" },
                             { id: "hybrid", label: "هايبرد" },
-                            { id: "solar", label: "طاقة شمسية" },
+                            { id: "solar", label: "كهربائي / طاقة" },
                           ].map((f) => (
                             <button
                               key={f.id}
