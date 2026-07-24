@@ -951,17 +951,143 @@ export default function CreateAdTab({
                   </div>
                 )}
 
-                {/* Real Estate / Rent Housing / Hotels / Resorts Specific Advanced Fields */}
-                {["realestate", "rent_housing", "hotels", "resorts"].includes(category) && (
+                {/* Hotels & Furnished Hotel Apartments Specific Advanced Fields */}
+                {["hotels", "rent_housing"].includes(category) && (
+                  <div className={`p-6 rounded-2xl space-y-6 text-right border transition-colors ${isDark ? "bg-slate-950/50 border-slate-800" : "bg-slate-50 border-slate-200 shadow-sm"}`}>
+                    <div className="flex items-center gap-2 justify-end">
+                      <Sliders className="w-4 h-4 text-amber-400" />
+                      <h4 className="text-xs font-black text-white">تفاصيل الفندق والشقق الفندقية الفاخرة</h4>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-400 block">نوع السكن / الجناح الفندقي</label>
+                        <select
+                          className={`w-full h-11 border rounded-xl px-4 outline-none text-xs text-right cursor-pointer font-bold ${isDark ? "bg-slate-950 border-slate-800 text-slate-200 focus:border-amber-500" : "bg-white border-slate-200 text-slate-900 focus:border-amber-500"}`}
+                          value={hotelType}
+                          onChange={(e) => setHotelType(e.target.value)}
+                        >
+                          <option value="furnished_apt">شقة فندقية مفروشة بالكامل</option>
+                          <option value="luxury_suite">جناح فندقي فاخر</option>
+                          <option value="double_room">غرفة مزدوجة (دبل)</option>
+                          <option value="single_room">غرفة مفردة (سينجل)</option>
+                          <option value="studio">استوديو فندقي عائلي</option>
+                          <option value="royal_suite">جناح ملكي / بنتهاوس</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-400 block">نظام الحجز والتعامل</label>
+                        <select
+                          className={`w-full h-11 border rounded-xl px-4 outline-none text-xs text-right cursor-pointer font-bold ${isDark ? "bg-slate-950 border-slate-800 text-slate-200 focus:border-amber-500" : "bg-white border-slate-200 text-slate-900 focus:border-amber-500"}`}
+                          value={bookingSystem}
+                          onChange={(e) => setBookingSystem(e.target.value)}
+                        >
+                          <option value="daily">حجز يومي (بالليلة)</option>
+                          <option value="weekly">إيجار أسبوعي</option>
+                          <option value="monthly">إيجار شهري للعوائل/الموظفين</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-400 block">تصنيف المنشأة الفندقية</label>
+                        <select
+                          className={`w-full h-11 border rounded-xl px-4 outline-none text-xs text-right cursor-pointer font-bold ${isDark ? "bg-slate-950 border-slate-800 text-slate-200 focus:border-amber-500" : "bg-white border-slate-200 text-slate-900 focus:border-amber-500"}`}
+                          value={customFieldValues.starRating || "5_star"}
+                          onChange={(e) => setCustomFieldValues((prev) => ({ ...prev, starRating: e.target.value }))}
+                        >
+                          <option value="5_star">⭐⭐⭐⭐⭐ فندق 5 نجوم فاخر</option>
+                          <option value="4_star">⭐⭐⭐⭐ فندق 4 نجوم</option>
+                          <option value="3_star">⭐⭐⭐ فندق / أجنحة 3 نجوم</option>
+                          <option value="furnished_premium">شقق فندقية فاخرة ومخدمة</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-400 block">عدد الأسرة في الجناح/الغرفة</label>
+                        <div className="flex items-center gap-3 bg-slate-900 border border-slate-800 rounded-xl p-1.5 w-max">
+                          <button
+                            type="button"
+                            onClick={() => setHotelBeds(Math.max(1, hotelBeds - 1))}
+                            className="w-8 h-8 rounded-lg bg-slate-850 flex items-center justify-center text-slate-300 hover:text-white cursor-pointer"
+                          >
+                            -
+                          </button>
+                          <span className="w-8 text-center text-xs font-bold text-white">{hotelBeds} أسرة</span>
+                          <button
+                            type="button"
+                            onClick={() => setHotelBeds(hotelBeds + 1)}
+                            className="w-8 h-8 rounded-lg bg-amber-500 flex items-center justify-center text-slate-950 hover:bg-amber-400 transition-colors cursor-pointer"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-400 block">عدد الغرف / الصالات</label>
+                        <div className="flex items-center gap-3 bg-slate-900 border border-slate-800 rounded-xl p-1.5 w-max">
+                          <button
+                            type="button"
+                            onClick={() => setRooms(Math.max(1, rooms - 1))}
+                            className="w-8 h-8 rounded-lg bg-slate-850 flex items-center justify-center text-slate-300 hover:text-white cursor-pointer"
+                          >
+                            -
+                          </button>
+                          <span className="w-8 text-center text-xs font-bold text-white">{rooms} غرف</span>
+                          <button
+                            type="button"
+                            onClick={() => setRooms(rooms + 1)}
+                            className="w-8 h-8 rounded-lg bg-amber-500 flex items-center justify-center text-slate-950 hover:bg-amber-400 transition-colors cursor-pointer"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-slate-400 block">الخدمات الفندقية والضيافة المتوفرة</label>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                        {[
+                          { id: "room_service", label: "🛎️ خدمة غرف 24/7" },
+                          { id: "wifi", label: "📶 إنترنت فايبر مجاني" },
+                          { id: "breakfast", label: "🍳 إفطار بوفيه" },
+                          { id: "housekeeping", label: "🧹 تنظيف يومي للبياضات" },
+                          { id: "ac", label: "❄️ تكييف مركزي وشاشة smart" },
+                          { id: "pool_gym", label: "🏊 مسبح ونادي صحي" },
+                          { id: "parking", label: "🚗 مواقف سيارات ومغسلة" },
+                          { id: "security", label: "🛡️ أمان وحراسة 24 ساعة" },
+                        ].map((item) => (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => {
+                              setHotelAmenities((prev) => (prev.includes(item.id) ? prev.filter((i) => i !== item.id) : [...prev, item.id]));
+                            }}
+                            className={`px-3 py-2.5 rounded-xl text-[11px] font-bold transition-all border cursor-pointer ${hotelAmenities.includes(item.id) ? "bg-amber-500/10 border-amber-500 text-amber-400" : "bg-slate-900 border-slate-800 text-slate-500"}`}
+                          >
+                            {item.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Real Estate Specific Advanced Fields */}
+                {category === "realestate" && (
                   <div className={`p-6 rounded-2xl space-y-6 text-right border transition-colors ${isDark ? "bg-slate-950/50 border-slate-800" : "bg-slate-50 border-slate-200 shadow-sm"}`}>
                     <div className="flex items-center gap-2 justify-end">
                       <Sliders className="w-4 h-4 text-emerald-400" />
-                      <h4 className="text-xs font-black text-white">تفاصيل العقار / السكن والمنتجع المتقدمة</h4>
+                      <h4 className="text-xs font-black text-white">تفاصيل العقار والأراضي المتقدمة</h4>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                       <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-slate-400 block">نوع العقار / المنشأة</label>
+                        <label className="text-xs font-bold text-slate-400 block">نوع العقار</label>
                         <div className="grid grid-cols-2 gap-2">
                           {[
                             { id: "villa", label: "فيلا" },
@@ -969,7 +1095,6 @@ export default function CreateAdTab({
                             { id: "land", label: "أرض / مقسم" },
                             { id: "building", label: "عمارة / بيت" },
                             { id: "commercial", label: "تجاري / محل" },
-                            { id: "resort", label: "شاليه / منتجع" },
                           ].map((item) => (
                             <button
                               key={item.id}
@@ -985,7 +1110,7 @@ export default function CreateAdTab({
 
                       {propertyType !== "land" && (
                         <div className="space-y-1.5">
-                          <label className="text-xs font-bold text-slate-400 block">عدد الغرف / الأسرة</label>
+                          <label className="text-xs font-bold text-slate-400 block">عدد الغرف / الصالات</label>
                           <div className="flex items-center gap-3 bg-slate-900 border border-slate-800 rounded-xl p-1.5 w-max">
                             <button
                               type="button"
@@ -1014,7 +1139,7 @@ export default function CreateAdTab({
                           { id: "water", label: "مشروع مياه" },
                           { id: "electricity", label: "كهرباء" },
                           { id: "solar", label: "طاقة شمسية" },
-                          { id: "pool", label: "مسبح خاص" },
+                          { id: "well", label: "بئر / خزان" },
                           { id: "fiber", label: "إنترنت فايبر" },
                           { id: "parking", label: "موقف سيارات" },
                         ].map((item) => (
