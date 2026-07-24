@@ -951,7 +951,38 @@ export default function CreateAdTab({
                   </div>
                 )}
 
-                {/* Hotels & Furnished Hotel Apartments Specific Advanced Fields */}
+                {/* Universal Ad Intent Switcher (Offer vs Request / Sell vs Buy) for ALL 23 Categories */}
+                <div className={`p-4 rounded-2xl border transition-colors text-right ${isDark ? "bg-slate-900/60 border-slate-800" : "bg-white border-slate-200 shadow-sm"}`}>
+                  <label className="text-xs font-black text-slate-300 block mb-2.5">
+                    🎯 الغرض وطبيعة الإعلان (سواءً كان سلعة أو عقار أو مركبة أو خدمة)
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setCustomFieldValues((prev) => ({ ...prev, adIntent: "offer" }))}
+                      className={`py-3 px-4 rounded-xl text-xs font-black transition-all border cursor-pointer flex items-center justify-center gap-2 ${
+                        customFieldValues.adIntent !== "request"
+                          ? "bg-emerald-500/15 border-emerald-500 text-emerald-300 shadow-md shadow-emerald-950/20"
+                          : "bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700"
+                      }`}
+                    >
+                      <span className="text-base">🏷️</span>
+                      <span>عرض (للبيع / للتقديم / للإيجار)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCustomFieldValues((prev) => ({ ...prev, adIntent: "request" }))}
+                      className={`py-3 px-4 rounded-xl text-xs font-black transition-all border cursor-pointer flex items-center justify-center gap-2 ${
+                        customFieldValues.adIntent === "request"
+                          ? "bg-amber-500/15 border-amber-500 text-amber-300 shadow-md shadow-amber-950/20"
+                          : "bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700"
+                      }`}
+                    >
+                      <span className="text-base">🙋‍♂️</span>
+                      <span>مطلوب (طلب شراء / أبحث عن سلعة أو خدمة)</span>
+                    </button>
+                  </div>
+                </div>
                 {["hotels", "rent_housing"].includes(category) && (
                   <div className={`p-6 rounded-2xl space-y-6 text-right border transition-colors ${isDark ? "bg-slate-950/50 border-slate-800" : "bg-slate-50 border-slate-200 shadow-sm"}`}>
                     <div className="flex items-center gap-2 justify-end">
