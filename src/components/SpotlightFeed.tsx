@@ -230,10 +230,10 @@ function WebcamStreamPlayer({
         try {
           let stream: MediaStream | null = null;
 
-          // Graceful getUserMedia degradation for 100% hardware compatibility
+          // Acquire base stream
           try {
             stream = await navigator.mediaDevices.getUserMedia({
-              video: facingMode ? { facingMode } : true,
+              video: { facingMode: 'user' },
               audio: { echoCancellation: true, noiseSuppression: true }
             });
           } catch (e1) {
@@ -257,22 +257,6 @@ function WebcamStreamPlayer({
             videoRef.current.muted = true;
             videoRef.current.volume = 0;
             videoRef.current.play().catch(err => console.error("Video play error:", err));
-
-            // Apply Torch if available
-            const track = stream.getVideoTracks()[0];
-            if (track && 'applyConstraints' in track && facingMode === 'environment') {
-              try {
-                // @ts-ignore
-                const capabilities = track.getCapabilities();
-                // @ts-ignore
-                if (capabilities.torch) {
-                  // @ts-ignore
-                  await track.applyConstraints({ advanced: [{ torch }] });
-                }
-              } catch (e) {
-                console.error("Torch constraint failure:", e);
-              }
-            }
           }
 
           setStatusText(isRtl ? 'أنت الآن على المباشر! 🔴' : 'You are now LIVE! 🔴');
@@ -725,7 +709,84 @@ function WebcamStreamPlayer({
         }
       };
     }
-  }, [ad.id, currentUser?.id, isRtl, facingMode, torch]);
+  }, [ad.id, currentUser?.id, isRtl]);
+
+  // Dynamic camera switch (facingMode) and flash (torch) controller for Broadcaster
+  useEffect(() => {
+    if (!isBroadcaster || !localStreamRef.current) return;
+
+    let active = true;
+    async function updateCameraTrack() {
+      try {
+        console.log(`[Broadcaster] Dynamically switching camera to: ${facingMode}...`);
+        
+        // Stop current video tracks
+        const currentVideoTracks = localStreamRef.current!.getVideoTracks();
+        currentVideoTracks.forEach(t => t.stop());
+
+        // Get new video track with target facingMode
+        let newStream: MediaStream | null = null;
+        try {
+          newStream = await navigator.mediaDevices.getUserMedia({
+            video: facingMode ? { facingMode } : true
+          });
+        } catch (e) {
+          console.warn("Failed to get camera with facingMode, falling back to simple video", e);
+          newStream = await navigator.mediaDevices.getUserMedia({ video: true });
+        }
+        
+        if (!active || !newStream) {
+          if (newStream) newStream.getTracks().forEach(t => t.stop());
+          return;
+        }
+
+        const newVideoTrack = newStream.getVideoTracks()[0];
+
+        // Replace track in existing local stream reference
+        localStreamRef.current!.removeTrack(currentVideoTracks[0]);
+        localStreamRef.current!.addTrack(newVideoTrack);
+
+        // Update local video element srcObject to refresh broadcaster's view
+        if (videoRef.current) {
+          videoRef.current.srcObject = localStreamRef.current;
+        }
+
+        // Apply torch settings to new track if environment camera
+        if (newVideoTrack && 'applyConstraints' in newVideoTrack && facingMode === 'environment') {
+          try {
+            // @ts-ignore
+            const capabilities = newVideoTrack.getCapabilities();
+            // @ts-ignore
+            if (capabilities.torch) {
+              // @ts-ignore
+              await newVideoTrack.applyConstraints({ advanced: [{ torch }] });
+            }
+          } catch (e) {
+            console.error("Torch constraint failure:", e);
+          }
+        }
+
+        // Replace track on all existing WebRTC peer connections
+        pcsRef.current.forEach(pc => {
+          const senders = pc.getSenders();
+          const videoSender = senders.find(s => s.track && s.track.kind === 'video');
+          if (videoSender) {
+            videoSender.replaceTrack(newVideoTrack).catch(err => {
+              console.error("[Broadcaster] Failed to replace video track for viewer:", err);
+            });
+          }
+        });
+      } catch (err) {
+        console.error("[Broadcaster] Failed to switch camera track:", err);
+      }
+    }
+
+    updateCameraTrack();
+
+    return () => {
+      active = false;
+    };
+  }, [facingMode, torch, isBroadcaster]);
 
   const currentFilterCSS = FILTERS.find(f => f.id === activeFilter)?.filter || '';
   const brightnessFilter = `brightness(${brightness / 100})`;
