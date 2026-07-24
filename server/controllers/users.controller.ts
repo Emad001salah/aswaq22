@@ -259,6 +259,22 @@ export const UsersController = () => {
     }
   };
 
+  // GET /api/users/me & /api/users/profile
+  const handleGetMe = async (req: Request, res: Response) => {
+    try {
+      const userId = (req as any).user?.id || (req as any).user?.userId;
+      if (!userId) return res.status(401).json({ error: 'Unauthorized', message: 'غير مصرح' });
+      const user = await prisma.user.findUnique({ where: { id: userId } });
+      if (!user) return res.status(404).json({ error: 'User Not Found', message: 'المستخدم غير موجود' });
+      const { password: _, ...safeUser } = user;
+      res.json(safeUser);
+    } catch (e: any) {
+      res.status(500).json({ error: 'Failed to fetch profile', message: e.message });
+    }
+  };
+
+  router.get('/me', authMiddleware, handleGetMe);
+  router.get('/profile', authMiddleware, handleGetMe);
   router.put('/me', authMiddleware, handleUserUpdate);
   router.patch('/me', authMiddleware, handleUserUpdate);
   router.patch('/profile', authMiddleware, handleUserUpdate);
