@@ -1630,6 +1630,9 @@ export default function SpotlightFeed({
   }, [isRtl, countryCode]);
 
   const [likesCount, setLikesCount] = useState<Record<string, number>>({});
+  const activeAdForViewer = displayAds[activeIndex];
+  const activeAdId = activeAdForViewer?.id;
+  const activeAdIsLive = activeAdForViewer?.isLive;
 
   useEffect(() => {
     // Sync initial likes and views directly from database ad properties
@@ -1661,14 +1664,9 @@ export default function SpotlightFeed({
   }, [isRtl]);
 
   useEffect(() => {
-    const activeAd = displayAds[activeIndex];
-
-    const activeAdId = activeAd?.id;
-    const activeAdIsLive = activeAd?.isLive;
-    
-    if (activeAd && activeAd.isLive) {
+    if (activeAdForViewer && activeAdForViewer.isLive) {
       // 1. Join the stream room
-      socket.emit('join-stream', { streamId: activeAd.id, role: 'viewer' });
+      socket.emit('join-stream', { streamId: activeAdForViewer.id, role: 'viewer' });
 
       // 2. Setup listeners
       const handleViewerCountUpdate = ({ count }: { count: number }) => {
@@ -1680,7 +1678,7 @@ export default function SpotlightFeed({
         // Also sync to the sliding comments panel state
         setAdComments(prev => ({
           ...prev,
-          [activeAd.id]: [...(prev[activeAd.id] || []), {
+          [activeAdForViewer.id]: [...(prev[activeAdForViewer.id] || []), {
             id: msg.id || `c_${Date.now()}_${Math.random()}`,
             author: msg.userName || msg.user || (isRtl ? 'زائر' : 'Guest'),
             text: msg.text,
@@ -1712,7 +1710,7 @@ export default function SpotlightFeed({
       socket.on('product-pinned', handleProductPinned);
 
       return () => {
-        socket.emit('leave-stream', { streamId: activeAd.id, role: 'viewer' });
+        socket.emit('leave-stream', { streamId: activeAdForViewer.id, role: 'viewer' });
         socket.off('viewer-count-update', handleViewerCountUpdate);
         socket.off('chat-message', handleChatMessage);
         socket.off('live-heart', handleLiveHeart);
