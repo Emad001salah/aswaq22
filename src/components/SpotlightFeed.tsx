@@ -1137,6 +1137,7 @@ export default function SpotlightFeed({
   const [uploadedAudioUrl, setUploadedAudioUrl] = useState<string>('');
   const [audioUploading, setAudioUploading] = useState<boolean>(false);
   const [audioOriginalName, setAudioOriginalName] = useState<string>('');
+  const [liveIntentMode, setLiveIntentMode] = useState<'offer' | 'request'>('offer');
 
   // Shoppable Instant Checkout drawer states
   const [showShoppablePanel, setShowShoppablePanel] = useState<boolean>(false);
@@ -3426,9 +3427,9 @@ export default function SpotlightFeed({
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
-                      onClick={() => setCustomFieldValues((prev: any) => ({ ...prev, liveIntent: "offer" }))}
+                      onClick={() => setLiveIntentMode("offer")}
                       className={`py-2 px-3 rounded-lg text-[10px] font-black transition-all border cursor-pointer flex items-center justify-center gap-1 ${
-                        customFieldValues.liveIntent !== "request"
+                        liveIntentMode !== "request"
                           ? "bg-emerald-500/20 border-emerald-500 text-emerald-300"
                           : "bg-slate-900 border-white/5 text-slate-400"
                       }`}
@@ -3438,9 +3439,9 @@ export default function SpotlightFeed({
                     </button>
                     <button
                       type="button"
-                      onClick={() => setCustomFieldValues((prev: any) => ({ ...prev, liveIntent: "request" }))}
+                      onClick={() => setLiveIntentMode("request")}
                       className={`py-2 px-3 rounded-lg text-[10px] font-black transition-all border cursor-pointer flex items-center justify-center gap-1 ${
-                        customFieldValues.liveIntent === "request"
+                        liveIntentMode === "request"
                           ? "bg-amber-500/20 border-amber-500 text-amber-300"
                           : "bg-slate-900 border-white/5 text-slate-400"
                       }`}
