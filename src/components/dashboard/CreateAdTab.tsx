@@ -1433,6 +1433,116 @@ export default function CreateAdTab({
                   </div>
                 )}
 
+                {/* Services & Maintenance & Shipping Specific Fields */}
+                {category === "services" && (
+                  <div className={`p-6 rounded-2xl space-y-6 text-right border transition-colors ${isDark ? "bg-slate-950/50 border-slate-800" : "bg-slate-50 border-slate-200 shadow-sm"}`}>
+                    <div className="flex items-center gap-2 justify-end">
+                      <Wrench className="w-4 h-4 text-emerald-400" />
+                      <h4 className="text-xs font-black text-white">تفاصيل خدمات الصيانة والمعاملات والشحن والنقل</h4>
+                    </div>
+
+                    {/* 1. Offer vs Request Intent */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-400 block">نوع الإعلان الخدمي</label>
+                      <div className="grid grid-cols-2 gap-4">
+                        <button
+                          type="button"
+                          onClick={() => setCustomFieldValues((prev) => ({ ...prev, serviceIntent: "offer" }))}
+                          className={`py-3.5 px-4 rounded-xl text-xs font-black transition-all border cursor-pointer flex items-center justify-center gap-2 ${customFieldValues.serviceIntent !== "request" ? "bg-emerald-500/15 border-emerald-500 text-emerald-300 shadow-lg shadow-emerald-950/20" : "bg-slate-900 border-slate-800 text-slate-400"}`}
+                        >
+                          <span className="text-base">📢</span>
+                          <span>تقديم خدمة (مزود خدمة / شركة / فني)</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setCustomFieldValues((prev) => ({ ...prev, serviceIntent: "request" }))}
+                          className={`py-3.5 px-4 rounded-xl text-xs font-black transition-all border cursor-pointer flex items-center justify-center gap-2 ${customFieldValues.serviceIntent === "request" ? "bg-blue-500/15 border-blue-500 text-blue-300 shadow-lg shadow-blue-950/20" : "bg-slate-900 border-slate-800 text-slate-400"}`}
+                        >
+                          <span className="text-base">🙋‍♂️</span>
+                          <span>طلب خدمة (مطلوب فني / شركة شحن)</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* 2. Service Category & Coverage */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-400 block">مجال الخدمة الرئيسي</label>
+                        <select
+                          className={`w-full h-11 border rounded-xl px-4 outline-none text-xs text-right cursor-pointer font-bold ${isDark ? "bg-slate-950 border-slate-800 text-slate-200 focus:border-emerald-500" : "bg-white border-slate-200 text-slate-900 focus:border-emerald-500"}`}
+                          value={customFieldValues.serviceDomain || "shipping"}
+                          onChange={(e) => setCustomFieldValues((prev) => ({ ...prev, serviceDomain: e.target.value }))}
+                        >
+                          <option value="shipping">🚚 شحن ونقل عفش وتوصيل بضائع</option>
+                          <option value="home_maintenance">🔧 صيانة منزلية (سباكة/كهرباء/تكييف)</option>
+                          <option value="car_repair">🚗 صيانة سيارات وميكانيك وسطحات</option>
+                          <option value="clearance">📄 معاملات وتخليص جمركي ومتابعة</option>
+                          <option value="design_media">🎨 تصميم ومونتاج ودعاية وإعلان</option>
+                          <option value="tech_support">💻 دعم فني وشبكات وصيانة أجهزة</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-400 block">نطاق التغطية والتوصيل</label>
+                        <select
+                          className={`w-full h-11 border rounded-xl px-4 outline-none text-xs text-right cursor-pointer font-bold ${isDark ? "bg-slate-950 border-slate-800 text-slate-200 focus:border-emerald-500" : "bg-white border-slate-200 text-slate-900 focus:border-emerald-500"}`}
+                          value={customFieldValues.serviceCoverage || "local"}
+                          onChange={(e) => setCustomFieldValues((prev) => ({ ...prev, serviceCoverage: e.target.value }))}
+                        >
+                          <option value="local">📍 داخل نفس المدينة / المحافظة</option>
+                          <option value="nationwide">🚛 بين كافة المدن والمحافظات</option>
+                          <option value="international">✈️ شحن ونقل دولي عابر للحدود</option>
+                          <option value="online">💻 خدمة إلكترونية عن بُعد (أونلاين)</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-400 block">طريقة ونظام التسعير</label>
+                        <select
+                          className={`w-full h-11 border rounded-xl px-4 outline-none text-xs text-right cursor-pointer font-bold ${isDark ? "bg-slate-950 border-slate-800 text-slate-200 focus:border-emerald-500" : "bg-white border-slate-200 text-slate-900 focus:border-emerald-500"}`}
+                          value={customFieldValues.servicePricing || "negotiable"}
+                          onChange={(e) => setCustomFieldValues((prev) => ({ ...prev, servicePricing: e.target.value }))}
+                        >
+                          <option value="negotiable">🤝 حسب الاتفاق والشرط</option>
+                          <option value="fixed">💵 سعر ثابت ومقطوع</option>
+                          <option value="hourly">⏱️ بالساعة / المشوار</option>
+                          <option value="free_inspection">🏷️ فحص ومعاينة مجانية أولاً</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* 3. Guarantees & Features */}
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-slate-400 block">ضمانات وميزات الخدمة</label>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        {[
+                          { id: "guarantee", label: "🛡️ ضمان معتمد على الخدمة" },
+                          { id: "truck_avail", label: "🚚 متوفر شاحنة / دينا خاصة" },
+                          { id: "fast_24h", label: "⚡ خدمة طوارئ 24 ساعة" },
+                          { id: "official_invoice", label: "🧾 توفير فواتير رسمية" },
+                        ].map((item) => (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => {
+                              const existing = customFieldValues.servicePerks || [];
+                              const updated = existing.includes(item.id) ? existing.filter((i: string) => i !== item.id) : [...existing, item.id];
+                              setCustomFieldValues((prev) => ({ ...prev, servicePerks: updated }));
+                            }}
+                            className={`px-3 py-2.5 rounded-xl text-[11px] font-bold transition-all border cursor-pointer ${
+                              (customFieldValues.servicePerks || []).includes(item.id)
+                                ? "bg-emerald-500/10 border-emerald-500 text-emerald-300"
+                                : "bg-slate-900 border-slate-800 text-slate-500"
+                            }`}
+                          >
+                            {item.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Resorts & Chalets Specific Fields */}
                 {category === "resorts" && (
                   <div className={`p-6 rounded-2xl space-y-6 text-right border transition-colors ${isDark ? "bg-slate-950/50 border-slate-800" : "bg-slate-50 border-slate-200 shadow-sm"}`}>
