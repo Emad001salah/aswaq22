@@ -1378,24 +1378,28 @@ function AdminPanelInner({
                     </div>
                   )}
 
-                  {/* Users by role */}
-                  <div className="p-5 rounded-3xl bg-slate-800/30 border border-white/5">
-                    <h3 className="text-sm font-black text-white mb-4">ملخص نصي للإحصائيات</h3>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-                      <div className="p-3 rounded-2xl bg-blue-500/10 border border-blue-500/20">
-                        <p className="text-2xl font-black text-blue-400">{stats?.totalAds || 0}</p>
-                        <p className="text-[10px] text-blue-300 font-bold mt-1">إجمالي الإعلانات</p>
-                      </div>
+                  {/* Users by role & Revenue */}
+                  <div className="p-5 rounded-3xl bg-slate-800/30 border border-white/5 space-y-4">
+                    <h3 className="text-sm font-black text-white">تقرير الإيرادات ومؤشرات المنصة</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-center">
                       <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20">
-                        <p className="text-2xl font-black text-emerald-400">{stats?.activeAds || 0}</p>
-                        <p className="text-[10px] text-emerald-300 font-bold mt-1">إعلانات نشطة</p>
+                        <p className="text-xl font-black text-emerald-400">{(stats?.totalRevenue || 0).toLocaleString()} <span className="text-[10px]">ريال</span></p>
+                        <p className="text-[10px] text-emerald-300 font-bold mt-1">إجمالي إيرادات الشحن والعمولات</p>
+                      </div>
+                      <div className="p-3 rounded-2xl bg-blue-500/10 border border-blue-500/20">
+                        <p className="text-xl font-black text-blue-400">{stats?.totalCompletedShipments || 0}</p>
+                        <p className="text-[10px] text-blue-300 font-bold mt-1">شحنات مكتملة</p>
+                      </div>
+                      <div className="p-3 rounded-2xl bg-indigo-500/10 border border-indigo-500/20">
+                        <p className="text-xl font-black text-indigo-400">{stats?.totalAds || 0}</p>
+                        <p className="text-[10px] text-indigo-300 font-bold mt-1">إجمالي الإعلانات</p>
                       </div>
                       <div className="p-3 rounded-2xl bg-purple-500/10 border border-purple-500/20">
-                        <p className="text-2xl font-black text-purple-400">{stats?.totalUsers || 0}</p>
+                        <p className="text-xl font-black text-purple-400">{stats?.totalUsers || 0}</p>
                         <p className="text-[10px] text-purple-300 font-bold mt-1">مستخدمون مسجلون</p>
                       </div>
                       <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20">
-                        <p className="text-2xl font-black text-amber-400">{stats?.totalChats || 0}</p>
+                        <p className="text-xl font-black text-amber-400">{stats?.totalChats || 0}</p>
                         <p className="text-[10px] text-amber-300 font-bold mt-1">محادثات نشطة</p>
                       </div>
                     </div>
@@ -1660,6 +1664,20 @@ function AdminPanelInner({
                       )}
                     </div>
                   )}
+
+                  {/* Pagination footer */}
+                  <div className="flex items-center justify-between pt-2 px-1 text-xs text-slate-400">
+                    <span>يعرض {filteredUsers.length} من إجمالي {stats?.totalUsers || filteredUsers.length} مستخدم</span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={fetchUsers}
+                        className="px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 hover:text-white transition-all flex items-center gap-1.5"
+                      >
+                        <RefreshCw className="w-3 h-3" />
+                        تحديث القائمة
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
 

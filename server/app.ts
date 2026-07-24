@@ -1165,6 +1165,20 @@ export class App {
 
         const totalChats = await prisma.conversation.count();
 
+        // Calculate platform revenue from shipping ledger
+        let totalRevenue = 0;
+        let totalCompletedShipments = 0;
+        try {
+          const ledgerAgg = await (prisma as any).shippingLedger.aggregate({
+            _sum: { amount: true },
+            _count: { id: true }
+          });
+          totalRevenue = Number(ledgerAgg._sum?.amount || 0);
+          totalCompletedShipments = Number(ledgerAgg._count?.id || 0);
+        } catch (_err) {
+          // Ledger table may be empty
+        }
+
         const adsGrouped = await prisma.ad.groupBy({
           by: ['categoryId'],
           where: cityIds.length > 0 ? { city: { in: cityIds } } : {},
@@ -1185,6 +1199,8 @@ export class App {
           totalUsers,
           verifiedUsers,
           totalChats,
+          totalRevenue,
+          totalCompletedShipments,
           categoryStats,
         };
 
