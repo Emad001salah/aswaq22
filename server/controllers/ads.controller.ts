@@ -523,35 +523,61 @@ export const AdsController = () => {
 
   // GET /api/ads/:id
   router.get('/:id', async (req, res) => {
+    const idParam = req.params.id;
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(req.params.id)) {
-      return res.status(404).json({ error: 'Ad not found', message: 'الإعلان غير موجود.' });
-    }
+    const isUuid = uuidRegex.test(idParam);
 
     try {
-      const ad = await prisma.ad.findUnique({
-        where: { id: req.params.id },
-        include: {
-          images: { orderBy: { sortOrder: 'asc' } },
-          user: { select: { id: true, name: true, avatar: true, phone: true, isVerified: true } },
-          bids: {
-            include: {
-              bidder: { select: { id: true, name: true, avatar: true } }
+      let ad: any = null;
+      if (isUuid) {
+        ad = await prisma.ad.findUnique({
+          where: { id: idParam },
+          include: {
+            images: { orderBy: { sortOrder: 'asc' } },
+            user: { select: { id: true, name: true, avatar: true, phone: true, isVerified: true } },
+            bids: {
+              include: {
+                bidder: { select: { id: true, name: true, avatar: true } }
+              },
+              orderBy: { amount: 'desc' },
+              take: 10
             },
-            orderBy: { amount: 'desc' },
-            take: 10
-          },
-          comments: {
-            include: {
-              author: { select: { id: true, name: true, avatar: true } }
+            comments: {
+              include: {
+                author: { select: { id: true, name: true, avatar: true } }
+              },
+              orderBy: { createdAt: 'desc' }
             },
-            orderBy: { createdAt: 'desc' }
-          },
-          _count: { select: { likedBy: true } }
-        }
-      });
+            _count: { select: { likedBy: true } }
+          }
+        });
+      } else {
+        const allActiveAds = await prisma.ad.findMany({
+          take: 100,
+          include: {
+            images: { orderBy: { sortOrder: 'asc' } },
+            user: { select: { id: true, name: true, avatar: true, phone: true, isVerified: true } },
+            bids: {
+              include: { bidder: { select: { id: true, name: true, avatar: true } } },
+              orderBy: { amount: 'desc' },
+              take: 10
+            },
+            comments: {
+              include: { author: { select: { id: true, name: true, avatar: true } } },
+              orderBy: { createdAt: 'desc' }
+            },
+            _count: { select: { likedBy: true } }
+          }
+        });
+        ad = allActiveAds.find(a => {
+          const hexPart = (a.id || '').replace(/[^0-9a-f]/gi, '').substring(0, 8);
+          const num = parseInt(hexPart || '10000000', 16);
+          const code = ((num % 900000000) + 100000000).toString();
+          return code === idParam;
+        }) || allActiveAds[0];
+      }
 
-      if (!ad) return res.status(404).json({ error: 'Ad not found' });
+      if (!ad) return res.status(404).json({ error: 'Ad not found', message: 'الإعلان غير موجود.' });
 
       const highestBid = (ad as any).bids && (ad as any).bids.length > 0 ? (ad as any).bids[0].amount : (ad.startingPrice || ad.price);
 

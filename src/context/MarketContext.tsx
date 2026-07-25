@@ -11,8 +11,15 @@ const MarketContext = createContext<MarketContextType | undefined>(undefined);
 export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [market, setMarket] = useState<Market>(() => {
     try {
+      if (typeof window !== 'undefined') {
+        const pathSegments = window.location.pathname.split('/').filter(Boolean);
+        if (pathSegments.length > 0) {
+          const urlCountry = pathSegments[0].toUpperCase();
+          if (MARKETS[urlCountry]) return MARKETS[urlCountry];
+        }
+      }
       const saved = localStorage.getItem('selected_market_id');
-      if (saved && MARKETS[saved]) return MARKETS[saved];
+      if (saved && MARKETS[saved.toUpperCase()]) return MARKETS[saved.toUpperCase()];
     } catch (e) {}
     return MARKETS.YE;
   });
@@ -20,7 +27,7 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const handleSetMarket = (newMarket: Market) => {
     try {
       if (newMarket?.id) {
-        localStorage.setItem('selected_market_id', newMarket.id);
+        localStorage.setItem('selected_market_id', newMarket.id.toUpperCase());
         localStorage.setItem('user_manually_selected_market', 'true');
       }
     } catch (e) {}

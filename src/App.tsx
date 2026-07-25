@@ -472,7 +472,7 @@ useEffect(() => {
         return;
       }
 
-      // Check if it's an ad URL (starts with country and has UUID)
+      // Check if it's an ad URL (starts with country and has UUID or short ref code)
       const uuidRegex = /[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
       const match = pathname.match(uuidRegex);
       if (match) {
@@ -491,12 +491,29 @@ useEffect(() => {
         return;
       }
 
-      // Check landing pages: /:country/:category or /:country/:city/:category
+      // Parse country & route segments: /:country, /:country/ad/:refCode/..., /:country/:category
       const segments = pathname.split('/').filter(Boolean);
-      if (segments.length >= 2) {
+      if (segments.length >= 1) {
         const countryCode = segments[0].toUpperCase();
-        if (MARKETS[countryCode]) {
+        if (MARKETS[countryCode] && currentMarket?.id !== countryCode) {
           setCurrentMarket(MARKETS[countryCode]);
+        }
+
+        // Check short reference code ad URL: /:country/ad/:refCode/...
+        if (segments.length >= 3 && segments[1] === 'ad') {
+          const refCode = segments[2];
+          if (refCode && selectedAd?.id !== refCode) {
+            try {
+              const res = await fetch(`/api/ads/${refCode}`);
+              if (res.ok) {
+                const adData = await res.json();
+                setSelectedAd(adData);
+              }
+            } catch (e) {
+              console.error('Failed to fetch ad by reference code from URL', e);
+            }
+          }
+          return;
         }
 
         if (segments.length === 2) {
@@ -828,7 +845,7 @@ useEffect(() => {
         }
       }
       
-      if (detectedMarketId && MARKETS[detectedMarketId] && currentMarket.id !== detectedMarketId) {
+      if (!localStorage.getItem('user_manually_selected_market') && detectedMarketId && MARKETS[detectedMarketId] && currentMarket.id !== detectedMarketId) {
         setCurrentMarket(MARKETS[detectedMarketId]);
       }
     }
