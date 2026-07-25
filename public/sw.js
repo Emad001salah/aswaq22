@@ -1,4 +1,4 @@
-const CACHE_NAME = 'aswaq-pwa-cache-v4-force-reload';
+const CACHE_NAME = 'aswaq-pwa-cache-v5-force-reload-latest';
 const ASSETS_TO_CACHE = [
   '/aswaq-icon.png',
   '/aswaq-icon-192.png',
@@ -47,18 +47,10 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Bypass service worker cache completely for HTML & JS bundle files to ensure zero stale JS errors
-  if (url.pathname === '/' || url.pathname === '/index.html' || url.pathname.endsWith('.js')) {
+  // Network ONLY for HTML & JS bundle files to ensure zero stale JS bundle errors
+  if (url.pathname === '/' || url.pathname === '/index.html' || url.pathname.endsWith('.js') || url.pathname.includes('/assets/')) {
     event.respondWith(
-      fetch(request)
-        .then((response) => {
-          if (response && response.status === 200) {
-            const responseClone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
-          }
-          return response;
-        })
-        .catch(() => caches.match(request) || caches.match('/'))
+      fetch(request).catch(() => caches.match(request))
     );
     return;
   }
