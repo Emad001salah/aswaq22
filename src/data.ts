@@ -215,3 +215,111 @@ export const SUB_CATEGORIES: Record<string, { id: string; nameAr: string; nameEn
 export const INITIAL_USERS: User[] = [];
 export const INITIAL_REVIEWS: any[] = [];
 export const INITIAL_ADS: Ad[] = [];
+
+export const BRANDS_AND_MODELS: Record<string, { brandAr: string; brandEn: string; models: { id: string; nameAr: string; nameEn: string }[] }[]> = {
+  cars: [
+    {
+      brandAr: 'تويوتا',
+      brandEn: 'Toyota',
+      models: [
+        { id: 'camry', nameAr: 'كامري', nameEn: 'Camry' },
+        { id: 'corolla', nameAr: 'كورولا', nameEn: 'Corolla' },
+        { id: 'land_cruiser', nameAr: 'لاندكروزر', nameEn: 'Land Cruiser' },
+        { id: 'hilux', nameAr: 'هايلوكس', nameEn: 'Hilux' },
+        { id: 'prado', nameAr: 'برادو', nameEn: 'Prado' },
+        { id: 'yaris', nameAr: 'ياريس', nameEn: 'Yaris' },
+      ]
+    },
+    {
+      brandAr: 'هونداي',
+      brandEn: 'Hyundai',
+      models: [
+        { id: 'elantra', nameAr: 'إلنترا', nameEn: 'Elantra' },
+        { id: 'sonata', nameAr: 'سوناتا', nameEn: 'Sonata' },
+        { id: 'tucson', nameAr: 'توسان', nameEn: 'Tucson' },
+        { id: 'accent', nameAr: 'أكسنت', nameEn: 'Accent' },
+        { id: 'santa_fe', nameAr: 'سانتافي', nameEn: 'Santa Fe' },
+      ]
+    },
+    {
+      brandAr: 'مرسيدس',
+      brandEn: 'Mercedes-Benz',
+      models: [
+        { id: 's_class', nameAr: 'الفئة S', nameEn: 'S-Class' },
+        { id: 'e_class', nameAr: 'الفئة E', nameEn: 'E-Class' },
+        { id: 'c_class', nameAr: 'الفئة C', nameEn: 'C-Class' },
+        { id: 'g_class', nameAr: 'جي كلاس (G-Class)', nameEn: 'G-Class' },
+      ]
+    },
+    {
+      brandAr: 'نيسان',
+      brandEn: 'Nissan',
+      models: [
+        { id: 'patrol', nameAr: 'باترول', nameEn: 'Patrol' },
+        { id: 'altima', nameAr: 'ألتيمة', nameEn: 'Altima' },
+        { id: 'sunny', nameAr: 'صني', nameEn: 'Sunny' },
+        { id: 'pathfinder', nameAr: 'باثفايندر', nameEn: 'Pathfinder' },
+      ]
+    },
+  ],
+  phones: [
+    {
+      brandAr: 'أبل',
+      brandEn: 'Apple',
+      models: [
+        { id: 'iphone_15_pro_max', nameAr: 'آيفون 15 بروماكس', nameEn: 'iPhone 15 Pro Max' },
+        { id: 'iphone_15_pro', nameAr: 'آيفون 15 برو', nameEn: 'iPhone 15 Pro' },
+        { id: 'iphone_14_pro_max', nameAr: 'آيفون 14 بروماكس', nameEn: 'iPhone 14 Pro Max' },
+        { id: 'iphone_13_pro_max', nameAr: 'آيفون 13 بروماكس', nameEn: 'iPhone 13 Pro Max' },
+      ]
+    },
+    {
+      brandAr: 'سامسونج',
+      brandEn: 'Samsung',
+      models: [
+        { id: 'galaxy_s24_ultra', nameAr: 'جالاكسي S24 ألترا', nameEn: 'Galaxy S24 Ultra' },
+        { id: 'galaxy_s23_ultra', nameAr: 'جالاكسي S23 ألترا', nameEn: 'Galaxy S23 Ultra' },
+        { id: 'galaxy_z_fold5', nameAr: 'جالاكسي Z فولد 5', nameEn: 'Galaxy Z Fold 5' },
+      ]
+    }
+  ]
+};
+
+export function buildTaxonomyBreadcrumbs(category?: string, subcategory?: string, brand?: string, model?: string, isRtl: boolean = true) {
+  const breadcrumbs: { label: string; url: string }[] = [
+    { label: isRtl ? 'الرئيسية' : 'Home', url: '/' }
+  ];
+
+  if (category) {
+    const catObj = CATEGORIES.find(c => c.id === category);
+    breadcrumbs.push({
+      label: catObj ? (isRtl ? catObj.nameAr : catObj.nameEn) : category,
+      url: `/c/${category}`
+    });
+  }
+
+  if (category && subcategory) {
+    const subList = SUB_CATEGORIES[category] || [];
+    const subObj = subList.find(s => s.id === subcategory);
+    breadcrumbs.push({
+      label: subObj ? (isRtl ? subObj.nameAr : subObj.nameEn) : subcategory,
+      url: `/c/${category}/${subcategory}`
+    });
+  }
+
+  if (brand) {
+    breadcrumbs.push({
+      label: brand,
+      url: `/c/${category}/${subcategory || 'all'}/${encodeURIComponent(brand)}`
+    });
+  }
+
+  if (brand && model) {
+    breadcrumbs.push({
+      label: model,
+      url: `/c/${category}/${subcategory || 'all'}/${encodeURIComponent(brand)}/${encodeURIComponent(model)}`
+    });
+  }
+
+  return breadcrumbs;
+}
