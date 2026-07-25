@@ -313,14 +313,11 @@ function WebcamStreamPlayer({
               pcsRef.current.set(viewerId, pc);
               setViewerCount(prev => prev + 1);
 
-              // Add tracks with strict sendonly transceiver direction
+              // Add local stream tracks to peer connection
               stream.getTracks().forEach(track => {
-                try {
-                  pc.addTransceiver(track, { direction: 'sendonly', streams: [stream] });
-                } catch {
-                  pc.addTrack(track, stream);
-                }
+                pc.addTrack(track, stream);
               });
+
 
 
               pc.onicecandidate = (event) => {
@@ -598,15 +595,8 @@ function WebcamStreamPlayer({
           rtcpMuxPolicy: 'require',
         });
 
-        // Enforce recvonly on viewer so viewer never transmits microphone audio back
-        try {
-          pc.addTransceiver('video', { direction: 'recvonly' });
-          pc.addTransceiver('audio', { direction: 'recvonly' });
-        } catch (e) {
-          console.warn("[Viewer] Transceiver recvonly warning:", e);
-        }
-
         pcRef.current = pc;
+
 
 
         pc.ontrack = (event) => {
