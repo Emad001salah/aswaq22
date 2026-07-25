@@ -81,5 +81,49 @@ export class CreateAdDto {
   @IsOptional()
   @IsString()
   userId?: string;
+
+  // Category Specific Dynamic Specification Fields (Stage 2)
+  @IsOptional()
+  customFieldValues?: Record<string, any>;
+
+  @IsOptional()
+  @IsNumber()
+  rooms?: number;
+
+  @IsOptional()
+  @IsString()
+  propertyType?: string;
+
+  @IsOptional()
+  @IsArray()
+  amenities?: string[];
+
+  @IsOptional()
+  @IsString()
+  make?: string;
+
+  @IsOptional()
+  @IsNumber()
+  modelYear?: number;
+
+  @IsOptional()
+  @IsString()
+  transmission?: string;
+
+  @IsOptional()
+  @IsString()
+  fuelType?: string;
+
+  @IsOptional()
+  @IsNumber()
+  kilometers?: number;
+
+  @IsOptional()
+  @IsString()
+  brand?: string;
+
+  @IsOptional()
+  @IsString()
+  condition?: string;
   // NOTE: `status` is intentionally excluded — determined server-side from user role only.
 }
