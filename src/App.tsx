@@ -1891,14 +1891,25 @@ useEffect(() => {
       };
 
 
+      const handleSettingsUpdated = (newSettings: any) => {
+        if (newSettings) {
+          setPlatformSettings(newSettings);
+          try {
+            localStorage.setItem('aswaq_platform_settings', JSON.stringify(newSettings));
+          } catch (e) {}
+        }
+      };
+
       socket.on("new-message", handleNewMessage);
       socket.on("new-notification", handleNewNotification);
       socket.on("live-stream-notification", handleLiveStreamNotification);
+      socket.on("platform_settings_updated", handleSettingsUpdated);
 
       return () => {
         socket.off("new-message", handleNewMessage);
         socket.off("new-notification", handleNewNotification);
         socket.off("live-stream-notification", handleLiveStreamNotification);
+        socket.off("platform_settings_updated", handleSettingsUpdated);
       };
     }
   }, [currentUser?.id]);

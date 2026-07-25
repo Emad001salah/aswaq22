@@ -2466,20 +2466,34 @@ Sitemap: ${BASE_URL}/sitemap.xml
     this.app.patch('/api/admin/settings', ...adminAccessGuards, async (req, res) => {
       try {
         const currentSettings = await getPlatformSettings();
-        const logoUrl = (req.body.logoUrl && req.body.logoUrl.trim()) ? req.body.logoUrl : currentSettings.logoUrl;
+        let logoUrl = currentSettings.logoUrl;
+        if (req.body.logoUrl && typeof req.body.logoUrl === 'string' && req.body.logoUrl.trim() && !req.body.logoUrl.startsWith('data:')) {
+          logoUrl = req.body.logoUrl.trim();
+        }
         const updatedSettings = { ...currentSettings, ...req.body, logoUrl };
         await savePlatformSettings(updatedSettings);
+        if (this.io) {
+          this.io.emit('platform_settings_updated', updatedSettings);
+        }
         res.json({ success: true, ...updatedSettings });
       } catch (err: any) {
         res.status(500).json({ error: 'Save failed', message: err.message });
       }
     });
 
-
     this.app.put('/api/admin/settings', ...adminAccessGuards, async (req, res) => {
       try {
-        await savePlatformSettings(req.body);
-        res.json({ success: true, ...req.body });
+        const currentSettings = await getPlatformSettings();
+        let logoUrl = currentSettings.logoUrl;
+        if (req.body.logoUrl && typeof req.body.logoUrl === 'string' && req.body.logoUrl.trim() && !req.body.logoUrl.startsWith('data:')) {
+          logoUrl = req.body.logoUrl.trim();
+        }
+        const updatedSettings = { ...currentSettings, ...req.body, logoUrl };
+        await savePlatformSettings(updatedSettings);
+        if (this.io) {
+          this.io.emit('platform_settings_updated', updatedSettings);
+        }
+        res.json({ success: true, ...updatedSettings });
       } catch (err: any) {
         res.status(500).json({ error: 'Save failed', message: err.message });
       }
@@ -2493,8 +2507,6 @@ Sitemap: ${BASE_URL}/sitemap.xml
       }
       try {
         const fs = await import('fs');
-        const { isFeatureEnabled } = await import('./lib/feature-flags.ts');
-        const { storageService } = await import('./services/storage.service.ts');
 
         const uploadsDir = path.join(process.cwd(), 'uploads');
         if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
@@ -2512,8 +2524,11 @@ Sitemap: ${BASE_URL}/sitemap.xml
         currentSettings.logoUrl = logoUrl;
         await savePlatformSettings(currentSettings);
 
-        res.json({ success: true, logoUrl });
+        if (this.io) {
+          this.io.emit('platform_settings_updated', currentSettings);
+        }
 
+        res.json({ success: true, logoUrl });
 
       } catch (err: any) {
         logger.error({ message: 'Failed uploading logo', error: err.message });

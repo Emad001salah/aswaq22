@@ -705,15 +705,6 @@ function AdminPanelInner({
     if (!file) return;
     setLogoUploading(true);
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const dataUrl = e.target?.result as string;
-      if (dataUrl) {
-        setSettings((prev: any) => ({ ...prev, logoUrl: dataUrl }));
-      }
-    };
-    reader.readAsDataURL(file);
-
     try {
       const fd = new FormData();
       fd.append('logo', file);
@@ -726,7 +717,7 @@ function AdminPanelInner({
         if (data.logoUrl) {
           setSettings((prev: any) => ({ ...prev, logoUrl: data.logoUrl }));
         }
-        addToast?.('تم رفع الشعار', 'تم رفع وحفظ الشعار بنجاح ✅', 'success');
+        addToast?.('تم رفع الشعار', 'تم رفع وحفظ الشعار على المنصة بنجاح ✅', 'success');
         onSettingsSaved?.();
       } else {
         addToast?.('خطأ', 'فشل حفظ الشعار على الخادم', 'error');
