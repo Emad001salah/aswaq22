@@ -360,12 +360,12 @@ export const AdsController = () => {
 
     try {
       const result = await prisma.$transaction(async (tx) => {
-        // Ensure category exists before creating ad to prevent FK constraint failure
-        const catRaw = dto.category || 'general';
-        const catSlug = catRaw.toLowerCase();
+        // Resolve category — must already exist in DB; never auto-create to prevent ghost categories
+        const catRaw = dto.category || '';
+        const catSlug = catRaw.toLowerCase().trim();
         const catUuid = uuidRegex.test(catRaw) ? catRaw : getDeterministicUuid(catSlug);
 
-        let category = await tx.category.findFirst({
+        const category = await tx.category.findFirst({
           where: {
             OR: [
               { id: catUuid },
@@ -376,45 +376,36 @@ export const AdsController = () => {
         });
 
         if (!category) {
-          category = await tx.category.create({
-            data: {
-              id: catUuid,
-              nameAr: catRaw,
-              nameEn: catRaw,
-              icon: 'folder'
-            }
-          });
+          // Return a 400 — never silently create a ghost category with wrong Arabic name
+          throw Object.assign(
+            new Error(`القسم المحدد غير موجود: "${catRaw}". يرجى اختيار قسم صحيح من القائمة.`),
+            { statusCode: 400 }
+          );
         }
         const categoryId = category.id;
 
-        // Ensure subcategory exists if provided
+        // Resolve subcategory — only look up, never auto-create
         let subCategoryId: string | null = null;
         if (dto.subCategory) {
           const subRaw = dto.subCategory;
-          const subSlug = subRaw.toLowerCase();
+          const subSlug = subRaw.toLowerCase().trim();
           const subUuid = uuidRegex.test(subRaw) ? subRaw : getDeterministicUuid(subSlug);
 
-          let subCategory = await tx.subCategory.findFirst({
+          const subCategory = await tx.subCategory.findFirst({
             where: {
               OR: [
                 { id: subUuid },
                 { nameEn: { equals: subRaw, mode: 'insensitive' } },
                 { nameAr: { equals: subRaw, mode: 'insensitive' } }
-              ]
+              ],
+              categoryId  // must belong to the resolved category
             }
           });
 
-          if (!subCategory) {
-            subCategory = await tx.subCategory.create({
-              data: {
-                id: subUuid,
-                categoryId: categoryId,
-                nameAr: subRaw,
-                nameEn: subRaw
-              }
-            });
+          // Subcategory is optional — silently ignore unknown values (no ghost creation)
+          if (subCategory) {
+            subCategoryId = subCategory.id;
           }
-          subCategoryId = subCategory.id;
         }
 
         // Create the core Ad
@@ -516,7 +507,9 @@ export const AdsController = () => {
         ad: mappedAd
       });
     } catch (e: any) {
-      res.status(500).json({ error: 'Ad Creation Failed', message: e.message });
+      // Propagate known validation errors (e.g. invalid category) with their status code
+      const status = e.statusCode && e.statusCode >= 400 && e.statusCode < 500 ? e.statusCode : 500;
+      res.status(status).json({ error: status === 400 ? 'Bad Request' : 'Ad Creation Failed', message: e.message });
     }
   });
 
