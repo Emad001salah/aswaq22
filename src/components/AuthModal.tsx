@@ -413,10 +413,10 @@ export default function AuthModal({ isOpen, onClose, onSuccess, isDark }: AuthMo
             <X className="w-4 h-4" />
           </button>
 
-          <div className="p-4 sm:p-7 pt-5 space-y-5 sm:space-y-6">
+          <div className="p-5 sm:p-8 pt-8 sm:pt-10 space-y-5 sm:space-y-6">
             {/* Header */}
-            <div className="text-center space-y-1 pt-2">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-emerald-500 via-teal-500 to-emerald-600 shadow-xl shadow-emerald-500/25 flex items-center justify-center mx-auto mb-3 sm:mb-4 overflow-hidden p-1">
+            <div className="text-center space-y-1.5 pt-3">
+              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-emerald-500 via-teal-500 to-emerald-600 shadow-xl shadow-emerald-500/25 flex items-center justify-center mx-auto mb-3 sm:mb-4 overflow-hidden p-1.5 ring-4 ring-emerald-500/10">
                 <img
                   src={platformSettings?.logoUrl || '/aswaq-icon.png'}
                   alt="Logo"
@@ -426,6 +426,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess, isDark }: AuthMo
                   }}
                 />
               </div>
+
 
 
               <h2 className="text-xl sm:text-2xl font-black text-white">

@@ -613,11 +613,11 @@ const AuthStep = ({
       <div id="wf-recaptcha" />
 
       {/* Card */}
-      <div className="bg-zinc-900/70 border border-zinc-800/80 backdrop-blur-xl rounded-[2.5rem] p-8 shadow-2xl space-y-6">
+      <div className="bg-zinc-900/70 border border-zinc-800/80 backdrop-blur-xl rounded-[2.5rem] p-6 sm:p-8 pt-8 sm:pt-10 shadow-2xl space-y-6">
 
         {/* Header */}
-        <div className="text-center space-y-1">
-          <div className="w-14 h-14 rounded-2xl bg-emerald-500/15 border border-emerald-500/20 flex items-center justify-center mx-auto mb-3 overflow-hidden p-1">
+        <div className="text-center space-y-1.5 pt-2">
+          <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-emerald-500/15 border border-emerald-500/20 flex items-center justify-center mx-auto mb-3 overflow-hidden p-1.5 ring-4 ring-emerald-500/10">
             <img
               src={platformSettings?.logoUrl || '/aswaq-icon.png'}
               alt="Logo"
@@ -627,6 +627,7 @@ const AuthStep = ({
               }}
             />
           </div>
+
 
           <h2 className="text-2xl font-black text-white">
             {mode === 'login' ? 'مرحباً بعودتك 👋' : 'انضم إلى أسواق 🚀'}
