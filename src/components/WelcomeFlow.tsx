@@ -775,16 +775,17 @@ const AuthStep = ({
                 {phoneStep === 'input' ? (
                   <motion.div key="phone-input" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
                     <div>
-                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2 block px-1">رقم الهاتف</label>
-                      <div className="flex gap-2">
+                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-1.5 block px-1 text-right">رقم الهاتف</label>
+                      <div className="relative flex items-center bg-slate-950/90 border border-zinc-800 hover:border-zinc-700 focus-within:border-emerald-500/80 rounded-2xl overflow-hidden transition-all shadow-inner w-full" dir="ltr">
                         <select
                           value={countryCode}
                           onChange={(e) => setCountryCode(e.target.value)}
-                          className="bg-zinc-950/70 border border-zinc-800 rounded-2xl px-3 py-4 text-sm text-white outline-none focus:border-emerald-500/70 transition-all w-28 shrink-0"
+                          className="bg-zinc-900/90 text-emerald-400 font-bold text-xs sm:text-sm py-3.5 px-3 border-r border-zinc-800 outline-none cursor-pointer appearance-none shrink-0 text-center"
+                          style={{ minWidth: '90px' }}
                         >
-                          {COUNTRIES.map((c) => (
-                            <option key={c.dial_code + c.nameAr} value={c.dial_code}>
-                              {c.dial_code} {c.nameAr}
+                          {COUNTRIES.map((c, i) => (
+                            <option key={`${c.dial_code}-${i}`} value={c.dial_code} className="bg-slate-900 text-white p-2">
+                              {c.dial_code} ({c.nameAr})
                             </option>
                           ))}
                         </select>
@@ -792,12 +793,13 @@ const AuthStep = ({
                           type="tel"
                           placeholder="7xxxxxxxx"
                           value={phone}
-                          onChange={(e) => setPhone(e.target.value)}
+                          onChange={(e) => setPhone(e.target.value.replace(/[^0-9]/g, ''))}
                           dir="ltr"
-                          className="flex-1 bg-zinc-950/70 border border-zinc-800 hover:border-zinc-700 focus:border-emerald-500/70 rounded-2xl py-4 px-4 text-sm text-white outline-none transition-all font-mono"
+                          className="w-full flex-1 bg-transparent py-3.5 px-3 sm:px-4 text-xs sm:text-sm text-white font-mono outline-none placeholder:text-zinc-600 border-none"
                         />
                       </div>
                     </div>
+
                     {error && <ErrorBanner msg={error} />}
                     {successMsg && <SuccessBanner msg={successMsg} />}
 
