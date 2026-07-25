@@ -45,9 +45,10 @@ export async function getFeaturesConfig(): Promise<FeaturesConfig> {
     lastConfigFetch = now;
     return cachedConfig;
   } catch (err) {
-    console.warn('[phoneAuth] Failed to load config, falling back to legacy settings:', err);
-    return { firebasePhoneAuth: false, r2Storage: false };
+    console.warn('[phoneAuth] Failed to load config, defaulting to active Firebase Phone Auth:', err);
+    return { firebasePhoneAuth: true, r2Storage: false };
   }
+
 }
 
 /**

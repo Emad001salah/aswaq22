@@ -573,11 +573,8 @@ const AuthStep = ({
       setOtpSent(true);
       setPhoneStep('otp');
       setOtpCountdown(60);
-      if (result.devOtp) {
-        setSuccessMsg(`[وضع التطوير] رمز التحقق: ${result.devOtp} ✅`);
-      } else {
-        setSuccessMsg('تم إرسال رمز التحقق عبر SMS بنجاح ✅');
-      }
+      setSuccessMsg('تم إرسال رمز التحقق عبر رسالة قصيرة (SMS) إلى هاتفك ✅');
+
     } catch (e: any) {
       setError(e.message || 'فشل إرسال رمز التحقق');
     } finally { setLoading(false); }

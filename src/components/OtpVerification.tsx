@@ -38,11 +38,8 @@ export const OtpVerification: React.FC<OtpVerificationProps> = ({ phoneNumber: i
       }
       setCountdown(60);
       setStep('otp');
-      if (result.devOtp) {
-        setMessage(`[وضع التطوير] رمز التفعيل: ${result.devOtp} ✅`);
-      } else {
-        setMessage('تم إرسال رمز التفعيل بنجاح عبر الرسائل القصيرة (SMS) ✅');
-      }
+      setMessage('تم إرسال رمز التفعيل بنجاح عبر الرسائل القصيرة (SMS) إلى هاتفك ✅');
+
     } catch (err: any) {
       console.error('OTP sending error', err);
       setError(err.message || 'فشل إرسال كود التحقق. يرجى المحاولة لاحقاً.');

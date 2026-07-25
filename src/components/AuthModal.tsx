@@ -310,19 +310,13 @@ export default function AuthModal({ isOpen, onClose, onSuccess, isDark }: AuthMo
       const result = await sendPhoneOtp(fullPhone, recaptchaRef.current);
       if (result.confirmationResult) {
         confirmationRef.current = result.confirmationResult;
-        setDevOtp(null);
-        setOtpSent(true);
-        setPhoneStep('otp');
-        setOtpCountdown(120);
-        setSuccessMsg('تم إرسال رمز التحقق عبر SMS ✅');
-      } else if (result.devOtp) {
-        setDevOtp(result.devOtp);
-        setOtp(result.devOtp);
-        setOtpSent(true);
-        setPhoneStep('otp');
-        setOtpCountdown(120);
-        setSuccessMsg('رمز التحقق جاهز (وضع التطوير) ✅');
       }
+      setDevOtp(null);
+      setOtpSent(true);
+      setPhoneStep('otp');
+      setOtpCountdown(120);
+      setSuccessMsg('تم إرسال رمز التحقق عبر رسالة قصيرة (SMS) إلى هاتفك ✅');
+
     } catch (e: any) {
       console.warn('[Phone Auth] send error:', e.message);
       try { recaptchaRef.current?.clear(); } catch (_) {}
@@ -603,18 +597,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess, isDark }: AuthMo
                           <p className="text-sm font-black text-white mt-1 font-mono" dir="ltr">{countryCode}{phone}</p>
                         </div>
 
-                        {/* Dev OTP display box - auto-filled and shown clearly */}
-                        {devOtp && (
-                          <div
-                            className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-center cursor-pointer hover:bg-amber-500/20 transition-all"
-                            onClick={() => setOtp(devOtp)}
-                            title="انقر لملء الرمز تلقائياً"
-                          >
-                            <p className="text-[10px] font-black text-amber-500/70 uppercase tracking-widest mb-1">🛠️ وضع التطوير — رمز التحقق</p>
-                            <p className="text-3xl font-black text-amber-400 font-mono tracking-[0.4em]">{devOtp}</p>
-                            <p className="text-[10px] text-amber-500/60 mt-1">انقر لملء الرمز تلقائياً</p>
-                          </div>
-                        )}
+
 
                         <div>
                           <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2 block px-1">رمز التحقق (6 أرقام)</label>

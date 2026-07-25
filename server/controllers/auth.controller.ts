@@ -66,10 +66,11 @@ export function AuthController() {
     ]);
 
     res.json({
-      firebasePhoneAuth: firebasePhone,
+      firebasePhoneAuth: true, // Always enforce Firebase Phone Auth for production SMS OTP
       r2Storage: r2Storage,
     });
   });
+
 
   router.post('/register', validationMiddleware(RegisterUserDto), async (req: Request, res: Response) => {
     const { email, name, phone, password, role } = req.body;
@@ -566,12 +567,21 @@ export function AuthController() {
         });
       }
 
-      // If Twilio SMS could not be sent (or in dev/fallback mode), return the OTP for seamless login
+      const isProd = process.env.NODE_ENV === 'production';
+      if (isProd) {
+        return res.status(500).json({
+          error: 'SMS Delivery Failed',
+          message: 'تعذر إرسال رسالة SMS إلى رقم الهاتف. يرجى استخدام التحقق عبر Firebase.'
+        });
+      }
+
+      // If in development mode, return the OTP for local test automation
       return res.json({
         success: true,
         devOtp: code,
-        message: 'تم إرسال رمز التحقق بنجاح.'
+        message: 'تم إرسال رمز التحقق بنجاح. (وضع التطوير)'
       });
+
     } catch (e: any) {
       res.status(500).json({ error: 'OTP Send Error', message: e.message });
     }
