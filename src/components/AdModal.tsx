@@ -1306,6 +1306,77 @@ const sessionViewedAdsSet = new Set<string>();
             </div>
           </div>
 
+          {/* Stage 5: Unified Specifications Matrix Table (جدول المواصفات الفنية الشامل) */}
+          <div className="space-y-3 pt-3">
+            <h4 className={`text-xs font-black uppercase tracking-wider flex items-center gap-1.5 ${isDark ? 'text-slate-300' : 'text-slate-800'}`}>
+              <FileText className="w-4 h-4 text-emerald-500" />
+              <span>مصفوفة المواصفات والبيانات الفنية الموثقة</span>
+            </h4>
+
+            <div className={`overflow-hidden rounded-2xl border ${isDark ? 'border-slate-800 bg-slate-950/40' : 'border-slate-200 bg-slate-50/50'}`}>
+              <table className="w-full text-right text-xs">
+                <tbody>
+                  <tr className={`border-b ${isDark ? 'border-slate-800/60' : 'border-slate-200/60'}`}>
+                    <td className="p-3 font-bold text-slate-500 w-1/3">رقم الإعلان المرجعي</td>
+                    <td className={`p-3 font-mono font-bold ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>{ad.id}</td>
+                  </tr>
+                  <tr className={`border-b ${isDark ? 'border-slate-800/60' : 'border-slate-200/60'}`}>
+                    <td className="p-3 font-bold text-slate-500">التصنيف والقسم</td>
+                    <td className={`p-3 font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{categoryName} {ad.subCategory ? `> ${ad.subCategory}` : ''}</td>
+                  </tr>
+                  <tr className={`border-b ${isDark ? 'border-slate-800/60' : 'border-slate-200/60'}`}>
+                    <td className="p-3 font-bold text-slate-500">الموقع والجغرافيا</td>
+                    <td className={`p-3 font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{cityName} {districtName ? `- ${districtName}` : ''}</td>
+                  </tr>
+                  <tr className={`border-b ${isDark ? 'border-slate-800/60' : 'border-slate-200/60'}`}>
+                    <td className="p-3 font-bold text-slate-500">السعر المطلوب</td>
+                    <td className={`p-3 font-extrabold ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>{ad.price?.toLocaleString()} {isRtl ? getCurrencyAr(ad.currency) : ad.currency}</td>
+                  </tr>
+                  {ad.make && (
+                    <tr className={`border-b ${isDark ? 'border-slate-800/60' : 'border-slate-200/60'}`}>
+                      <td className="p-3 font-bold text-slate-500">الماركة/الشركة</td>
+                      <td className={`p-3 font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{ad.make}</td>
+                    </tr>
+                  )}
+                  {ad.modelYear && (
+                    <tr className={`border-b ${isDark ? 'border-slate-800/60' : 'border-slate-200/60'}`}>
+                      <td className="p-3 font-bold text-slate-500">سنة الصنع/الموديل</td>
+                      <td className={`p-3 font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{ad.modelYear}</td>
+                    </tr>
+                  )}
+                  {ad.transmission && (
+                    <tr className={`border-b ${isDark ? 'border-slate-800/60' : 'border-slate-200/60'}`}>
+                      <td className="p-3 font-bold text-slate-500">ناقل الحركة</td>
+                      <td className={`p-3 font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{ad.transmission === 'automatic' ? 'أوتوماتيك' : 'يدوي'}</td>
+                    </tr>
+                  )}
+                  {ad.fuelType && (
+                    <tr className={`border-b ${isDark ? 'border-slate-800/60' : 'border-slate-200/60'}`}>
+                      <td className="p-3 font-bold text-slate-500">نوع الوقود</td>
+                      <td className={`p-3 font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{ad.fuelType}</td>
+                    </tr>
+                  )}
+                  {ad.kilometers && (
+                    <tr className={`border-b ${isDark ? 'border-slate-800/60' : 'border-slate-200/60'}`}>
+                      <td className="p-3 font-bold text-slate-500">المسافة المقطوعة</td>
+                      <td className={`p-3 font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{ad.kilometers.toLocaleString()} كم</td>
+                    </tr>
+                  )}
+                  {ad.condition && (
+                    <tr className={`border-b ${isDark ? 'border-slate-800/60' : 'border-slate-200/60'}`}>
+                      <td className="p-3 font-bold text-slate-500">حالة السلعة</td>
+                      <td className={`p-3 font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{ad.condition === 'new' ? 'جديد' : 'مستعمل ممتازة'}</td>
+                    </tr>
+                  )}
+                  <tr className={`border-b ${isDark ? 'border-slate-800/60' : 'border-slate-200/60'}`}>
+                    <td className="p-3 font-bold text-slate-500">تاريخ الإدراج بالنظام</td>
+                    <td className={`p-3 font-bold ${isDark ? 'text-slate-300' : 'text-slate-800'}`}>{new Date(ad.createdAt).toLocaleDateString('ar-YE', {year: 'numeric', month: 'numeric', day: 'numeric'})}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
           {/* Real Estate Specific Details Display */}
           {ad.category === 'realestate' && (
             <div className="space-y-3">
