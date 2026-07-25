@@ -313,10 +313,15 @@ function WebcamStreamPlayer({
               pcsRef.current.set(viewerId, pc);
               setViewerCount(prev => prev + 1);
 
-              // Add tracks to connection
+              // Add tracks with strict sendonly transceiver direction
               stream.getTracks().forEach(track => {
-                pc.addTrack(track, stream);
+                try {
+                  pc.addTransceiver(track, { direction: 'sendonly', streams: [stream] });
+                } catch {
+                  pc.addTrack(track, stream);
+                }
               });
+
 
               pc.onicecandidate = (event) => {
                 if (event.candidate) {
@@ -593,7 +598,16 @@ function WebcamStreamPlayer({
           rtcpMuxPolicy: 'require',
         });
 
+        // Enforce recvonly on viewer so viewer never transmits microphone audio back
+        try {
+          pc.addTransceiver('video', { direction: 'recvonly' });
+          pc.addTransceiver('audio', { direction: 'recvonly' });
+        } catch (e) {
+          console.warn("[Viewer] Transceiver recvonly warning:", e);
+        }
+
         pcRef.current = pc;
+
 
         pc.ontrack = (event) => {
           console.log("[Viewer] Received broadcast track!", event.track.kind, event.streams);
@@ -965,7 +979,8 @@ function WebcamStreamPlayer({
 
       {/* Side-Rail Broadcaster Controls (Portal-like floating on top of everything within player) */}
       {isBroadcaster && !isOffline && (
-        <div className={`absolute top-36 z-[9999] flex flex-col gap-4 ${isRtl ? 'right-6' : 'left-6'} items-center pointer-events-auto`}>
+        <div className={`absolute top-28 z-[9999] flex flex-col gap-3.5 ${isRtl ? 'left-4' : 'right-4'} items-center pointer-events-auto`}>
+
           <AnimatePresence>
             {showFilters && (
               <motion.div
@@ -1208,7 +1223,8 @@ function WebcamStreamPlayer({
 
       {/* Stream Badges Overlay */}
       {!statusText && (
-        <div className={`absolute top-28 z-20 flex flex-col gap-1.5 ${isRtl ? 'left-4 items-start' : 'right-4 items-end'}`}>
+        <div className={`absolute top-16 z-20 flex flex-col gap-1.5 ${isRtl ? 'left-4 items-start' : 'right-4 items-end'}`}>
+
           <div className="flex items-center gap-1.5 bg-rose-600 text-white font-black px-4 py-1.5 rounded-full text-[10px] shadow-[0_0_20px_rgba(225,29,72,0.4)] animate-pulse border border-white/20 backdrop-blur-md">
             <span className="w-2 h-2 rounded-full bg-white animate-ping" />
             <span>{isRtl ? 'بث مباشر حقيقي 🔴' : 'Real-time Live 🔴'}</span>
