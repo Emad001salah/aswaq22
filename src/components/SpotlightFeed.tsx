@@ -977,249 +977,104 @@ function WebcamStreamPlayer({
         </div>
       )}
 
-      {/* Side-Rail Broadcaster Controls (Portal-like floating on top of everything within player) */}
+      {/* Sleek Top-Center Horizontal Broadcaster Toolbar (Zero overlap with side action buttons or metadata) */}
       {isBroadcaster && !isOffline && (
-        <div className={`absolute top-28 z-[9999] flex flex-col gap-3.5 ${isRtl ? 'left-4' : 'right-4'} items-center pointer-events-auto`}>
-
-          <AnimatePresence>
-            {showFilters && (
-              <motion.div
-                initial={{ opacity: 0, y: 10, scale: 0.9 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 10, scale: 0.9 }}
-                className="bg-slate-900/90 backdrop-blur-xl border border-white/10 rounded-2xl p-2 flex flex-col gap-1 shadow-2xl min-w-[140px]"
-              >
-                {FILTERS.map((f) => (
-                  <button
-                    key={f.id}
-                    onClick={() => handleFilterSelect(f.id)}
-                    className={`px-3 py-2 rounded-xl text-[11px] font-black transition-all flex items-center justify-between gap-4 ${
-                      activeFilter === f.id 
-                        ? 'bg-emerald-500 text-slate-950 shadow-inner' 
-                        : 'text-slate-300 hover:bg-white/5'
-                    }`}
-                  >
-                    <span>{isRtl ? f.label : f.labelEn}</span>
-                    {activeFilter === f.id && <CheckCircle2 className="w-3 h-3" />}
-                  </button>
-                ))}
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          <AnimatePresence>
-            {showBrightness && (
-              <motion.div
-                initial={{ opacity: 0, x: isRtl ? -10 : 10, scale: 0.9 }}
-                animate={{ opacity: 1, x: 0, scale: 1 }}
-                exit={{ opacity: 0, x: isRtl ? -10 : 10, scale: 0.9 }}
-                className="bg-slate-900/90 backdrop-blur-xl border border-white/10 rounded-2xl p-4 flex flex-col gap-3 shadow-2xl w-48"
-              >
-                <div className="flex items-center justify-between">
-                   <Sun className="w-4 h-4 text-amber-400" />
-                   <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">{isRtl ? 'السطوع' : 'Brightness'}</span>
-                   <span className="text-[10px] font-mono text-emerald-400">{brightness}%</span>
-                </div>
-                <input 
-                  type="range" 
-                  min="50" 
-                  max="200" 
-                  value={brightness} 
-                  onChange={(e) => setBrightness(parseInt(e.target.value))}
-                  className="w-full accent-emerald-500 h-1 bg-white/10 rounded-full appearance-none cursor-pointer"
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
-          
-          <div className="flex flex-col gap-3.5 p-2 bg-black/40 backdrop-blur-3xl rounded-full border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
-            {/* 🔴 Prominent Red Stop Stream Button */}
-            <button
-              type="button"
-              onClick={() => {
-                // End broadcast immediately
-                socket.emit('leave-stream', { streamId: ad.id, role: 'broadcaster' });
-                
-                // Capture real snapshot frame from camera feed
-                let snapshotUrl: string | null = null;
-                try {
-                  if (videoRef.current && videoRef.current.videoWidth > 0 && videoRef.current.videoHeight > 0) {
-                    const canvas = document.createElement('canvas');
-                    canvas.width = videoRef.current.videoWidth;
-                    canvas.height = videoRef.current.videoHeight;
-                    const ctx = canvas.getContext('2d');
-                    if (ctx) {
-                      ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-                      snapshotUrl = canvas.toDataURL('image/jpeg', 0.85);
-                    }
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-[9999] flex items-center gap-2.5 px-3 py-2 bg-slate-950/90 backdrop-blur-2xl rounded-full border border-white/20 shadow-[0_10px_30px_rgba(0,0,0,0.8)] pointer-events-auto">
+          {/* 🔴 Prominent Red Stop Stream Button */}
+          <button
+            type="button"
+            onClick={() => {
+              // End broadcast immediately
+              socket.emit('leave-stream', { streamId: ad.id, role: 'broadcaster' });
+              
+              // Capture real snapshot frame from camera feed
+              let snapshotUrl: string | null = null;
+              try {
+                if (videoRef.current && videoRef.current.videoWidth > 0 && videoRef.current.videoHeight > 0) {
+                  const canvas = document.createElement('canvas');
+                  canvas.width = videoRef.current.videoWidth;
+                  canvas.height = videoRef.current.videoHeight;
+                  const ctx = canvas.getContext('2d');
+                  if (ctx) {
+                    ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+                    snapshotUrl = canvas.toDataURL('image/jpeg', 0.85);
                   }
-                } catch (e) {
-                  console.error("Failed to capture webcam snapshot:", e);
                 }
+              } catch (e) {
+                console.error("Failed to capture webcam snapshot:", e);
+              }
 
-                const parsedVid = parseVideoUrl(ad.videoUrl).videoUrl;
-                const isWebcam = parsedVid === 'webcam' || parsedVid === 'camera';
-                
-                const archiveVideoUrl = isWebcam 
-                  ? "https://player.vimeo.com/external/434045526.sd.mp4?s=c19c968f44ff531ae7e77b105021e141aabccb8c&profile_id=165&oauth2_token_id=57447761"
-                  : ad.videoUrl;
+              const parsedVid = parseVideoUrl(ad.videoUrl).videoUrl;
+              const isWebcam = parsedVid === 'webcam' || parsedVid === 'camera';
+              
+              const archiveVideoUrl = isWebcam 
+                ? "https://player.vimeo.com/external/434045526.sd.mp4?s=c19c968f44ff531ae7e77b105021e141aabccb8c&profile_id=165&oauth2_token_id=57447761"
+                : ad.videoUrl;
 
-                const parsedUrl = `${archiveVideoUrl}||none||${ad.description || ''}||${ad.city || ''}||${ad.category || ''}`;
+              const parsedUrl = `${archiveVideoUrl}||none||${ad.description || ''}||${ad.city || ''}||${ad.category || ''}`;
 
-                // Update status in backend using authenticated apiFetch with real snapshot
-                apiFetch(`/api/promo/${ad.id}`, {
-                  method: 'PATCH',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ 
-                    title: ad.title || '',
-                    videoUrl: parsedUrl,
-                    isLive: false,
-                    thumbnailUrl: snapshotUrl
-                  })
-                }).catch(() => null);
-
-                // Update local state so UI updates instantly
-                setIsOffline(true);
-                setIsBroadcaster(false);
-                if (onStreamEnded) {
-                  onStreamEnded(ad.id, archiveVideoUrl, snapshotUrl || '');
-                }
-
-                // Stop local media tracks
-                if (localStreamRef.current) {
-                  localStreamRef.current.getTracks().forEach(t => t.stop());
-                }
-              }}
-              className="w-12 h-12 rounded-full bg-rose-600 hover:bg-rose-500 text-white border-2 border-rose-400 flex items-center justify-center shadow-xl shadow-rose-600/60 animate-pulse transition-all active:scale-90 cursor-pointer"
-              title={isRtl ? 'إيقاف وإنهاء البث المباشر الآن ⏹️' : 'End Live Broadcast ⏹️'}
-            >
-              <Square className="w-5 h-5 fill-current text-white" />
-            </button>
-
-            <button
-              onClick={() => { setShowFilters(!showFilters); setShowBrightness(false); }}
-              className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 relative group overflow-hidden ${
-                showFilters ? 'bg-pink-600 text-white scale-110 shadow-lg shadow-pink-600/30' : 'bg-slate-900/40 text-white border border-white/5 hover:bg-slate-900/60'
-              }`}
-            >
-              <Palette className={`w-6 h-6 transition-transform duration-500 ${showFilters ? 'rotate-12' : 'group-hover:rotate-12'}`} />
-            </button>
-
-            <button
-              onClick={() => { setShowBrightness(!showBrightness); setShowFilters(false); }}
-              className={`w-12 h-12 rounded-full flex items-center justify-center transition-all group overflow-hidden relative shadow-2xl ${
-                showBrightness ? 'bg-amber-500 text-slate-950 scale-110 shadow-lg shadow-amber-500/30' : 'bg-slate-950/60 text-white backdrop-blur-xl border border-white/10 shadow-xl'
-              }`}
-            >
-              <Sun className={`w-5.5 h-5.5 transition-transform duration-500 ${showBrightness ? 'scale-110' : 'group-hover:scale-90'}`} />
-            </button>
-
-            <button
-              onClick={() => setFacingMode(prev => prev === 'user' ? 'environment' : 'user')}
-              className="w-12 h-12 rounded-full flex items-center justify-center shadow-2xl transition-all bg-slate-950/60 text-white hover:bg-slate-800 backdrop-blur-xl border border-white/10 group active:scale-90"
-            >
-              <FlipHorizontal className="w-5.5 h-5.5 transition-transform duration-500 group-hover:rotate-180" />
-            </button>
-
-            {facingMode === 'environment' && (
-              <button
-                onClick={() => setTorch(!torch)}
-                className={`w-12 h-12 rounded-full flex items-center justify-center shadow-2xl transition-all border group active:scale-90 ${
-                  torch ? 'bg-amber-400 text-slate-950 border-amber-300 shadow-amber-400/30' : 'bg-slate-950/60 text-white border-white/10 backdrop-blur-xl'
-                }`}
-              >
-                <Zap className={`w-5.5 h-5.5 ${torch ? 'fill-current' : ''}`} />
-              </button>
-            )}
-
-            <button
-              onClick={() => onPinProductClick?.()}
-              className={`w-12 h-12 rounded-full flex items-center justify-center shadow-2xl transition-all border group active:scale-90 ${
-                pinnedProduct ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-emerald-500/30' : 'bg-slate-950/60 text-white border-white/10 backdrop-blur-xl'
-              }`}
-              title={isRtl ? 'تثبيت منتج مميز' : 'Pin a Product'}
-            >
-              <MapPin className={`w-5.5 h-5.5 ${pinnedProduct ? 'text-slate-950 animate-bounce' : 'text-emerald-400'}`} />
-            </button>
-
-            <button
-              onClick={() => {
-                // End broadcast immediately
-                socket.emit('leave-stream', { streamId: ad.id, role: 'broadcaster' });
-                
-                // Capture real snapshot frame from camera feed
-                let snapshotUrl: string | null = null;
-                try {
-                  if (videoRef.current && videoRef.current.videoWidth > 0 && videoRef.current.videoHeight > 0) {
-                    const canvas = document.createElement('canvas');
-                    canvas.width = videoRef.current.videoWidth;
-                    canvas.height = videoRef.current.videoHeight;
-                    const ctx = canvas.getContext('2d');
-                    if (ctx) {
-                      ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-                      snapshotUrl = canvas.toDataURL('image/jpeg', 0.85);
-                    }
-                  }
-                } catch (e) {
-                  console.error("Failed to capture webcam snapshot:", e);
-                }
-
-                const parsedVid = parseVideoUrl(ad.videoUrl).videoUrl;
-                const isWebcam = parsedVid === 'webcam' || parsedVid === 'camera';
-                
-                const archiveVideoUrl = isWebcam 
-                  ? "https://player.vimeo.com/external/434045526.sd.mp4?s=c19c968f44ff531ae7e77b105021e141aabccb8c&profile_id=165&oauth2_token_id=57447761"
-                  : ad.videoUrl;
-
-                const parsedUrl = `${archiveVideoUrl}||none||${ad.description || ''}||${ad.city || ''}||${ad.category || ''}`;
-
-                // Update status in backend using authenticated apiFetch with real snapshot
-                apiFetch(`/api/promo/${ad.id}`, {
-                  method: 'PATCH',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ 
-                    title: ad.title || '',
-                    videoUrl: parsedUrl,
-                    thumbnailUrl: snapshotUrl || getImageUrl(ad.images?.[0]),
-                    isLive: false
-                  })
+              apiFetch(`/api/promo/${ad.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                  title: ad.title || '',
+                  videoUrl: parsedUrl,
+                  isLive: false,
+                  thumbnailUrl: snapshotUrl
                 })
-                .then(async (res) => {
-                  if (!res.ok) {
-                    const err = await res.json().catch(() => ({}));
-                    console.error("Failed to update status on server:", err);
-                  }
-                  
-                  if (localStreamRef.current) {
-                    localStreamRef.current.getTracks().forEach(track => track.stop());
-                  }
+              }).catch(() => null);
 
-                  setStatusText(isRtl ? '🛑 جاري إنهاء البث وحفظ النسخة...' : '🛑 Ending broadcast and saving...');
-                  setIsOffline(true);
-                  
-                  setTimeout(() => {
-                    if (onStreamEnded) {
-                      onStreamEnded(ad.id, archiveVideoUrl, snapshotUrl || undefined);
-                    }
-                  }, 1000);
-                })
-                .catch(err => {
-                  console.error('Failed to update promo status', err);
-                  if (localStreamRef.current) {
-                    localStreamRef.current.getTracks().forEach(track => track.stop());
-                  }
-                  if (onStreamEnded) {
-                    onStreamEnded(ad.id, archiveVideoUrl, snapshotUrl || undefined);
-                  }
-                });
-              }}
-              className="w-14 h-14 rounded-full flex items-center justify-center transition-all duration-300 group overflow-hidden relative border-4 z-[9999] active:scale-95 shadow-2xl bg-rose-600 text-white border-white scale-110 shadow-[0_0_50px_rgba(225,29,72,0.6)]"
-            >
-              <StopCircle className="w-7 h-7" />
-            </button>
-          </div>
+              setIsOffline(true);
+              setIsBroadcaster(false);
+              if (onStreamEnded) {
+                onStreamEnded(ad.id, archiveVideoUrl, snapshotUrl || '');
+              }
+
+              if (localStreamRef.current) {
+                localStreamRef.current.getTracks().forEach(t => t.stop());
+              }
+            }}
+            className="w-9 h-9 rounded-full bg-rose-600 hover:bg-rose-500 text-white border border-rose-300 flex items-center justify-center shadow-lg shadow-rose-600/50 animate-pulse transition-all active:scale-90 cursor-pointer shrink-0"
+            title={isRtl ? 'إيقاف البث ⏹️' : 'End Live ⏹️'}
+          >
+            <Square className="w-4 h-4 fill-current text-white" />
+          </button>
+
+          <div className="w-px h-5 bg-white/20 shrink-0" />
+
+          {/* Filter button */}
+          <button
+            onClick={() => { setShowFilters(!showFilters); setShowBrightness(false); }}
+            className={`w-9 h-9 rounded-full flex items-center justify-center transition-all shrink-0 ${
+              showFilters ? 'bg-pink-600 text-white scale-105 shadow-md shadow-pink-600/40' : 'bg-slate-900/80 text-slate-200 hover:bg-slate-800 border border-white/10'
+            }`}
+            title={isRtl ? 'الفلاتر 🎨' : 'Filters 🎨'}
+          >
+            <Palette className="w-4 h-4" />
+          </button>
+
+          {/* Brightness button */}
+          <button
+            onClick={() => { setShowBrightness(!showBrightness); setShowFilters(false); }}
+            className={`w-9 h-9 rounded-full flex items-center justify-center transition-all shrink-0 ${
+              showBrightness ? 'bg-amber-500 text-slate-950 scale-105 shadow-md shadow-amber-500/40' : 'bg-slate-900/80 text-slate-200 hover:bg-slate-800 border border-white/10'
+            }`}
+            title={isRtl ? 'السطوع ☀️' : 'Brightness ☀️'}
+          >
+            <Sun className="w-4 h-4" />
+          </button>
+
+          {/* Flip Camera button */}
+          <button
+            onClick={() => setFacingMode(prev => prev === 'user' ? 'environment' : 'user')}
+            className="w-9 h-9 rounded-full flex items-center justify-center transition-all shrink-0 bg-slate-900/80 text-slate-200 hover:bg-slate-800 border border-white/10 active:scale-90"
+            title={isRtl ? 'قلب الكاميرا 🔄' : 'Flip Camera 🔄'}
+          >
+            <FlipHorizontal className="w-4 h-4" />
+          </button>
         </div>
       )}
+
 
       {/* Stream Badges Overlay */}
       {!statusText && (
