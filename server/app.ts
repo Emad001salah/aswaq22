@@ -1766,7 +1766,45 @@ export class App {
           // 2. Delete Notifications
           await tx.notification.deleteMany({ where: { userId: id } });
 
-          // 3. Delete Comments by user or on user's ads
+          // 3. Delete Bids by user or on user's ads
+          await tx.bid.deleteMany({
+            where: {
+              OR: [
+                { bidderId: id },
+                { ad: { userId: id } }
+              ]
+            }
+          });
+
+          // 4. Delete Reviews by user or for user
+          await tx.review.deleteMany({
+            where: {
+              OR: [
+                { userId: id },
+                { reviewerId: id }
+              ]
+            }
+          });
+
+          // 5. Delete Reports by user or on user's ads
+          const userAds = await tx.ad.findMany({ where: { userId: id }, select: { id: true } });
+          const userAdIds = userAds.map(a => a.id);
+          await tx.report.deleteMany({
+            where: {
+              OR: [
+                { reporterId: id },
+                { adId: { in: userAdIds } }
+              ]
+            }
+          });
+
+          // 6. Delete DeliveryAgent record if exists
+          await tx.deliveryAgent.deleteMany({ where: { userId: id } });
+
+          // 7. Delete AdminLogs if exists
+          await tx.adminLog.deleteMany({ where: { adminId: id } });
+
+          // 8. Delete Comments by user or on user's ads
           await tx.comment.deleteMany({
             where: {
               OR: [
@@ -1776,7 +1814,7 @@ export class App {
             }
           });
 
-          // 4. Delete AdLikes by user or on user's ads
+          // 9. Delete AdLikes by user or on user's ads
           await tx.adLike.deleteMany({
             where: {
               OR: [
@@ -1786,7 +1824,7 @@ export class App {
             }
           });
 
-          // 5. Delete Messages sent or received
+          // 10. Delete Messages sent or received
           await tx.message.deleteMany({
             where: {
               OR: [
@@ -1796,7 +1834,7 @@ export class App {
             }
           });
 
-          // 6. Delete Conversations linked to user's ads or involving the user
+          // 11. Delete Conversations linked to user's ads or involving the user
           await tx.conversation.deleteMany({
             where: {
               OR: [
@@ -1807,13 +1845,13 @@ export class App {
             }
           });
 
-          // 7. Delete Ad Placements
+          // 12. Delete Ad Placements
           await tx.adPlacement.deleteMany({ where: { advertiserId: id } });
 
-          // 8. Delete Reels
+          // 13. Delete Reels
           await tx.reel.deleteMany({ where: { userId: id } });
 
-          // 9. Delete Orders & Shipments linked to the user
+          // 14. Delete Orders & Shipments linked to the user
           const orders = await tx.order.findMany({
             where: { OR: [{ buyerId: id }, { sellerId: id }] },
             select: { id: true }
@@ -1824,17 +1862,28 @@ export class App {
             await tx.order.deleteMany({ where: { id: { in: orderIds } } });
           }
 
-          // 10. Delete Ad Images for user's ads
+          // 15. Delete Ad Images for user's ads
           await tx.adImage.deleteMany({ where: { ad: { userId: id } } });
 
-          // 11. Delete Ads
+          // 16. Delete Ads
           await tx.ad.deleteMany({ where: { userId: id } });
 
-          // 12. Delete MediaObjects uploaded by the user
+          // 17. Delete MediaObjects uploaded by the user
           await tx.mediaObject.deleteMany({ where: { uploadedBy: id } });
 
-          // 13. Finally, delete the User
-          await tx.user.delete({ where: { id } });
+          // 18. Finally, delete or soft-delete the User
+          try {
+            await tx.user.delete({ where: { id } });
+          } catch (delErr) {
+            await tx.user.update({
+              where: { id },
+              data: {
+                deletedAt: new Date(),
+                phone: null,
+                email: `${id}@deleted.local`
+              }
+            });
+          }
         });
 
         res.json({ success: true });
