@@ -13,6 +13,8 @@ import Redis from 'ioredis';
 import { prisma } from '../../src/lib/prisma.ts';
 import { logger } from '../lib/logger.ts';
 
+export const activeStreamsStore = new Set<string>();
+
 export class SocketService {
   private io: Server;
   private activeStreams = new Map<
@@ -82,6 +84,7 @@ export class SocketService {
         }
 
         if (role === 'broadcaster') {
+          activeStreamsStore.add(streamId);
           // Clear any pending disconnect timeout for reconnection
           const pendingTimeout = (stream as any).disconnectTimeout;
           if (pendingTimeout) {
@@ -94,11 +97,21 @@ export class SocketService {
           this.io.to(`stream_${streamId}`).emit('broadcaster-ready', { broadcasterId: socket.id });
           this.io.to(`stream_${streamId}`).emit('stream-broadcaster-online', { broadcasterId: socket.id });
 
+          const sellerName = data.sellerName && data.sellerName !== 'تاجر' ? data.sellerName : 'تاجر أسواق';
+          const notifTitle = `🔴 بث مباشر جديد من ${sellerName}`;
+          const notifDesc = data.adTitle || 'اضغط لمشاهدة البث المباشر التفاعلي الآن!';
+
           socket.broadcast.emit('live-stream-notification', {
+            id: `notif_${Date.now()}`,
             streamId,
-            sellerName: data.sellerName || 'تاجر أسواق',
+            sellerId: data.sellerName || '',
+            sellerName,
             adTitle: data.adTitle || 'بث مباشر جديد',
+            title: notifTitle,
+            description: notifDesc,
+            type: 'live_broadcast'
           });
+
 
           // Fetch the actual database reel and broadcast the full object as 'new-broadcast'
           prisma.reel.findUnique({
@@ -257,6 +270,7 @@ export class SocketService {
 
         if (role === 'broadcaster') {
           if (stream.broadcasterId === socket.id) {
+            activeStreamsStore.delete(streamId);
             this.io.to(`stream_${streamId}`).emit('stream-ended');
             this.activeStreams.delete(streamId);
             autoArchiveStream(streamId);
@@ -277,6 +291,7 @@ export class SocketService {
             const timeoutId = setTimeout(() => {
               const currentStream = this.activeStreams.get(streamId);
               if (currentStream && currentStream.broadcasterId === socket.id) {
+                activeStreamsStore.delete(streamId);
                 this.io.to(`stream_${streamId}`).emit('stream-ended');
                 this.activeStreams.delete(streamId);
                 autoArchiveStream(streamId);

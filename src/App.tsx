@@ -1842,16 +1842,12 @@ useEffect(() => {
         fetchNotifications();
       };
 
-      const handleLiveStreamNotification = async (notif: {
-        id: string;
-        title: string;
-        description: string;
-        type: string;
-        streamId: string;
-        sellerId: string;
-      }) => {
+      const handleLiveStreamNotification = async (notif: any) => {
+        const notifTitle = notif.title || `🔴 بث مباشر جديد من ${notif.sellerName || 'تاجر أسواق'}`;
+        const notifDesc = notif.description || notif.adTitle || 'انضم للبث المباشر التفاعلي الآن!';
+
         // High priority live stream announcement toast!
-        addToast(notif.title, notif.description, "notification");
+        addToast(notifTitle, notifDesc, "notification");
 
         // Save notification to the database for this user
         if (currentUser?.id) {
@@ -1861,8 +1857,8 @@ useEffect(() => {
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 userId: currentUser.id,
-                title: notif.title,
-                description: notif.description,
+                title: notifTitle,
+                description: notifDesc,
                 type: "live_broadcast"
               })
             });
@@ -1873,6 +1869,7 @@ useEffect(() => {
           }
         }
       };
+
 
       socket.on("new-message", handleNewMessage);
       socket.on("new-notification", handleNewNotification);

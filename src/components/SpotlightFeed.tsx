@@ -1640,7 +1640,7 @@ export default function SpotlightFeed({
               images: [pv.thumbnailUrl || "https://picsum.photos/seed/promo/800/400"],
               videoUrl: parsed.videoUrl,
               audioUrl: parsed.audioUrl,
-              isLive: parsed.videoUrl === 'webcam' || parsed.videoUrl === 'camera' || !!pv.isLive,
+              isLive: parsed.videoUrl === 'webcam' || parsed.videoUrl === 'camera' || parsed.videoUrl === 'live' || parsed.videoUrl === 'stream' || !!pv.isLive,
               features: pv.features || [
                 isRtl ? "موثق وبث حي تفاعلي" : "Verified interactive live stream",
                 isRtl ? "تواصل مباشر وبدون عمولات" : "Direct communication, zero commission"
@@ -1675,11 +1675,17 @@ export default function SpotlightFeed({
     };
     const handleNewBroadcast = (newAd: any) => {
       setDbPromoVideos(prev => {
-        if (prev.some(a => a.id === newAd.id)) return prev;
-        return [newAd, ...prev];
+        const existingIndex = prev.findIndex(a => a.id === newAd.id);
+        if (existingIndex !== -1) {
+          const updated = [...prev];
+          updated[existingIndex] = { ...updated[existingIndex], ...newAd, isLive: true };
+          return updated;
+        }
+        return [{ ...newAd, isLive: true }, ...prev];
       });
-      showToast(isRtl ? `بدأ بث مباشر جديد: ${newAd.title}` : `New live stream started: ${newAd.title}`);
+      showToast(isRtl ? `🔴 بدأ بث مباشر جديد: ${newAd.title}` : `🔴 New live stream started: ${newAd.title}`);
     };
+
     socket.on('ad-like-update', handleLikeUpdate);
     socket.on('new-broadcast', handleNewBroadcast);
     return () => {

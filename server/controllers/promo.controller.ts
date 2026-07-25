@@ -47,6 +47,8 @@ function validateMediaUrl(url: string): { valid: boolean; reason?: string } {
   return { valid: true };
 }
 
+import { activeStreamsStore } from '../socket/socket.service.ts';
+
 export function PromoController() {
   const router = Router();
   router.use(optionalAuthMiddleware);
@@ -58,11 +60,24 @@ export function PromoController() {
         include: { user: { select: { name: true, avatar: true } } },
         orderBy: { createdAt: 'desc' },
       });
-      res.json(reels);
+
+      const result = reels.map(r => {
+        const parts = r.videoUrl.split('||');
+        const mainUrl = parts[0] || '';
+        const isWebcamMarker = mainUrl === 'webcam' || mainUrl === 'camera' || mainUrl === 'live' || mainUrl === 'stream';
+        const isBroadcastingNow = activeStreamsStore.has(r.id);
+        return {
+          ...r,
+          isLive: isBroadcastingNow || isWebcamMarker,
+        };
+      });
+
+      res.json(result);
     } catch (err) {
       next(err);
     }
   });
+
 
   // POST /api/promo - Create reel/live stream
   router.post('/', async (req: any, res: Response, next) => {
