@@ -187,15 +187,22 @@ function WebcamStreamPlayer({
   myBroadcastingIds?: string[];
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const isGenericName = (name?: string | null) => {
+    if (!name) return true;
+    const n = name.trim().toLowerCase();
+    return n === 'user' || n === 'guest' || n === 'زائر' || n === 'تاجر' || n === 'تاجر أسواق' || n === 'مستخدم جديد' || n === 'مستخدم';
+  };
+
   const isCreator = !!(
     ad &&
     (ad.isLive || (ad.videoUrl && (ad.videoUrl.includes('webcam') || ad.videoUrl.includes('camera')))) &&
     (
       myBroadcastingIds.includes(ad.id) ||
-      (currentUser && currentUser.id && currentUser.id === ad.userId && ad.userId !== "guest_user") ||
-      (currentUser && currentUser.name && (currentUser.name === ad.userName || currentUser.name === ad.user?.name))
+      (currentUser?.id && ad.userId && currentUser.id === ad.userId && ad.userId !== "guest_user" && ad.userId !== "guest") ||
+      (currentUser?.name && !isGenericName(currentUser.name) && (currentUser.name === ad.userName || currentUser.name === ad.user?.name))
     )
   );
+
 
   const [error, setError] = useState<string | null>(null);
   const [statusText, setStatusText] = useState<string>('');
@@ -232,15 +239,16 @@ function WebcamStreamPlayer({
           let stream: MediaStream | null = null;
 
           const advancedAudioConstraints = {
-            echoCancellation: { ideal: true },
-            noiseSuppression: { ideal: true },
-            autoGainControl: { ideal: true },
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
             googEchoCancellation: true,
             googAutoGainControl: true,
             googNoiseSuppression: true,
             googHighpassFilter: true,
             googAudioMirroring: false
           };
+
 
           // Acquire base stream
           try {
