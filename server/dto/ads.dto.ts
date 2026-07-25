@@ -81,4 +81,8 @@ export class CreateAdDto {
   @IsOptional()
   @IsString()
   userId?: string;
+
+  @IsOptional()
+  @IsString()
+  status?: string;
 }

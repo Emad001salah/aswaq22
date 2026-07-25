@@ -663,7 +663,8 @@ useEffect(() => {
   const [promoVideos, setPromoVideos] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>(() => {
     try {
-      localStorage.removeItem('aswaq_cached_categories'); // Purge legacy cache
+      localStorage.removeItem('aswaq_cached_categories'); // Purge legacy cache key
+      localStorage.removeItem('aswaq_cached_categories_v2'); // Purge v2 cache key
       const cached = localStorage.getItem('aswaq_cached_categories_v3');
       if (cached) {
         const parsed = JSON.parse(cached);
@@ -740,7 +741,7 @@ useEffect(() => {
 
           setCategories(sortedData);
           try {
-            localStorage.setItem('aswaq_cached_categories', JSON.stringify(sortedData));
+            localStorage.setItem('aswaq_cached_categories_v3', JSON.stringify(sortedData));
           } catch (_) {}
         }
       }
