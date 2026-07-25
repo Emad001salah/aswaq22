@@ -727,6 +727,79 @@ export class App {
       }
     });
 
+    // ── Trust & Safety System API (Stage 7) ──────────────────────────────────
+    this.app.post('/api/reports', authMiddleware, async (req, res, next) => {
+      try {
+        const reporterId = (req as any).user?.id || (req as any).user?.userId;
+        const { adId, reason } = req.body;
+
+        if (!adId || !reason || typeof reason !== 'string' || !reason.trim()) {
+          return res.status(400).json({ error: 'adId and valid reason are required' });
+        }
+
+        const ad = await prisma.ad.findUnique({ where: { id: adId } });
+        if (!ad) {
+          return res.status(404).json({ error: 'Target ad not found' });
+        }
+
+        const existingReport = await prisma.report.findFirst({
+          where: {
+            adId,
+            reporterId
+          }
+        });
+
+        if (existingReport) {
+          return res.status(400).json({ error: 'You have already reported this ad' });
+        }
+
+        const report = await prisma.report.create({
+          data: {
+            adId,
+            reporterId,
+            reason: reason.trim(),
+            status: 'pending'
+          }
+        });
+
+        res.status(201).json({ success: true, report });
+      } catch (err) {
+        next(err);
+      }
+    });
+
+    this.app.get('/api/reports', ...adminAccessGuards, async (req, res, next) => {
+      try {
+        const reports = await prisma.report.findMany({
+          orderBy: { timestamp: 'desc' },
+          take: 100
+        });
+        res.json(reports);
+      } catch (err) {
+        next(err);
+      }
+    });
+
+    this.app.put('/api/reports/:id/status', ...adminAccessGuards, async (req, res, next) => {
+      try {
+        const { id } = req.params;
+        const { status } = req.body;
+
+        if (!['pending', 'resolved', 'dismissed'].includes(status)) {
+          return res.status(400).json({ error: 'Invalid status' });
+        }
+
+        const updatedReport = await prisma.report.update({
+          where: { id },
+          data: { status }
+        });
+
+        res.json({ success: true, report: updatedReport });
+      } catch (err) {
+        next(err);
+      }
+    });
+
     // Legacy health (keep for backward compat)
     this.app.get('/api/health', (req, res) => {
       res.redirect(301, '/api/v1/health');
