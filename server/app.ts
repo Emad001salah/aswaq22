@@ -1536,12 +1536,25 @@ export class App {
         const { id } = req.params;
         const { status, isFeatured } = req.body;
         
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        let targetId = id;
+        if (!uuidRegex.test(id)) {
+          const allAds = await prisma.ad.findMany({ select: { id: true } });
+          const match = allAds.find(a => {
+            const hexPart = (a.id || '').replace(/[^0-9a-f]/gi, '').substring(0, 8);
+            const num = parseInt(hexPart || '10000000', 16);
+            const code = ((num % 900000000) + 100000000).toString();
+            return code === id;
+          });
+          if (match) targetId = match.id;
+        }
+
         const data: any = {};
         if (status !== undefined) data.status = status;
         if (isFeatured !== undefined) data.isFeatured = isFeatured;
 
         const ad = await prisma.ad.update({
-          where: { id },
+          where: { id: targetId },
           data
         });
         
@@ -1832,26 +1845,35 @@ export class App {
 
     this.app.get('/api/admin/reports', ...adminAccessGuards, async (req, res, next) => {
       try {
-        // PERFORMANCE FIX: Use single findMany with includes instead of N+1 queries
         const reports = await prisma.report.findMany({
           orderBy: { timestamp: 'desc' },
-          include: {
-            reporter: { select: { name: true, email: true } },
-            ad: { select: { title: true, status: true, userId: true } }
-          }
+          take: 100
         });
 
-        const resolvedReports = reports.map((r: any) => ({
-          id: r.id,
-          type: 'بلاغ عن إعلان مخالف',
-          reason: r.reason,
-          status: r.status,
-          severity: 'high',
-          reporter: r.reporter?.name || r.reporter?.email || 'مستخدم غير معروف',
-          targetName: r.ad?.title || 'إعلان محذوف',
-          adId: r.adId,
-          date: new Date(r.timestamp).toLocaleDateString('ar'),
-        }));
+        const userIds = Array.from(new Set(reports.map(r => r.reporterId).filter(Boolean)));
+        const adIds = Array.from(new Set(reports.map(r => r.adId).filter(Boolean)));
+
+        const users = userIds.length > 0 ? await prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, name: true, email: true } }) : [];
+        const ads = adIds.length > 0 ? await prisma.ad.findMany({ where: { id: { in: adIds } }, select: { id: true, title: true } }) : [];
+
+        const userMap = new Map(users.map(u => [u.id, u]));
+        const adMap = new Map(ads.map(a => [a.id, a]));
+
+        const resolvedReports = reports.map((r: any) => {
+          const reporter = userMap.get(r.reporterId);
+          const ad = adMap.get(r.adId);
+          return {
+            id: r.id,
+            type: 'بلاغ عن إعلان مخالف',
+            reason: r.reason,
+            status: r.status,
+            severity: 'high',
+            reporter: reporter?.name || reporter?.email || 'مستخدم غير معروف',
+            targetName: ad?.title || 'إعلان محذوف',
+            adId: r.adId,
+            date: new Date(r.timestamp).toLocaleDateString('ar'),
+          };
+        });
 
         res.json(resolvedReports);
       } catch (err) {

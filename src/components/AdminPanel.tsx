@@ -66,7 +66,7 @@ import {
 } from 'lucide-react';
 import DeliveryDashboard from '../modules/shipping/DeliveryDashboard';
 import { User, Ad } from '../types.ts';
-import { MARKETS } from '../markets.ts';
+import { MARKETS, getCurrencyAr } from '../markets.ts';
 import {
   AreaChart,
   Area,
