@@ -128,9 +128,11 @@ export default React.memo(function AdCard({ ad, onClick, onLikeToggle, onChatCli
     setLiked(isFavorite);
   }, [isFavorite]);
 
-  const handleImageError = () => {
-    if (imgSrc !== 'https://images.unsplash.com/photo-1496181130204-755241544e35?auto=format&fit=crop&w=800&q=80') {
-      setImgSrc('https://images.unsplash.com/photo-1496181130204-755241544e35?auto=format&fit=crop&w=800&q=80');
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    const fallbackSvg = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600" fill="none"><rect width="800" height="600" fill="%230f172a"/><path d="M400 220L480 340H320L400 220Z" fill="%2310b981" opacity="0.6"/><path d="M460 270L520 340H400L460 270Z" fill="%23059669" opacity="0.8"/><circle cx="340" cy="200" r="30" fill="%23f59e0b" opacity="0.8"/><text x="50%" y="78%" font-family="system-ui, sans-serif" font-size="28" font-weight="bold" fill="%2394a3b8" text-anchor="middle">أَسْوَاق 22 - صورة المعاينة</text></svg>`;
+    const target = e.currentTarget;
+    if (target.src !== fallbackSvg) {
+      target.src = fallbackSvg;
     }
   };
 

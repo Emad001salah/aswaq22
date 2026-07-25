@@ -856,10 +856,14 @@ const sessionViewedAdsSet = new Set<string>();
               ) : (
                 <>
                   <img 
-                    src={activeImage || safeImages?.[0]} 
+                    src={activeImage || safeImages?.[0] || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600" fill="none"><rect width="800" height="600" fill="%230f172a"/><path d="M400 220L480 340H320L400 220Z" fill="%2310b981" opacity="0.6"/><path d="M460 270L520 340H400L460 270Z" fill="%23059669" opacity="0.8"/><circle cx="340" cy="200" r="30" fill="%23f59e0b" opacity="0.8"/><text x="50%" y="78%" font-family="system-ui, sans-serif" font-size="28" font-weight="bold" fill="%2394a3b8" text-anchor="middle">أَسْوَاق 22 - صورة المعاينة</text></svg>'} 
                     alt={ad.title} 
                     className="w-full h-full object-cover transition-transform duration-700 group-hover/media:scale-105 cursor-zoom-in"
                     referrerPolicy="no-referrer"
+                    onError={(e) => {
+                      const fallbackSvg = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600" fill="none"><rect width="800" height="600" fill="%230f172a"/><path d="M400 220L480 340H320L400 220Z" fill="%2310b981" opacity="0.6"/><path d="M460 270L520 340H400L460 270Z" fill="%23059669" opacity="0.8"/><circle cx="340" cy="200" r="30" fill="%23f59e0b" opacity="0.8"/><text x="50%" y="78%" font-family="system-ui, sans-serif" font-size="28" font-weight="bold" fill="%2394a3b8" text-anchor="middle">أَسْوَاق 22 - صورة المعاينة</text></svg>`;
+                      (e.currentTarget as HTMLImageElement).src = fallbackSvg;
+                    }}
                     onClick={() => {
                       const idx = images.indexOf(activeImage);
                       setFullScreenIndex(idx !== -1 ? idx : 0);

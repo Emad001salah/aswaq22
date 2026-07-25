@@ -133,7 +133,12 @@ export default function Navbar({
                   className="w-full h-full object-contain p-1 relative z-10"
                   referrerPolicy="no-referrer"
                   onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).src = '/aswaq-icon.png';
+                    const target = e.currentTarget as HTMLImageElement;
+                    if (target.src !== '/aswaq-icon.png' && !target.src.includes('aswaq-icon.png')) {
+                      target.src = '/aswaq-icon.png';
+                    } else {
+                      target.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120" fill="none"><rect width="120" height="120" rx="30" fill="%2310b981"/><text x="50%" y="65%" font-family="system-ui, sans-serif" font-size="64" font-weight="900" fill="%23ffffff" text-anchor="middle">أ</text></svg>';
+                    }
                   }}
                 />
 
