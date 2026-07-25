@@ -81,8 +81,5 @@ export class CreateAdDto {
   @IsOptional()
   @IsString()
   userId?: string;
-
-  @IsOptional()
-  @IsString()
-  status?: string;
+  // NOTE: `status` is intentionally excluded — determined server-side from user role only.
 }

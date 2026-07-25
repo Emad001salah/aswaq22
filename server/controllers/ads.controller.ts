@@ -12,6 +12,7 @@ import { JobType } from '@prisma/client';
 import { getDeterministicUuid, getLegacyName } from '../utils/db-helpers.ts';
 import { resolveMediaUrl } from '../utils/media-url.ts';
 import { cacheService } from '../services/cache.service.ts';
+import { AppError } from '../middleware/error.ts';
 
 
 const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -376,11 +377,7 @@ export const AdsController = () => {
         });
 
         if (!category) {
-          // Return a 400 — never silently create a ghost category with wrong Arabic name
-          throw Object.assign(
-            new Error(`القسم المحدد غير موجود: "${catRaw}". يرجى اختيار قسم صحيح من القائمة.`),
-            { statusCode: 400 }
-          );
+          throw new AppError(400, `القسم المحدد غير موجود: "${catRaw}". يرجى اختيار قسم صحيح من القائمة.`, ['INVALID_CATEGORY']);
         }
         const categoryId = category.id;
 
@@ -398,14 +395,19 @@ export const AdsController = () => {
                 { nameEn: { equals: subRaw, mode: 'insensitive' } },
                 { nameAr: { equals: subRaw, mode: 'insensitive' } }
               ],
-              categoryId  // must belong to the resolved category
+              categoryId  // must belong to the resolved parent category
             }
           });
 
-          // Subcategory is optional — silently ignore unknown values (no ghost creation)
-          if (subCategory) {
-            subCategoryId = subCategory.id;
+          // Reject unknown or mismatched subcategory — never silently ignore
+          if (!subCategory) {
+            throw new AppError(
+              400,
+              `القسم الفرعي المحدد "${subRaw}" غير موجود أو لا يتبع القسم الرئيسي "${category.nameAr}".`,
+              ['INVALID_SUBCATEGORY']
+            );
           }
+          subCategoryId = subCategory.id;
         }
 
         // Create the core Ad
@@ -424,9 +426,10 @@ export const AdsController = () => {
             longitude: dto.longitude,
             contactNumber: dto.contactNumber,
             userId: req.user!.id, // Securely mapped from JWT
+            // Status is ALWAYS determined server-side — never trust the client
             status: (['ADMIN', 'SUPER_ADMIN'].includes(req.user!.role.toUpperCase())
               ? 'ACTIVE'
-              : ((dto as any).status ? (dto as any).status.toString().toUpperCase() : 'PENDING')) as any,
+              : 'ACTIVE') as any, // Regular users publish as ACTIVE (auto-approve flow)
           }
         });
 
@@ -507,9 +510,15 @@ export const AdsController = () => {
         ad: mappedAd
       });
     } catch (e: any) {
-      // Propagate known validation errors (e.g. invalid category) with their status code
-      const status = e.statusCode && e.statusCode >= 400 && e.statusCode < 500 ? e.statusCode : 500;
-      res.status(status).json({ error: status === 400 ? 'Bad Request' : 'Ad Creation Failed', message: e.message });
+      // AppError carries the correct HTTP status — pass it through
+      if (e instanceof AppError) {
+        return res.status(e.statusCode).json({
+          success: false,
+          error: e.message,
+          details: e.details,
+        });
+      }
+      res.status(500).json({ error: 'Ad Creation Failed', message: e.message });
     }
   });
 
@@ -672,9 +681,10 @@ export const AdsController = () => {
         return res.status(403).json({ error: 'Forbidden' });
       }
 
-      const statusValue = (hasPermission(req.user?.role, 'BYPASS_MODERATION') || (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'test'))
+      // Status on update: admins with BYPASS_MODERATION can set any status; others preserve current
+      const statusValue = hasPermission(req.user?.role, 'BYPASS_MODERATION')
         ? ((req.body.status ? req.body.status.toString().toUpperCase() : null) || ad.status)
-        : 'PENDING';
+        : ad.status; // Regular users cannot change the status field
 
       const dataUpdate: any = {
         title: req.body.title,
@@ -687,11 +697,34 @@ export const AdsController = () => {
         contactNumber: req.body.contactNumber !== undefined ? req.body.contactNumber : undefined,
       };
 
+      // Validate category exists before accepting update
       if (req.body.category) {
-        dataUpdate.categoryId = uuidRegex.test(req.body.category) ? req.body.category : getDeterministicUuid(req.body.category);
+        const catRaw = req.body.category as string;
+        const catUuid = uuidRegex.test(catRaw) ? catRaw : getDeterministicUuid(catRaw.toLowerCase().trim());
+        const cat = await prisma.category.findUnique({ where: { id: catUuid } });
+        if (!cat) {
+          return res.status(400).json({
+            success: false,
+            error: `القسم المحدد غير موجود: "${catRaw}". يرجى اختيار قسم صحيح.`,
+            details: ['INVALID_CATEGORY'],
+          });
+        }
+        dataUpdate.categoryId = cat.id;
       }
       if (req.body.subCategory) {
-        dataUpdate.subCategoryId = uuidRegex.test(req.body.subCategory) ? req.body.subCategory : getDeterministicUuid(req.body.subCategory);
+        const subRaw = req.body.subCategory as string;
+        const subUuid = uuidRegex.test(subRaw) ? subRaw : getDeterministicUuid(subRaw.toLowerCase().trim());
+        const sub = await prisma.subCategory.findFirst({
+          where: { id: subUuid, categoryId: dataUpdate.categoryId || ad.categoryId }
+        });
+        if (!sub) {
+          return res.status(400).json({
+            success: false,
+            error: `القسم الفرعي "${subRaw}" غير موجود أو لا يتبع القسم الرئيسي المحدد.`,
+            details: ['INVALID_SUBCATEGORY'],
+          });
+        }
+        dataUpdate.subCategoryId = sub.id;
       }
 
       const updated = await prisma.ad.update({
