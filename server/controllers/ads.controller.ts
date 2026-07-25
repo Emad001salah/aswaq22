@@ -232,11 +232,11 @@ export const AdsController = () => {
         }
       }
 
-      // Determine sorting order
-      let orderByClause: any = { createdAt: 'desc' };
-      if (sortBy === 'price_asc') orderByClause = { price: 'asc' };
-      if (sortBy === 'price_desc') orderByClause = { price: 'desc' };
-      if (sortBy === 'views') orderByClause = { views: 'desc' };
+      // Determine sorting order with deterministic secondary sort (id: desc)
+      let orderByClause: any[] = [{ createdAt: 'desc' }, { id: 'desc' }];
+      if (sortBy === 'price_asc') orderByClause = [{ price: 'asc' }, { id: 'desc' }];
+      if (sortBy === 'price_desc') orderByClause = [{ price: 'desc' }, { id: 'desc' }];
+      if (sortBy === 'views') orderByClause = [{ views: 'desc' }, { id: 'desc' }];
 
       // 2. Database Fallback (Prisma full-text & filter query)
       console.log(`[Search] Querying database using Prisma for market: ${market || 'ALL'}...`);
@@ -250,7 +250,6 @@ export const AdsController = () => {
             gte: minPrice ? parseFloat(String(minPrice)) : undefined,
             lte: maxPrice ? parseFloat(String(maxPrice)) : undefined,
           } : undefined,
-          condition: condition ? String(condition) : undefined,
           images: hasImages === 'true' ? { some: {} } : undefined,
           OR: searchQuery ? [
             { title: { contains: searchQuery, mode: 'insensitive' } },
