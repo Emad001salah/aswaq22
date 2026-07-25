@@ -128,12 +128,20 @@ export default function Navbar({
               <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-emerald-600 via-teal-500 to-emerald-400 flex items-center justify-center shadow-xl shadow-emerald-500/25 group-hover:scale-110 group-hover:shadow-emerald-500/40 transition-all duration-300 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-full h-full bg-gradient-to-tr from-amber-400/20 to-transparent" />
                 {platformSettings?.logoUrl ? (
-                  <img src={platformSettings.logoUrl} alt="Logo" className="w-full h-full object-cover relative z-10" referrerPolicy="no-referrer" />
-                ) : (
-                  <span className="text-white font-black text-2xl relative z-10 drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)] font-sans">
-                     {platformSettings?.logoLetter || (isRtl ? currentMarket.labelAr[0] : currentMarket.labelEn[0])}
-                  </span>
-                )}
+                  <img
+                    src={platformSettings.logoUrl}
+                    alt="Logo"
+                    className="w-full h-full object-cover relative z-10"
+                    referrerPolicy="no-referrer"
+                    onError={(e) => {
+                      (e.target as HTMLElement).style.display = 'none';
+                    }}
+                  />
+                ) : null}
+                <span className="text-white font-black text-2xl relative z-10 drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)] font-sans">
+                   {platformSettings?.logoLetter || (isRtl ? currentMarket.labelAr[0] : currentMarket.labelEn[0])}
+                </span>
+
               </div>
               <div className="flex flex-col">
                 <span className={`${isDark ? 'text-white' : 'text-slate-900'} font-black text-sm lg:text-xl tracking-tight transition-colors border-none p-0 bg-transparent flex items-center gap-1 lg:gap-1.5`}>

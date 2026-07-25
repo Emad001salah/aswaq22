@@ -2316,28 +2316,16 @@ Sitemap: ${BASE_URL}/sitemap.xml
         const logoFileName = `platform-logo.${ext}`;
         const logoPath = path.join(uploadsDir, logoFileName);
 
-        // Always save locally to /uploads first so it's instantly available and resilient
         fs.writeFileSync(logoPath, req.file.buffer);
-        let logoUrl = `/uploads/${logoFileName}`;
+        const logoUrl = `/uploads/${logoFileName}?v=${Date.now()}`;
         logger.info({ message: `settings/logo saved locally: ${logoFileName}` });
-
-        try {
-          const r2Enabled = await isFeatureEnabled('r2_storage', (req as any).user?.id || 'admin');
-          if (r2Enabled) {
-            const destinationKey = `uploads/platform-logo.${ext}`;
-            await storageService.uploadFileByKey(destinationKey, req.file.buffer, req.file.mimetype);
-            logoUrl = `${process.env.MEDIA_PUBLIC_BASE_URL || 'https://media.aswaq22.com'}/${destinationKey}`;
-            logger.info({ message: `settings/logo uploaded to R2: ${destinationKey}` });
-          }
-        } catch (r2Err: any) {
-          logger.warn({ message: `[LogoUpload] R2 storage fallback to local URL: ${r2Err.message}` });
-        }
 
         const currentSettings = await getPlatformSettings();
         currentSettings.logoUrl = logoUrl;
         await savePlatformSettings(currentSettings);
 
         res.json({ success: true, logoUrl });
+
 
       } catch (err: any) {
         logger.error({ message: 'Failed uploading logo', error: err.message });

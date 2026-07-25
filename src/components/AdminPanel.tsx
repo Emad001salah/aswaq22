@@ -702,7 +702,18 @@ function AdminPanelInner({
 
   // ── Logo Upload ──
   const handleLogoUpload = async (file: File) => {
+    if (!file) return;
     setLogoUploading(true);
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target?.result as string;
+      if (dataUrl) {
+        setSettings((prev: any) => ({ ...prev, logoUrl: dataUrl }));
+      }
+    };
+    reader.readAsDataURL(file);
+
     try {
       const fd = new FormData();
       fd.append('logo', file);
@@ -711,18 +722,23 @@ function AdminPanelInner({
         body: fd,
       });
       if (res.ok) {
-        const { logoUrl } = await res.json();
-        setSettings((prev: any) => ({ ...prev, logoUrl }));
-        addToast?.('تم رفع الشعار', 'تم رفع الشعار بنجاح', 'success');
+        const data = await res.json();
+        if (data.logoUrl) {
+          setSettings((prev: any) => ({ ...prev, logoUrl: data.logoUrl }));
+        }
+        addToast?.('تم رفع الشعار', 'تم رفع وحفظ الشعار بنجاح ✅', 'success');
+        onSettingsSaved?.();
       } else {
-        addToast?.('خطأ', 'فشل رفع الشعار', 'error');
+        addToast?.('خطأ', 'فشل حفظ الشعار على الخادم', 'error');
       }
     } catch (e) {
+      console.error('Logo upload error:', e);
       addToast?.('خطأ', 'فشل رفع الشعار', 'error');
     } finally {
       setLogoUploading(false);
     }
   };
+
 
   // ── Poll Actions ──
   const handleCreatePoll = async () => {
