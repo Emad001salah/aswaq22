@@ -653,6 +653,80 @@ export class App {
       }
     });
 
+    // ── Enterprise Stores & Verified Dealers API (Stage 6) ──────────────────
+    this.app.get('/api/stores', async (req, res, next) => {
+      try {
+        const stores = await prisma.user.findMany({
+          where: {
+            OR: [
+              { role: 'MERCHANT' },
+              { isVerified: 'verified' }
+            ]
+          },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            avatar: true,
+            coverPhoto: true,
+            bio: true,
+            role: true,
+            isVerified: true,
+            city: true,
+            createdAt: true,
+            _count: {
+              select: {
+                ads: {
+                  where: { status: 'ACTIVE' }
+                }
+              }
+            }
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 50
+        });
+        res.json(stores);
+      } catch (err) {
+        next(err);
+      }
+    });
+
+    this.app.get('/api/stores/:id', async (req, res, next) => {
+      try {
+        const { id } = req.params;
+        const store = await prisma.user.findUnique({
+          where: { id },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            avatar: true,
+            coverPhoto: true,
+            bio: true,
+            role: true,
+            isVerified: true,
+            city: true,
+            createdAt: true,
+            ads: {
+              where: { status: 'ACTIVE' },
+              orderBy: { publishedAt: 'desc' },
+              include: {
+                category: { select: { id: true, nameAr: true, nameEn: true } }
+              }
+            }
+          }
+        });
+
+        if (!store) {
+          return res.status(404).json({ error: 'Store not found' });
+        }
+
+        res.json(store);
+      } catch (err) {
+        next(err);
+      }
+    });
+
     // Legacy health (keep for backward compat)
     this.app.get('/api/health', (req, res) => {
       res.redirect(301, '/api/v1/health');
