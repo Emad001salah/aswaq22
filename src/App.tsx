@@ -57,7 +57,7 @@ import {
 import PwaInstallPrompt from "./components/PwaInstallPrompt.tsx";
 
 import { User, Ad, ChatMessage, AppNotification, UserRole } from "./types.ts";
-import { CITIES, CATEGORIES, INITIAL_USERS, DISTRICTS, SUB_CATEGORIES } from "./data.ts";
+import { CITIES, CATEGORIES, INITIAL_USERS, DISTRICTS, SUB_CATEGORIES, buildAdSeoUrl, getAdReferenceCode } from "./data.ts";
 import { useTheme } from "./context/ThemeContext.tsx";
 import { useMarket } from "./context/MarketContext.tsx";
 import { apiFetch } from "./lib/api";
@@ -988,8 +988,7 @@ useEffect(() => {
         const categoryObject = CATEGORIES.find(c => c.id === catId);
         const categorySlug = categoryObject?.nameEn?.toLowerCase() || 'ads';
         
-        const titleSlug = slugify(ad.title);
-        navigate(`/${countryCode}/${categorySlug}/${titleSlug}-${ad.id}`);
+        navigate(buildAdSeoUrl(ad, countryCode));
       }
     }
   };
@@ -1096,7 +1095,7 @@ useEffect(() => {
 
     // Avoid updating URL if we are currently looking at an ad detail page
     const uuidRegex = /[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
-    if (location.pathname.match(uuidRegex) || selectedAd) return;
+    if (location.pathname.includes('/ad/') || location.pathname.match(uuidRegex) || selectedAd) return;
 
     if (platformMode === 'marketplace') {
       const countryCode = currentMarket.countryCode.toLowerCase();
@@ -1115,10 +1114,13 @@ useEffect(() => {
       
       if (cat) {
         navigate(`/${countryCode}/${cat}`);
-      } else if (location.pathname !== '/') {
-        navigate('/');
+      } else {
+        const countryPath = `/${countryCode}`;
+        if (location.pathname !== countryPath && location.pathname !== '/' && !['/profile', '/messages', '/notifications', '/my-ads', '/analytics'].includes(location.pathname)) {
+          navigate(countryPath);
+        }
       }
-      document.title = 'أسواق | منصة الإعلانات المجانية في الوطن العربي — بيع، شراء، تأجير';
+      document.title = `أسواق ${currentMarket.labelAr} | منصة الإعلانات المجانية في الوطن العربي — بيع، شراء، تأجير`;
     }
   }, [selectedUserPreview, currentTab, platformMode, currentMarket.countryCode, selectedCategory, selectedCity]);
 
@@ -1129,11 +1131,11 @@ useEffect(() => {
     }
     if (!selectedAd) {
       const uuidRegex = /[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
-      if (location.pathname.match(uuidRegex)) {
+      if (location.pathname.includes('/ad/') || location.pathname.match(uuidRegex)) {
         const countryCode = currentMarket.countryCode.toLowerCase();
         const categoryObject = CATEGORIES.find(c => c.id === selectedCategory);
         const cat = categoryObject?.nameEn?.toLowerCase() || '';
-        navigate(cat ? `/${countryCode}/${cat}` : '/');
+        navigate(cat ? `/${countryCode}/${cat}` : `/${countryCode}`);
       }
     }
   }, [selectedAd]);

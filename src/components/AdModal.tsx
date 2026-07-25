@@ -39,6 +39,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { Ad, User, ChatMessage } from '../types.ts';
+import { Market, getCurrencyAr, getCurrencyNameAr } from '../markets.ts';
 import { INITIAL_USERS, CATEGORIES, getAdReferenceCode } from '../data.ts';
 import { Avatar, sanitizeName } from './Avatar.tsx';
 import { apiFetch } from '../lib/api';
