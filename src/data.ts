@@ -323,3 +323,37 @@ export function buildTaxonomyBreadcrumbs(category?: string, subcategory?: string
 
   return breadcrumbs;
 }
+
+/**
+ * Generates a clean 9-digit short numerical reference code for an ad (e.g. 284422648)
+ */
+export function getAdReferenceCode(ad: { id: string; adNumber?: number }): string {
+  if (!ad) return '000000000';
+  if (ad.adNumber && typeof ad.adNumber === 'number') {
+    return ad.adNumber.toString();
+  }
+  const hexPart = (ad.id || '').replace(/[^0-9a-f]/gi, '').substring(0, 8);
+  const num = parseInt(hexPart || '10000000', 16);
+  const code = (num % 900000000) + 100000000;
+  return code.toString();
+}
+
+/**
+ * Builds a clean, Google SEO permalink for ads on the OpenSooq pattern:
+ * e.g. /ye/ad/284422648/شقق-مفروشة-للايجار
+ */
+export function buildAdSeoUrl(ad: { id: string; title: string; category?: string; adNumber?: number }, countryCode: string = 'ye'): string {
+  if (!ad || !ad.id) return '#';
+  const cc = (countryCode || 'ye').toLowerCase();
+  const refCode = getAdReferenceCode(ad);
+  const titleSlug = (ad.title || '')
+    .toString()
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^\w\u0621-\u064A-]+/g, '')
+    .replace(/--+/g, '-')
+    .replace(/^-+/, '')
+    .replace(/-+$/, '');
+
+  return `/${cc}/ad/${refCode}${titleSlug ? `/${titleSlug}` : ''}`;
+}

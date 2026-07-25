@@ -39,8 +39,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { Ad, User, ChatMessage } from '../types.ts';
-import { Market, getCurrencyAr, getCurrencyNameAr } from '../markets.ts';
-import { INITIAL_USERS, CATEGORIES } from '../data.ts';
+import { INITIAL_USERS, CATEGORIES, getAdReferenceCode } from '../data.ts';
 import { Avatar, sanitizeName } from './Avatar.tsx';
 import { apiFetch } from '../lib/api';
 
@@ -1322,7 +1321,7 @@ const sessionViewedAdsSet = new Set<string>();
                 <tbody>
                   <tr className={`border-b ${isDark ? 'border-slate-800/60' : 'border-slate-200/60'}`}>
                     <td className="p-3 font-bold text-slate-500 w-1/3">رقم الإعلان المرجعي</td>
-                    <td className={`p-3 font-mono font-bold ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>{ad.id}</td>
+                    <td className={`p-3 font-mono font-bold ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>#{getAdReferenceCode(ad)}</td>
                   </tr>
                   <tr className={`border-b ${isDark ? 'border-slate-800/60' : 'border-slate-200/60'}`}>
                     <td className="p-3 font-bold text-slate-500">التصنيف والقسم</td>

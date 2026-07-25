@@ -13,7 +13,7 @@ import { apiFetch } from '../lib/api';
 import { Ad } from '../types.ts';
 import { Market, getCurrencyAr, getCurrencyNameAr } from '../markets.ts';
 import { useTranslation } from 'react-i18next';
-import { CATEGORIES } from '../data.ts';
+import { CATEGORIES, buildAdSeoUrl } from '../data.ts';
 import toast from 'react-hot-toast';
 import { Avatar, sanitizeName } from './Avatar.tsx';
 
@@ -34,27 +34,10 @@ export default React.memo(function AdCard({ ad, onClick, onLikeToggle, onChatCli
   const { t, i18n } = useTranslation();
   const isRtl = i18n.language === 'ar';
 
-  const slugify = (text: string): string => {
-    return text
-      .toString()
-      .toLowerCase()
-      .replace(/\s+/g, '-')
-      .replace(/[^\w\u0621-\u064A-]+/g, '')
-      .replace(/--+/g, '-')
-      .replace(/^-+/, '')
-      .replace(/-+$/, '');
-  };
-
   const adUrl = (() => {
     if (!ad) return '#';
     const countryCode = currentMarket?.countryCode?.toLowerCase() || 'ye';
-    
-    const catId = ad.category;
-    const categoryObject = CATEGORIES.find(c => c.id === catId);
-    const categorySlug = categoryObject?.nameEn?.toLowerCase() || 'ads';
-    
-    const titleSlug = slugify(ad.title);
-    return `/${countryCode}/${categorySlug}/${titleSlug}-${ad.id}`;
+    return buildAdSeoUrl(ad, countryCode);
   })();
 
   // Skeleton Render
