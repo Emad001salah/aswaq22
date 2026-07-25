@@ -688,10 +688,20 @@ export class App {
       }
     });
 
-    // ── Messages ─────────────────────────────────────────────────────────────
-    this.app.get('/api/messages', async (req, res) => {
+    // ── Messages (Secured & Isolated) ─────────────────────────────────────────
+    this.app.get('/api/messages', authMiddleware, async (req: any, res) => {
       try {
+        const userId = req.user?.id;
+        if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+        const userUuid = getDeterministicUuid(userId);
+
         const messages = await prisma.message.findMany({
+          where: {
+            OR: [
+              { senderId: userUuid },
+              { receiverId: userUuid }
+            ]
+          },
           orderBy: { timestamp: 'desc' },
           take: 100,
           include: { conversation: true }
@@ -711,16 +721,26 @@ export class App {
       }
     });
 
-    this.app.post('/api/messages', async (req, res) => {
-      const { text, senderId, receiverId, adId } = req.body;
-      if (!text || !senderId || !receiverId || !adId) {
+    this.app.post('/api/messages', authMiddleware, async (req: any, res) => {
+      const { text, receiverId, adId } = req.body;
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+
+      if (!text || !receiverId || !adId) {
         return res.status(400).json({ error: 'Missing required message fields' });
       }
 
       try {
-        const adUuid = getDeterministicUuid(adId);
-        const senderUuid = getDeterministicUuid(senderId);
+        const senderUuid = getDeterministicUuid(userId);
         const receiverUuid = getDeterministicUuid(receiverId);
+        const adUuid = getDeterministicUuid(adId);
+
+        // Prevent self-messaging
+        if (senderUuid === receiverUuid) {
+          return res.status(400).json({ error: 'Cannot send messages to yourself' });
+        }
 
         const [participantOne, participantTwo] = [senderUuid, receiverUuid].sort();
 
@@ -744,9 +764,12 @@ export class App {
           });
         }
 
+        // Sanitize HTML in text payload
+        const sanitizedText = String(text).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
         const newMessage = await prisma.message.create({
           data: {
-            text,
+            text: sanitizedText,
             senderId: senderUuid,
             receiverId: receiverUuid,
             conversationId: conversation.id,
@@ -764,10 +787,10 @@ export class App {
           read: newMessage.read
         };
 
-        // Broadcast real-time message via socket if room exists
+        // Broadcast real-time message via socket ONLY after successful DB commit
         if (this.io) {
           const roomId = `${adId}::${receiverId}`;
-          const partnerRoomId = `${adId}::${senderId}`;
+          const partnerRoomId = `${adId}::${senderUuid}`;
           this.io.to(roomId).emit('new-message', formatted);
           this.io.to(partnerRoomId).emit('new-message', formatted);
         }
