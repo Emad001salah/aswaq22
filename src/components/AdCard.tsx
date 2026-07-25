@@ -4,7 +4,10 @@
  */
 
 import React, { useState, MouseEvent, useEffect } from 'react';
-import { Eye, Heart, MapPin, Calendar, CheckCircle2, User, Share2, ShieldCheck, Video } from 'lucide-react';
+import { 
+  Eye, Heart, MapPin, Calendar, CheckCircle2, User, Share2, ShieldCheck, Video,
+  ChevronLeft, ChevronRight, Phone, MessageCircle, MessageSquare, Fuel, Gauge, Sparkles, Home, Briefcase, Car
+} from 'lucide-react';
 import { motion, PanInfo, AnimatePresence } from 'motion/react';
 import { apiFetch } from '../lib/api';
 import { Ad } from '../types.ts';
@@ -19,6 +22,7 @@ interface AdCardProps {
   ad?: Ad;
   onClick?: (ad: Ad) => void;
   onLikeToggle?: (adId: string) => void;
+  onChatClick?: (ad: Ad) => void;
   isFavorite?: boolean;
   distanceInKm?: number;
   currentMarket?: Market;
@@ -26,7 +30,7 @@ interface AdCardProps {
   isDark?: boolean;
 }
 
-export default React.memo(function AdCard({ ad, onClick, onLikeToggle, isFavorite, distanceInKm, currentMarket, loading, isDark }: AdCardProps) {
+export default React.memo(function AdCard({ ad, onClick, onLikeToggle, onChatClick, isFavorite, distanceInKm, currentMarket, loading, isDark }: AdCardProps) {
   const { t, i18n } = useTranslation();
   const isRtl = i18n.language === 'ar';
 
@@ -56,8 +60,8 @@ export default React.memo(function AdCard({ ad, onClick, onLikeToggle, isFavorit
   // Skeleton Render
   if (loading || !ad) {
     return (
-      <div className={`group relative rounded-2xl sm:rounded-3xl overflow-hidden bg-white dark:bg-slate-900/60 backdrop-blur-sm border border-slate-200 dark:border-slate-800/80 transition-all ${isRtl ? 'text-right dir-rtl' : 'text-left dir-ltr'} flex flex-row sm:flex-col animate-shimmer h-[112px] sm:h-auto shadow-sm`}>
-        <div className="relative w-28 h-28 sm:w-full sm:aspect-video shrink-0 bg-slate-100 dark:bg-slate-950 animate-pulse" />
+      <div className={`group relative rounded-2xl sm:rounded-3xl overflow-hidden bg-white dark:bg-slate-900/60 backdrop-blur-sm border border-slate-200 dark:border-slate-800/80 transition-all ${isRtl ? 'text-right dir-rtl' : 'text-left dir-ltr'} flex flex-col animate-shimmer shadow-sm`}>
+        <div className="relative w-full aspect-video shrink-0 bg-slate-100 dark:bg-slate-950 animate-pulse" />
         <div className="p-3 sm:p-5 flex flex-col justify-between flex-grow space-y-3">
           <div className="space-y-2">
             <div className="h-2 w-20 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
@@ -70,7 +74,7 @@ export default React.memo(function AdCard({ ad, onClick, onLikeToggle, isFavorit
     );
   }
 
-  // Fast sanitizer for images to prevent ReferenceError/TypeError
+  // Fast sanitizer for images
   const safeImages = (Array.isArray(ad?.images)
     ? ad.images
     : (() => {
@@ -84,19 +88,19 @@ export default React.memo(function AdCard({ ad, onClick, onLikeToggle, isFavorit
       })()
   ).map((img: any) => (img && typeof img === 'object' ? img.url : img)).filter(Boolean);
 
+  const [currentImgIndex, setCurrentImgIndex] = useState(0);
   const [internalLikes, setInternalLikes] = useState(ad?.likes || 0);
   const [internalViews, setInternalViews] = useState(ad?.views || 0);
   const [liked, setLiked] = useState(isFavorite);
   const [sharing, setSharing] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
+  const [showPhone, setShowPhone] = useState(false);
 
-  // Chooses the best image to showcase: preference is given to local uploaded assets starting with "/uploads/"
-  // over generic fallback placeholder links when both exist, or falls back to a clean placeholder.
-  const getDisplayImage = () => {
+  const getDisplayImage = (index: number) => {
     if (!safeImages || safeImages.length === 0) {
       return 'https://images.unsplash.com/photo-1496181130204-755241544e35?auto=format&fit=crop&w=800&q=80';
     }
-    const raw = safeImages.find(img => typeof img === 'string' && img.trim().length > 0) || safeImages[0];
+    const raw = safeImages[index % safeImages.length] || safeImages[0];
     if (!raw || typeof raw !== 'string') return 'https://images.unsplash.com/photo-1496181130204-755241544e35?auto=format&fit=crop&w=800&q=80';
     const trimmed = raw.trim();
     if (trimmed.startsWith('data:') || trimmed.startsWith('blob:') || trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
@@ -106,13 +110,11 @@ export default React.memo(function AdCard({ ad, onClick, onLikeToggle, isFavorit
     return `/${trimmed}`;
   };
 
-  const [imgSrc, setImgSrc] = useState(getDisplayImage());
-  const [isImgLoaded, setIsImgLoaded] = useState(false);
+  const [imgSrc, setImgSrc] = useState(getDisplayImage(0));
 
   useEffect(() => {
-    setImgSrc(getDisplayImage());
-    setIsImgLoaded(false);
-  }, [ad.images]);
+    setImgSrc(getDisplayImage(currentImgIndex));
+  }, [currentImgIndex, ad.images]);
 
   useEffect(() => {
     setInternalLikes(ad?.likes || 0);
@@ -126,19 +128,31 @@ export default React.memo(function AdCard({ ad, onClick, onLikeToggle, isFavorit
     setLiked(isFavorite);
   }, [isFavorite]);
 
-  // Handle image errors dynamically
   const handleImageError = () => {
     if (imgSrc !== 'https://images.unsplash.com/photo-1496181130204-755241544e35?auto=format&fit=crop&w=800&q=80') {
-      const fallback = safeImages?.find(img => img && img !== imgSrc) || 'https://images.unsplash.com/photo-1496181130204-755241544e35?auto=format&fit=crop&w=800&q=80';
-      setImgSrc(fallback);
+      setImgSrc('https://images.unsplash.com/photo-1496181130204-755241544e35?auto=format&fit=crop&w=800&q=80');
     }
   };
 
-  // Look up names using market data and global categories
+  const handleNextImage = (e: MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (safeImages.length > 1) {
+      setCurrentImgIndex((prev) => (prev + 1) % safeImages.length);
+    }
+  };
+
+  const handlePrevImage = (e: MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (safeImages.length > 1) {
+      setCurrentImgIndex((prev) => (prev - 1 + safeImages.length) % safeImages.length);
+    }
+  };
+
   const cityObj = currentMarket?.cities?.find((c) => c.id === ad.city);
   const cityName = cityObj ? (isRtl ? cityObj.nameAr : cityObj.nameEn) : ad.city;
   
-  // Dynamically resolve localized category name (hide raw UUIDs)
   const isUuidCategory = !!(ad.category && (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(ad.category) || ad.category.length > 25));
   const catObj = CATEGORIES?.find?.((c: any) => c.id === ad.category);
   const categoryName = catObj ? (isRtl ? catObj.nameAr : catObj.nameEn) : (isUuidCategory ? '' : ad.category);
@@ -146,6 +160,7 @@ export default React.memo(function AdCard({ ad, onClick, onLikeToggle, isFavorit
 
   const handleLikeClick = (e: MouseEvent) => {
     e.stopPropagation();
+    e.preventDefault();
     
     if (!liked) {
       toast.success(isRtl ? 'تمت إضافة الإعلان للمفضلة' : 'Ad added to favorites!', {
@@ -158,19 +173,17 @@ export default React.memo(function AdCard({ ad, onClick, onLikeToggle, isFavorit
     if (onLikeToggle) {
       onLikeToggle(ad.id);
     }
-    // Locally adjust rating display
     setInternalLikes(prev => newLikedState ? prev + 1 : Math.max(0, prev - 1));
     
-    // Fire real endpoint hit in background
-    const token = localStorage.getItem('aswaq_access_token') || localStorage.getItem('auth_token');
     apiFetch(`/api/ads/${ad.id}/like`, {
-        method: 'POST',
-        body: JSON.stringify({ action: newLikedState ? 'like' : 'unlike' })
-      }).catch(() => {});
+      method: 'POST',
+      body: JSON.stringify({ action: newLikedState ? 'like' : 'unlike' })
+    }).catch(() => {});
   };
 
   const handleShareClick = (e: MouseEvent) => {
     e.stopPropagation();
+    e.preventDefault();
     const shareUrl = `${window.location.origin}/ad/${ad.id}`;
     const shareText = `${isRtl ? 'عروض أسواق' : 'Aswaq Deals'}: ${ad.title} - ${(ad.price || 0).toLocaleString()} ${isRtl ? getCurrencyAr(ad.currency) : ad.currency}`;
 
@@ -183,10 +196,38 @@ export default React.memo(function AdCard({ ad, onClick, onLikeToggle, isFavorit
     } else {
       navigator.clipboard.writeText(`${shareText}\n${shareUrl}`).then(() => {
         setSharing(true);
+        toast.success(isRtl ? 'تم نسخ رابط الإعلان' : 'Ad link copied!');
         setTimeout(() => setSharing(false), 2000);
       }).catch(err => {
         console.error('Failed to copy: ', err);
       });
+    }
+  };
+
+  const handlePhoneClick = (e: MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const phone = ad.contactNumber || ad.user?.phone || '+967770000000';
+    setShowPhone(true);
+    toast.success(isRtl ? `رقم الاتصال: ${phone}` : `Phone: ${phone}`, { duration: 4000 });
+    window.location.href = `tel:${phone}`;
+  };
+
+  const handleWhatsappClick = (e: MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const phone = (ad.contactNumber || ad.user?.phone || '').replace(/[^0-9]/g, '');
+    const message = encodeURIComponent(`${isRtl ? 'مرحباً، أود الاستفسار عن إعلانك في منصة أسواق:' : 'Hello, inquiring about your ad:'} ${ad.title}`);
+    window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
+  };
+
+  const handleChatDirectClick = (e: MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (onChatClick) {
+      onChatClick(ad);
+    } else if (onClick) {
+      onClick(ad);
     }
   };
 
@@ -199,7 +240,6 @@ export default React.memo(function AdCard({ ad, onClick, onLikeToggle, isFavorit
     }
   };
 
-  // Human date formatting with natural bilingual relative strings
   const relativeDateString = () => {
     const elapsed = Date.now() - new Date(ad.createdAt).getTime();
     const minutes = Math.floor(elapsed / 60000);
@@ -242,10 +282,46 @@ export default React.memo(function AdCard({ ad, onClick, onLikeToggle, isFavorit
     }
   };
 
-  // Price formatter with comma separator
   const formatPrice = (num: number | undefined) => {
     if (num === undefined || num === null) return "0";
     return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  };
+
+  // Specification Chips Renderer based on category & details
+  const renderSpecChips = () => {
+    const chips: { icon: string; label: string }[] = [];
+    const cat = (ad.category || '').toLowerCase();
+
+    // Vehicles / Cars
+    if (cat.includes('car') || cat.includes('vehicle') || cat.includes('سيار') || cat.includes('مركب')) {
+      if (ad.modelYear) chips.push({ icon: '📅', label: `${ad.modelYear}` });
+      if (ad.kilometers) chips.push({ icon: '🛣️', label: `${ad.kilometers.toLocaleString()} كم` });
+      if (ad.transmission) chips.push({ icon: '🕹️', label: ad.transmission === 'automatic' ? (isRtl ? 'أوتوماتيك' : 'Auto') : (isRtl ? 'عادي' : 'Manual') });
+      if (ad.fuelType) chips.push({ icon: '⛽', label: ad.fuelType });
+    }
+    // Real Estate
+    else if (cat.includes('real') || cat.includes('housing') || cat.includes('عقار') || cat.includes('سكن') || cat.includes('أرض')) {
+      if (ad.rooms) chips.push({ icon: '🛏️', label: `${ad.rooms} ${isRtl ? 'غرف' : 'rooms'}` });
+      if (ad.propertyType) chips.push({ icon: '🏠', label: ad.propertyType });
+    }
+    // Electronics
+    else if (cat.includes('electronic') || cat.includes('phone') || cat.includes('إلكترون') || cat.includes('أجهزم')) {
+      if (ad.brand) chips.push({ icon: '📱', label: ad.brand });
+      if (ad.condition) chips.push({ icon: '✨', label: ad.condition === 'new' ? (isRtl ? 'جديد' : 'New') : (isRtl ? 'مستعمل' : 'Used') });
+    }
+
+    if (chips.length === 0) return null;
+
+    return (
+      <div className="flex flex-wrap gap-1 mt-1 sm:mt-1.5">
+        {chips.slice(0, 3).map((chip, i) => (
+          <span key={i} className="inline-flex items-center gap-1 bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded-md text-[9px] sm:text-[10px] font-bold border border-slate-200/60 dark:border-slate-700/50">
+            <span>{chip.icon}</span>
+            <span>{chip.label}</span>
+          </span>
+        ))}
+      </div>
+    );
   };
 
   return (
@@ -257,18 +333,8 @@ export default React.memo(function AdCard({ ad, onClick, onLikeToggle, isFavorit
           onClick={handleCardClick}
           whileHover={{ y: -4, scale: 1.01 }}
           whileTap={{ scale: 0.98 }}
-          drag="x"
-          dragDirectionLock
-          dragConstraints={{ left: 0, right: 0 }}
-          dragElastic={0.5}
-          onDragEnd={(e: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-            if (Math.abs(info.offset.x) > 120 || Math.abs(info.velocity.x) > 500) {
-              setIsDismissed(true);
-            }
-          }}
-          exit={{ opacity: 0, x: isRtl ? 300 : -300 }}
           transition={{ duration: 0.2 }}
-          className={`group relative rounded-2xl sm:rounded-3xl border transition-all duration-300 cursor-pointer overflow-hidden ${isRtl ? 'text-right dir-rtl' : 'text-left dir-ltr'} flex flex-row sm:flex-col ${
+          className={`group relative rounded-2xl sm:rounded-3xl border transition-all duration-300 cursor-pointer overflow-hidden ${isRtl ? 'text-right dir-rtl' : 'text-left dir-ltr'} flex flex-col ${
             ad.isFeatured
               ? 'bg-emerald-50/30 dark:bg-emerald-950/10 border-emerald-500/40 hover:border-emerald-500 shadow-lg shadow-emerald-500/5'
               : 'bg-white dark:bg-slate-900/60 backdrop-blur-sm border-slate-200 dark:border-slate-800/80 hover:border-emerald-500/50 hover:shadow-xl hover:shadow-slate-200/50 dark:hover:shadow-emerald-950/20'
@@ -285,30 +351,59 @@ export default React.memo(function AdCard({ ad, onClick, onLikeToggle, isFavorit
 
       {/* Video Verification Badge */}
       {ad.videoUrl && (
-        <span className={`absolute z-20 bg-rose-500 text-white font-black text-[8px] sm:text-[10px] uppercase tracking-wider px-2 py-0.5 sm:px-3 sm:py-1 rounded-full flex items-center gap-1 shadow-lg shadow-rose-500/20 select-none ${isRtl ? `${ad.isFeatured ? 'top-10 sm:top-12' : 'top-2 sm:top-4'} right-2 sm:right-4` : `${ad.isFeatured ? 'top-10 sm:top-12' : 'top-2 sm:top-4'} left-2 sm:left-4`}`}>
+        <span className={`absolute z-20 bg-rose-500 text-white font-black text-[8px] sm:text-[10px] uppercase tracking-wider px-2 py-0.5 sm:px-3 sm:py-1 rounded-full flex items-center gap-1 shadow-lg shadow-rose-500/20 select-none ${ad.isFeatured ? 'top-10 sm:top-12' : 'top-2 sm:top-4'} ${isRtl ? 'right-2 sm:right-4' : 'left-2 sm:left-4'}`}>
           <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping mr-0.5"></span>
-          🎥 {isRtl ? 'تصوير حقيقي' : 'Real Video'}
+          🎥 {isRtl ? 'فيديو حقيقي' : 'Real Video'}
         </span>
       )}
 
-      {/* Ad Cover Image Container */}
-      <div className="relative w-28 h-28 sm:w-full sm:aspect-video shrink-0 overflow-hidden bg-slate-100 dark:bg-slate-950">
+      {/* Ad Cover Image Container with Interactive Mini Gallery */}
+      <div className="relative w-full aspect-[4/3] sm:aspect-video shrink-0 overflow-hidden bg-slate-100 dark:bg-slate-950 group/img">
         <img
           src={imgSrc}
           alt={ad.title}
-          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ease-in-out opacity-100 scale-100"
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-in-out"
           referrerPolicy="no-referrer"
           loading="lazy"
           onError={handleImageError}
         />
-        {/* Shadow Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/40 dark:from-slate-950 via-transparent to-transparent opacity-60" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/50 dark:from-slate-950 via-transparent to-transparent opacity-60 pointer-events-none" />
+
+        {/* Carousel Arrow Controls */}
+        {safeImages.length > 1 && (
+          <>
+            <button
+              onClick={isRtl ? handleNextImage : handlePrevImage}
+              className="absolute left-2 top-1/2 -translate-y-1/2 z-20 bg-black/40 hover:bg-black/70 text-white p-1.5 rounded-full backdrop-blur-md opacity-0 group-hover/img:opacity-100 transition-opacity"
+              title="Previous image"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <button
+              onClick={isRtl ? handlePrevImage : handleNextImage}
+              className="absolute right-2 top-1/2 -translate-y-1/2 z-20 bg-black/40 hover:bg-black/70 text-white p-1.5 rounded-full backdrop-blur-md opacity-0 group-hover/img:opacity-100 transition-opacity"
+              title="Next image"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+
+            {/* Carousel Dots */}
+            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-20 flex gap-1 bg-black/40 px-2 py-1 rounded-full backdrop-blur-sm">
+              {safeImages.slice(0, 5).map((_, idx) => (
+                <span
+                  key={idx}
+                  className={idx === currentImgIndex ? "w-3 h-1.5 rounded-full bg-white transition-all" : "w-1.5 h-1.5 rounded-full bg-white/50 transition-all"}
+                />
+              ))}
+            </div>
+          </>
+        )}
 
         {/* Favorite heart action button & Share action button */}
-        <div className={`absolute top-3 sm:top-5 z-20 flex flex-col gap-2 ${isRtl ? 'left-3 sm:left-5' : 'right-3 sm:right-5'}`}>
+        <div className={isRtl ? "absolute top-3 sm:top-5 z-20 flex flex-col gap-2 left-3 sm:left-5" : "absolute top-3 sm:top-5 z-20 flex flex-col gap-2 right-3 sm:right-5"}>
           <button
             onClick={handleLikeClick}
-            className={`p-2 sm:p-3 rounded-xl sm:rounded-2xl border transition-all cursor-pointer backdrop-blur-md shadow-lg ${
+            className={`p-2 sm:p-2.5 rounded-xl sm:rounded-2xl border transition-all cursor-pointer backdrop-blur-md shadow-lg ${
               liked
                 ? 'bg-rose-500 border-rose-500 text-white shadow-rose-500/30'
                 : 'bg-white/90 dark:bg-slate-950/80 border-slate-200 dark:border-white/10 hover:border-emerald-500/50 text-slate-500 dark:text-slate-300'
@@ -316,69 +411,43 @@ export default React.memo(function AdCard({ ad, onClick, onLikeToggle, isFavorit
             id={`ad-card-heart-${ad.id}`}
           >
             <motion.span 
-               whileTap={{ scale: 1.5 }}
+               whileTap={{ scale: 1.4 }}
                transition={{ type: "spring", stiffness: 400, damping: 10 }}
                className="flex items-center justify-center"
             >
-              <Heart className={`w-3.5 h-3.5 sm:w-5 sm:h-5 ${liked ? 'fill-current' : ''}`} />
+              <Heart className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${liked ? 'fill-current' : ''}`} />
             </motion.span>
           </button>
           
           <button
             onClick={handleShareClick}
-            className={`p-2 sm:p-3 rounded-xl sm:rounded-2xl border transition-all cursor-pointer backdrop-blur-md shadow-lg ${
+            className={`p-2 sm:p-2.5 rounded-xl sm:rounded-2xl border transition-all cursor-pointer backdrop-blur-md shadow-lg ${
               sharing
                 ? 'bg-emerald-500 border-emerald-500 text-white shadow-emerald-500/30'
                 : 'bg-white/90 dark:bg-slate-950/80 border-slate-200 dark:border-white/10 hover:border-emerald-500/50 text-slate-500 dark:text-slate-300'
             }`}
             id={`ad-card-share-${ad.id}`}
           >
-            <Share2 className="w-3.5 h-3.5 sm:w-5 sm:h-5" />
+            <Share2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           </button>
         </div>
 
-        {/* Image count */}
-        {safeImages.length > 1 && (
-          <div className={`absolute bottom-2 z-10 bg-black/50 text-white text-[10px] px-2 py-0.5 rounded-md backdrop-blur-sm ${isRtl ? 'left-2' : 'right-2'}`}>
-            {safeImages.length} {isRtl ? 'صور' : 'photos'}
-          </div>
-        )}
-
         {/* Category Label Overlay */}
         {categoryName && categoryName.trim() !== '' && (
-          <span className={`absolute bottom-2 sm:bottom-3 z-10 bg-white/90 dark:bg-slate-900/90 backdrop-blur border border-slate-200 dark:border-slate-700/35 text-slate-600 dark:text-slate-300 font-bold text-[8px] sm:text-[10px] px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md sm:rounded-lg ${isRtl ? 'right-2 sm:right-4' : 'left-2 sm:left-4'}`}>
+          <span className={`absolute top-3 z-10 bg-white/90 dark:bg-slate-900/90 backdrop-blur border border-slate-200 dark:border-slate-700/35 text-slate-700 dark:text-slate-200 font-bold text-[9px] sm:text-[10px] px-2.5 py-1 rounded-lg ${isRtl ? 'right-3' : 'left-3'}`}>
             {categoryName}
           </span>
         )}
       </div>
 
-      {/* STATUS Watermark / Indicators */}
-      {(ad.status === 'sold' || ad.status === 'expired' || ad.status === 'rejected') && (
-        <div className="absolute inset-0 z-30 bg-slate-950/65 backdrop-blur-[2px] flex items-center justify-center pointer-events-none">
-          <div className={`border-[3px] px-6 py-2 rotate-[-12deg] rounded-2xl shadow-2xl transition-all duration-500 
-            ${ad.status === 'sold' ? 'border-rose-500 bg-rose-500/10 shadow-rose-500/20' : 
-              ad.status === 'expired' ? 'border-amber-500 bg-amber-500/10 shadow-amber-500/20' : 
-              'border-slate-500 bg-slate-500/10 shadow-slate-500/20'}`}>
-            <span className={`font-black text-2xl sm:text-3xl tracking-widest
-              ${ad.status === 'sold' ? 'text-rose-500' : 
-                ad.status === 'expired' ? 'text-amber-500' : 
-                'text-slate-400'}`}>
-              {ad.status === 'sold' ? (isRtl ? 'تـم الـبـيـع' : 'SOLD') : 
-               ad.status === 'expired' ? (isRtl ? 'مـنـتـهـي' : 'EXPIRED') : 
-               (isRtl ? 'مـرفـوض' : 'REJECTED')}
-            </span>
-          </div>
-        </div>
-      )}
-
       {/* Information Content Block */}
-      <div className="p-3 sm:p-5 flex flex-col justify-between flex-grow min-h-0 sm:h-auto">
-        <div className="space-y-1 sm:space-y-2">
+      <div className="p-3 sm:p-4 flex flex-col justify-between flex-grow space-y-2">
+        <div className="space-y-1.5">
           {/* User & Trust Row */}
           {(() => {
             const cleanUserDisplayName = sanitizeName(ad.userName);
             return (
-              <div className="flex items-center gap-2 mb-2 pb-2 border-b border-slate-100 dark:border-slate-800/40">
+              <div className="flex items-center gap-2 pb-1.5 border-b border-slate-100 dark:border-slate-800/40">
                 <div className="relative flex items-center justify-center">
                   <Avatar 
                     src={ad.userAvatar} 
@@ -388,119 +457,91 @@ export default React.memo(function AdCard({ ad, onClick, onLikeToggle, isFavorit
                   />
                   {ad.userVerified && (
                     <div className="absolute -bottom-0.5 -right-0.5 bg-emerald-500 rounded-full p-0.5 border border-white dark:border-slate-900">
-                      <ShieldCheck className="w-1.5 h-1.5 sm:w-2 sm:h-2 text-white" />
+                      <ShieldCheck className="w-2 h-2 text-white" />
                     </div>
                   )}
                 </div>
-                <div className="flex flex-col">
-                  <span className={`text-[8px] sm:text-[10px] font-bold truncate max-w-[80px] ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
+                <div className="flex items-center gap-1.5">
+                  <span className={`text-[10px] sm:text-xs font-bold truncate max-w-[100px] ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
                     {cleanUserDisplayName}
                   </span>
-                  {ad.userVerified && <span className="text-[6px] sm:text-[8px] font-black text-emerald-600 dark:text-emerald-500 uppercase tracking-tighter">{isRtl ? 'موثوق' : 'Verified'}</span>}
+                  {ad.userVerified && <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[8px] font-extrabold px-1.5 py-0.2 rounded border border-emerald-500/20">{isRtl ? 'موثوق' : 'Verified'}</span>}
                 </div>
               </div>
             );
           })()}
 
           {/* Micro Information Line */}
-          <div className={`flex items-center justify-between gap-1 text-[8px] sm:text-[10px] font-mono ${isDark ? 'text-slate-300' : 'text-slate-500'} ${isRtl ? 'flex-row' : 'flex-row-reverse'}`}>
-            <span className="flex items-center gap-1 truncate max-w-[120px] sm:max-w-none">
-              <MapPin className="w-2.5 h-2.5 text-emerald-500" />
+          <div className={`flex items-center justify-between gap-1 text-[9px] sm:text-[10px] font-mono ${isDark ? 'text-slate-300' : 'text-slate-500'} ${isRtl ? 'flex-row' : 'flex-row-reverse'}`}>
+            <span className="flex items-center gap-1 truncate max-w-[140px] sm:max-w-none">
+              <MapPin className="w-3 h-3 text-emerald-500 shrink-0" />
               <span className="truncate">{cityName}{districtName ? ` - ${districtName}` : ''}</span>
-              {distanceInKm !== undefined && (
-                <span className="bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 font-black px-1 py-0.5 rounded text-[7px] sm:text-[9px] mr-1 animate-pulse shrink-0 border border-emerald-100 dark:border-transparent">
-                  📍 {distanceInKm >= 1 ? (isRtl ? `${distanceInKm.toFixed(0)} كم` : `${distanceInKm.toFixed(0)} km`) : (isRtl ? '< 1 كم' : '< 1 km')}
-                </span>
-              )}
             </span>
             <span className="flex items-center gap-1 shrink-0">
-              <Calendar className="w-2.5 h-2.5" />
-              <span>
-                {relativeDateString()} {` (${new Date(ad.createdAt).toLocaleDateString(isRtl ? 'ar-YE' : 'en-US', {month: 'numeric', day: 'numeric'})} ${new Date(ad.createdAt).toLocaleTimeString(isRtl ? 'ar-YE' : 'en-US', {hour: '2-digit', minute: '2-digit', hour12: true})})`}
-              </span>
+              <Calendar className="w-3 h-3 text-slate-400" />
+              <span>{relativeDateString()}</span>
             </span>
           </div>
 
           {/* Ad Title */}
-          <h3 className={`text-[11px] sm:text-sm font-bold hover:text-emerald-600 dark:hover:text-emerald-400 line-clamp-1 sm:line-clamp-2 transition-colors leading-tight ${isDark ? 'text-white' : 'text-slate-900'} ${isRtl ? 'text-right' : 'text-left'}`}>
+          <h3 className={`text-xs sm:text-sm font-bold hover:text-emerald-600 dark:hover:text-emerald-400 line-clamp-2 transition-colors leading-snug ${isDark ? 'text-white' : 'text-slate-900'} ${isRtl ? 'text-right' : 'text-left'}`}>
             {ad.title}
           </h3>
 
-          {/* Job Type Badge */}
-          {ad.jobType && (
-            <div className={`flex items-center mt-0.5 sm:mt-2 ${isRtl ? 'justify-start' : 'justify-start'}`}>
-              {ad.jobType === 'hiring' ? (
-                <span className="inline-flex items-center gap-1 bg-emerald-950/50 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 sm:px-2.5 sm:py-1 rounded-md sm:rounded-lg text-[7px] sm:text-[10px] font-black">
-                  <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-emerald-400"></span>
-                  {isRtl ? 'موظف مطلوب' : 'Hiring'}
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1 bg-amber-950/40 text-amber-400 border border-amber-500/20 px-1.5 py-0.5 sm:px-2.5 sm:py-1 rounded-md sm:rounded-lg text-[7px] sm:text-[10px] font-black">
-                  <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-amber-400"></span>
-                  {isRtl ? 'بحث عن عمل' : 'Seeking Job'}
-                </span>
-              )}
-            </div>
-          )}
+          {/* Dynamic Specification Chips (Category Badges) */}
+          {renderSpecChips()}
         </div>
 
-        {/* Bottom pricing section */}
-        <div className={`border-t pt-2 sm:pt-4 mt-auto ${isDark ? 'border-slate-800/80' : 'border-slate-100'}`}>
-          <div className="flex flex-col gap-1">
-            <div className={`flex items-center justify-between gap-2 ${isRtl ? 'flex-row' : 'flex-row-reverse'}`}>
-              {/* Price digits */}
-              <div className={`flex items-baseline gap-1 ${isRtl ? 'text-right' : 'text-left'}`}>
-                <span className={`text-sm sm:text-xl font-extrabold ${isDark ? 'bg-gradient-to-l from-emerald-400 to-cyan-400 bg-clip-text text-transparent' : 'text-emerald-600'}`}>
-                  {formatPrice(ad.price)}
-                </span>
-                <span className={`text-[8px] sm:text-xs font-semibold ${isDark ? 'text-emerald-500' : 'text-emerald-600'}`}>
-                  {isRtl ? getCurrencyAr(ad.currency) : ad.currency}
-                </span>
-              </div>
-
-               {/* Views engagement panel counters */}
-              <div className={`flex items-center gap-2 sm:gap-3 text-[9px] sm:text-[11px] font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                <span className="flex items-center gap-0.5 sm:gap-1">
-                  <Eye className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5" />
-                  {internalViews}
-                </span>
-                <button 
-                  onClick={handleLikeClick}
-                  className="flex items-center gap-0.5 sm:gap-1 hover:text-rose-500 transition-colors cursor-pointer"
-                >
-                  <Heart className={`w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 ${liked ? 'text-rose-500 fill-current' : ''}`} />
-                  {internalLikes}
-                </button>
-              </div>
+        {/* Pricing & Actions Section */}
+        <div className={`border-t pt-2.5 mt-auto space-y-2 ${isDark ? 'border-slate-800/80' : 'border-slate-100'}`}>
+          <div className={`flex items-center justify-between gap-2 ${isRtl ? 'flex-row' : 'flex-row-reverse'}`}>
+            {/* Price digits */}
+            <div className={`flex items-baseline gap-1 ${isRtl ? 'text-right' : 'text-left'}`}>
+              <span className={`text-base sm:text-lg font-black ${isDark ? 'bg-gradient-to-l from-emerald-400 to-cyan-400 bg-clip-text text-transparent' : 'text-emerald-600'}`}>
+                {formatPrice(ad.price)}
+              </span>
+              <span className={`text-[10px] sm:text-xs font-semibold ${isDark ? 'text-emerald-500' : 'text-emerald-600'}`}>
+                {isRtl ? getCurrencyAr(ad.currency) : ad.currency}
+              </span>
             </div>
 
-            {/* Currency conversion info on-hover or small text */}
-            {ad.currency === 'USD' && currentMarket?.countryCode === 'YE' ? (
-               <div className={`flex items-center gap-2 text-[7px] sm:text-[9px] font-bold opacity-0 group-hover:opacity-100 transition-opacity ${isDark ? 'text-slate-400' : 'text-slate-500'} ${isRtl ? 'flex-row' : 'flex-row-reverse'}`}>
-                 <span className="text-emerald-500/80">{isRtl ? `≈ ${((ad.price || 0) * 535).toLocaleString()} ي.ر (صنعاء)` : `≈ ${((ad.price || 0) * 535).toLocaleString()} YER (Sanaa)`}</span>
-                 <span className="text-cyan-500/80">{isRtl ? `≈ ${((ad.price || 0) * 1780).toLocaleString()} ي.ر (عدن)` : `≈ ${((ad.price || 0) * 1780).toLocaleString()} YER (Aden)`}</span>
-               </div>
-            ) : ad.currency === 'USD' && currentMarket && currentMarket.currency !== 'USD' ? (
-               <div className={`flex items-center gap-2 text-[7px] sm:text-[9px] font-bold opacity-0 group-hover:opacity-100 transition-opacity ${isDark ? 'text-slate-400' : 'text-slate-500'} ${isRtl ? 'flex-row' : 'flex-row-reverse'}`}>
-                 <span className="text-emerald-500/80">≈ {((ad.price || 0) * currentMarket.usdRate).toLocaleString(undefined, {maximumFractionDigits: 0})} {isRtl ? getCurrencyAr(currentMarket.currency) : currentMarket.currency}</span>
-               </div>
-            ) : ad.currency !== 'USD' && currentMarket && currentMarket.usdRate > 1 ? (
-               <div className={`flex items-center gap-2 text-[7px] sm:text-[9px] font-bold opacity-0 group-hover:opacity-100 transition-opacity ${isDark ? 'text-slate-400' : 'text-slate-500'} ${isRtl ? 'flex-row' : 'flex-row-reverse'}`}>
-                 <span className="text-emerald-500/80">≈ {((ad.price || 0) / currentMarket.usdRate).toLocaleString(undefined, {maximumFractionDigits: 1})} $</span>
-               </div>
-            ) : null}
+            {/* Engagement Counters */}
+            <div className={`flex items-center gap-2 text-[10px] sm:text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+              <span className="flex items-center gap-1">
+                <Eye className="w-3.5 h-3.5" />
+                {internalViews}
+              </span>
+            </div>
+          </div>
 
-            {/* Live Stream Join Button */}
-            {ad.isLive && (
-              <button 
-                onClick={(e) => { e.stopPropagation(); onClick(ad); }}
-                className="mt-2 w-full bg-rose-600 hover:bg-rose-500 text-white flex items-center justify-center gap-1.5 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black shadow-lg shadow-rose-600/20 active:scale-95 transition-all"
-              >
-                <Video className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-white animate-pulse mr-0.5"></span>
-                {isRtl ? 'انضم للبث' : 'Join Stream'}
-              </button>
-            )}
+          {/* Quick Action Bar (زر الاتصال، زر الواتساب، زر الدردشة) */}
+          <div className="grid grid-cols-3 gap-1.5 pt-1">
+            <button
+              onClick={handlePhoneClick}
+              className="flex items-center justify-center gap-1 bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-1.5 px-2 rounded-xl text-[10px] sm:text-xs shadow-md shadow-emerald-500/20 active:scale-95 transition-all"
+              title="اتصال تلفوني"
+            >
+              <Phone className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+              <span>{showPhone ? (ad.contactNumber || 'اتصال') : (isRtl ? 'اتصل' : 'Call')}</span>
+            </button>
+
+            <button
+              onClick={handleWhatsappClick}
+              className="flex items-center justify-center gap-1 bg-emerald-600/10 dark:bg-emerald-500/20 hover:bg-emerald-500 hover:text-white text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 font-bold py-1.5 px-2 rounded-xl text-[10px] sm:text-xs active:scale-95 transition-all"
+              title="واتساب مباشر"
+            >
+              <MessageSquare className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+              <span>{isRtl ? 'واتساب' : 'WhatsApp'}</span>
+            </button>
+
+            <button
+              onClick={handleChatDirectClick}
+              className="flex items-center justify-center gap-1 bg-cyan-600/10 dark:bg-cyan-500/20 hover:bg-cyan-500 hover:text-white text-cyan-600 dark:text-cyan-400 border border-cyan-500/30 font-bold py-1.5 px-2 rounded-xl text-[10px] sm:text-xs active:scale-95 transition-all"
+              title="محادثة منصة أسواق"
+            >
+              <MessageCircle className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+              <span>{isRtl ? 'شات' : 'Chat'}</span>
+            </button>
           </div>
         </div>
 
@@ -509,4 +550,4 @@ export default React.memo(function AdCard({ ad, onClick, onLikeToggle, isFavorit
       )}
     </AnimatePresence>
   );
-})
+});
