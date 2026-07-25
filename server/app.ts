@@ -2268,6 +2268,21 @@ Sitemap: ${BASE_URL}/sitemap.xml
     };
 
     // SECURITY FIX: All settings routes are now properly admin-guarded
+    // GET /api/settings/public - Public platform settings endpoint (accessible without admin credentials)
+    this.app.get('/api/settings/public', async (req, res) => {
+      try {
+        const settings = await getPlatformSettings();
+        res.json({
+          appName: settings.appName || 'أسواق',
+          logoLetter: settings.logoLetter || 'أ',
+          logoUrl: settings.logoUrl || '',
+          maintenanceMode: !!settings.maintenanceMode,
+        });
+      } catch (err: any) {
+        res.json({ appName: 'أسواق', logoLetter: 'أ', logoUrl: '' });
+      }
+    });
+
     this.app.get('/api/admin/settings', ...adminAccessGuards, async (req, res) => {
       try {
         const settings = await getPlatformSettings();
@@ -2280,13 +2295,15 @@ Sitemap: ${BASE_URL}/sitemap.xml
     this.app.patch('/api/admin/settings', ...adminAccessGuards, async (req, res) => {
       try {
         const currentSettings = await getPlatformSettings();
-        const updatedSettings = { ...currentSettings, ...req.body };
+        const logoUrl = (req.body.logoUrl && req.body.logoUrl.trim()) ? req.body.logoUrl : currentSettings.logoUrl;
+        const updatedSettings = { ...currentSettings, ...req.body, logoUrl };
         await savePlatformSettings(updatedSettings);
         res.json({ success: true, ...updatedSettings });
       } catch (err: any) {
         res.status(500).json({ error: 'Save failed', message: err.message });
       }
     });
+
 
     this.app.put('/api/admin/settings', ...adminAccessGuards, async (req, res) => {
       try {

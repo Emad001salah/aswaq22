@@ -1885,20 +1885,17 @@ useEffect(() => {
 
   const fetchPlatformSettings = async () => {
     try {
-      const response = await fetch("/api/admin/settings", {
-        headers: {
-          'x-user-email': currentUser?.email || ''
-        }
-      });
+      const response = await fetch("/api/settings/public");
       if (response.ok) {
         const data = await response.json();
         setPlatformSettings(data);
         localStorage.setItem('aswaq_platform_settings', JSON.stringify(data));
       }
     } catch (e) {
-      console.error("Failed to load settings", e);
+      console.error("Failed to load public platform settings", e);
     }
   };
+
 
   // 1. Fetch live listings
   useEffect(() => {
