@@ -314,23 +314,8 @@ function AdminPanelInner({
   // ── Auth & CSRF Helper: always attach x-user-email, Authorization and x-csrf-token ──
   const adminFetch = useCallback(
     async (url: string, opts: RequestInit = {}) => {
-      // 1. Get CSRF token from cookie
-      let csrfToken = getCookie('csrf_token');
-
-      // 2. If token is not present in cookie, fetch it from the server
-      if (!csrfToken && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(opts.method || 'GET')) {
-        try {
-            const csrfRes = await apiFetch('/api/csrf-token', { credentials: 'include' });
-          if (csrfRes.ok) {
-            const data = await csrfRes.json();
-            csrfToken = data.csrfToken;
-          }
-        } catch (e) {
-          console.error('Failed to pre-fetch CSRF token', e);
-        }
-      }
-
       const token = localStorage.getItem('aswaq_access_token') || localStorage.getItem('auth_token') || '';
+      const csrfToken = getCookie('csrf_token');
 
       return apiFetch(url, {
         credentials: 'include',
@@ -345,6 +330,7 @@ function AdminPanelInner({
     },
     [currentUser]
   );
+
 
   // ── Fetch Functions ──
 

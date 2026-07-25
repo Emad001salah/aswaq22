@@ -1384,36 +1384,17 @@ export class App {
     // ── Admin Users Management ────────────────────────────────────────────────
     this.app.get('/api/admin/users', ...adminAccessGuards, async (req, res, next) => {
       try {
-        const adminUser = (req as any).adminUser || (req as any).user;
         const { cursor, limit = '500', search } = req.query;
-        const reqMarket = req.query.market as string;
-        
-        const isSuperAdmin = adminUser?.role === 'SUPER_ADMIN' || adminUser?.role === 'ADMIN';
-        const market = isSuperAdmin ? (reqMarket && reqMarket !== 'all' ? reqMarket : null) : (adminUser?.managedCountry || reqMarket);
-
         const take = parseInt(limit as string, 10) || 500;
         const searchStr = search ? String(search).trim() : '';
 
-        const whereClause: any = {
-          deletedAt: null,
-        };
-
-        if (market && market !== 'all') {
-          whereClause.OR = [
-            { countryId: { equals: market, mode: 'insensitive' } },
-            { countryId: null }
-          ];
-        }
+        const whereClause: any = {};
 
         if (searchStr.length > 0) {
-          whereClause.AND = [
-            {
-              OR: [
-                { name: { contains: searchStr, mode: 'insensitive' } },
-                { phone: { contains: searchStr, mode: 'insensitive' } },
-                { email: { contains: searchStr, mode: 'insensitive' } }
-              ]
-            }
+          whereClause.OR = [
+            { name: { contains: searchStr, mode: 'insensitive' } },
+            { phone: { contains: searchStr, mode: 'insensitive' } },
+            { email: { contains: searchStr, mode: 'insensitive' } }
           ];
         }
 
@@ -1464,6 +1445,7 @@ export class App {
         next(err);
       }
     });
+
 
 
     this.app.post('/api/users/verify-documents', authMiddleware, async (req, res, next) => {
