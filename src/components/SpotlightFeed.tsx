@@ -588,14 +588,31 @@ function WebcamStreamPlayer({
         pcRef.current = pc;
 
         pc.ontrack = (event) => {
-          console.log("[Viewer] Received broadcast tracks!", event.streams);
-          if (videoRef.current && event.streams[0]) {
-            videoRef.current.srcObject = event.streams[0];
-            videoRef.current.play().catch(e => console.log("Autoplay handle:", e));
-            setStatusText('');
-            setIsOffline(false);
+          console.log("[Viewer] Received broadcast track!", event.track.kind, event.streams);
+          let mediaStream = (event.streams && event.streams[0]) ? event.streams[0] : null;
+          if (!mediaStream) {
+            mediaStream = new MediaStream();
+            mediaStream.addTrack(event.track);
           }
+
+          if (videoRef.current) {
+            videoRef.current.srcObject = mediaStream;
+            videoRef.current.muted = isMuted;
+            const playPromise = videoRef.current.play();
+            if (playPromise !== undefined) {
+              playPromise.catch((e) => {
+                console.warn("[Viewer] Unmuted play failed due to browser policy, playing muted:", e);
+                if (videoRef.current) {
+                  videoRef.current.muted = true;
+                  videoRef.current.play().catch(() => null);
+                }
+              });
+            }
+          }
+          setStatusText('');
+          setIsOffline(false);
         };
+
 
         pc.onicecandidate = (event) => {
           if (event.candidate) {
@@ -870,8 +887,9 @@ function WebcamStreamPlayer({
         muted={isCreator || isBroadcaster || isMuted}
         style={{ filter: finalFilter }}
         className={`w-full h-full object-cover brightness-[1.1] transition-all duration-300 ${
-          statusText ? 'opacity-0 scale-95 blur-sm' : 'opacity-100 scale-100 blur-0'
+          (isOffline && statusText) ? 'opacity-0 scale-95 blur-sm' : 'opacity-100 scale-100 blur-0'
         } ${(isBroadcaster && facingMode === 'user') ? 'scale-x-[-1]' : ''}`}
+
       />
 
 
