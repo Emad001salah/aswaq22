@@ -615,12 +615,18 @@ const AuthStep = ({
 
         {/* Header */}
         <div className="text-center space-y-1">
-          <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 border border-emerald-500/20 flex items-center justify-center mx-auto mb-3 overflow-hidden">
+          <div className="w-14 h-14 rounded-2xl bg-emerald-500/15 border border-emerald-500/20 flex items-center justify-center mx-auto mb-3 overflow-hidden">
             {platformSettings?.logoUrl ? (
-              <img src={platformSettings.logoUrl} alt="Logo" className="w-full h-full object-contain p-1" />
-            ) : (
-              <ShieldCheck className="w-6 h-6 text-emerald-400" />
-            )}
+              <img
+                src={platformSettings.logoUrl}
+                alt="Logo"
+                className="w-full h-full object-contain p-1"
+                onError={(e) => {
+                  (e.target as HTMLElement).style.display = 'none';
+                }}
+              />
+            ) : null}
+            <ShieldCheck className="w-7 h-7 text-emerald-400" />
           </div>
           <h2 className="text-2xl font-black text-white">
             {mode === 'login' ? 'مرحباً بعودتك 👋' : 'انضم إلى أسواق 🚀'}
@@ -698,32 +704,8 @@ const AuthStep = ({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               onSubmit={handleEmailAuth}
-              className="space-y-4"
+              className="space-y-3.5"
             >
-              {/* Role (signup only) */}
-              {mode === 'signup' && (
-                <div>
-                  <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2 block px-1">نوع الحساب</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {ROLES.map((r) => (
-                      <button
-                        key={r.id}
-                        type="button"
-                        onClick={() => setRole(r.id)}
-                        className={`py-3 px-3 rounded-xl border text-xs font-bold flex items-center gap-2 transition-all ${
-                          role === r.id
-                            ? 'bg-emerald-500/15 border-emerald-500/50 text-emerald-400'
-                            : 'bg-zinc-950/50 border-zinc-800 text-zinc-500 hover:border-zinc-700'
-                        }`}
-                      >
-                        <span>{r.emoji}</span>
-                        <span>{r.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
               {mode === 'signup' && (
                 <InputField icon={User} placeholder="الاسم الكامل" value={name} onChange={setName} required />
               )}
@@ -735,8 +717,8 @@ const AuthStep = ({
                 value={password}
                 onChange={setPassword}
                 required
-                rightEl={
-                  <button type="button" onClick={() => setShowPwd((s) => !s)} className="text-zinc-500 hover:text-zinc-300 transition-colors">
+                suffix={
+                  <button type="button" onClick={() => setShowPwd((s) => !s)} className="text-zinc-500 hover:text-zinc-300 transition-colors p-1">
                     {showPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 }
@@ -750,7 +732,7 @@ const AuthStep = ({
                 disabled={loading}
                 whileHover={{ scale: 1.01 }}
                 whileTap={{ scale: 0.97 }}
-                className="w-full py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-black text-sm shadow-xl shadow-emerald-500/20 flex items-center justify-center gap-2 disabled:opacity-50 transition-all"
+                className="w-full py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-black text-sm shadow-xl shadow-emerald-500/20 flex items-center justify-center gap-2 disabled:opacity-50 transition-all mt-2"
               >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                 {mode === 'login' ? 'تسجيل الدخول' : 'إنشاء الحساب'}
@@ -776,29 +758,34 @@ const AuthStep = ({
                   <motion.div key="phone-input" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
                     <div>
                       <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-1.5 block px-1 text-right">رقم الهاتف</label>
-                      <div className="relative flex items-center bg-slate-950/90 border border-zinc-800 hover:border-zinc-700 focus-within:border-emerald-500/80 rounded-2xl overflow-hidden transition-all shadow-inner w-full" dir="ltr">
-                        <select
-                          value={countryCode}
-                          onChange={(e) => setCountryCode(e.target.value)}
-                          className="bg-zinc-900/90 text-emerald-400 font-bold text-xs sm:text-sm py-3.5 px-3 border-r border-zinc-800 outline-none cursor-pointer appearance-none shrink-0 text-center"
-                          style={{ minWidth: '90px' }}
-                        >
-                          {COUNTRIES.map((c, i) => (
-                            <option key={`${c.dial_code}-${i}`} value={c.dial_code} className="bg-slate-900 text-white p-2">
-                              {c.dial_code} ({c.nameAr})
-                            </option>
-                          ))}
-                        </select>
+                      <div className="flex gap-2 items-center w-full min-w-0" dir="rtl">
+                        {/* 1. Country Code Select (Compact on the Right in RTL, fixed w-28 width) */}
+                        <div className="relative w-28 sm:w-32 shrink-0">
+                          <select
+                            value={countryCode}
+                            onChange={(e) => setCountryCode(e.target.value)}
+                            className="w-full bg-slate-950/90 border border-zinc-800 hover:border-zinc-700 focus:border-emerald-500/80 rounded-2xl py-3.5 px-2 text-xs sm:text-sm text-emerald-400 font-bold outline-none cursor-pointer appearance-none text-center transition-all"
+                          >
+                            {COUNTRIES.map((c, i) => (
+                              <option key={`${c.dial_code}-${i}`} value={c.dial_code} className="bg-slate-900 text-white p-2">
+                                {c.dial_code} {c.nameAr}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* 2. Phone Number Input (LARGE majority 75% width on the Left in RTL) */}
                         <input
                           type="tel"
                           placeholder="7xxxxxxxx"
                           value={phone}
                           onChange={(e) => setPhone(e.target.value.replace(/[^0-9]/g, ''))}
                           dir="ltr"
-                          className="w-full flex-1 bg-transparent py-3.5 px-3 sm:px-4 text-xs sm:text-sm text-white font-mono outline-none placeholder:text-zinc-600 border-none"
+                          className="flex-1 min-w-0 w-full bg-slate-950/90 border border-zinc-800 hover:border-zinc-700 focus:border-emerald-500/80 rounded-2xl py-3.5 px-3 sm:px-4 text-xs sm:text-sm text-white font-mono outline-none transition-all placeholder:text-zinc-600"
                         />
                       </div>
                     </div>
+
 
                     {error && <ErrorBanner msg={error} />}
                     {successMsg && <SuccessBanner msg={successMsg} />}

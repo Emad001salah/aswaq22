@@ -416,9 +416,20 @@ export default function AuthModal({ isOpen, onClose, onSuccess, isDark }: AuthMo
           <div className="p-4 sm:p-7 pt-5 space-y-5 sm:space-y-6">
             {/* Header */}
             <div className="text-center space-y-1 pt-2">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-xl shadow-emerald-500/25 flex items-center justify-center mx-auto mb-3 sm:mb-4">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-xl shadow-emerald-500/25 flex items-center justify-center mx-auto mb-3 sm:mb-4 overflow-hidden p-1">
+                {platformSettings?.logoUrl ? (
+                  <img
+                    src={platformSettings.logoUrl}
+                    alt="Logo"
+                    className="w-full h-full object-contain"
+                    onError={(e) => {
+                      (e.target as HTMLElement).style.display = 'none';
+                    }}
+                  />
+                ) : null}
                 <ShieldCheck className="w-6 h-6 sm:w-7 sm:h-7 text-slate-950" />
               </div>
+
               <h2 className="text-xl sm:text-2xl font-black text-white">
                 {mode === 'login' ? 'مرحباً بعودتك 👋' : 'انضم إلينا 🚀'}
               </h2>
@@ -550,29 +561,34 @@ export default function AuthModal({ isOpen, onClose, onSuccess, isDark }: AuthMo
                       <motion.div key="ph-input" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
                         <div>
                           <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-1.5 block px-1 text-right">رقم الهاتف</label>
-                          <div className="relative flex items-center bg-slate-950/90 border border-zinc-800 hover:border-zinc-700 focus-within:border-emerald-500/80 rounded-2xl overflow-hidden transition-all shadow-inner w-full" dir="ltr">
-                            <select
-                              value={countryCode}
-                              onChange={(e) => setCountryCode(e.target.value)}
-                              className="bg-zinc-900/90 text-emerald-400 font-bold text-xs sm:text-sm py-3.5 px-3 border-r border-zinc-800 outline-none cursor-pointer appearance-none shrink-0 text-center"
-                              style={{ minWidth: '90px' }}
-                            >
-                              {COUNTRIES.map((c, i) => (
-                                <option key={`${c.dial_code}-${i}`} value={c.dial_code} className="bg-slate-900 text-white p-2">
-                                  {c.dial_code} ({c.nameAr})
-                                </option>
-                              ))}
-                            </select>
+                          <div className="flex gap-2 items-center w-full min-w-0" dir="rtl">
+                            {/* 1. Country Code Select (Compact on the Right in RTL, fixed w-28 width) */}
+                            <div className="relative w-28 sm:w-32 shrink-0">
+                              <select
+                                value={countryCode}
+                                onChange={(e) => setCountryCode(e.target.value)}
+                                className="w-full bg-slate-950/90 border border-zinc-800 hover:border-zinc-700 focus:border-emerald-500/80 rounded-2xl py-3.5 px-2 text-xs sm:text-sm text-emerald-400 font-bold outline-none cursor-pointer appearance-none text-center transition-all"
+                              >
+                                {COUNTRIES.map((c, i) => (
+                                  <option key={`${c.dial_code}-${i}`} value={c.dial_code} className="bg-slate-900 text-white p-2">
+                                    {c.dial_code} {c.nameAr}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+
+                            {/* 2. Phone Number Input (LARGE majority 75% width on the Left in RTL) */}
                             <input
                               type="tel"
                               placeholder="7xxxxxxxx"
                               value={phone}
                               onChange={(e) => setPhone(e.target.value.replace(/[^0-9]/g, ''))}
                               dir="ltr"
-                              className="w-full flex-1 bg-transparent py-3.5 px-3 sm:px-4 text-xs sm:text-sm text-white font-mono outline-none placeholder:text-zinc-600 border-none"
+                              className="flex-1 min-w-0 w-full bg-slate-950/90 border border-zinc-800 hover:border-zinc-700 focus:border-emerald-500/80 rounded-2xl py-3.5 px-3 sm:px-4 text-xs sm:text-sm text-white font-mono outline-none transition-all placeholder:text-zinc-600"
                             />
                           </div>
                         </div>
+
 
 
 
