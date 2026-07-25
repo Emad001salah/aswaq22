@@ -1384,37 +1384,44 @@ export class App {
     // ── Admin Users Management ────────────────────────────────────────────────
     this.app.get('/api/admin/users', ...adminAccessGuards, async (req, res, next) => {
       try {
-        const adminUser = (req as any).adminUser;
-        const { cursor, limit = '50', search } = req.query;
+        const adminUser = (req as any).adminUser || (req as any).user;
+        const { cursor, limit = '500', search } = req.query;
         const reqMarket = req.query.market as string;
-        const market = (adminUser.role === 'ADMIN' && adminUser.managedCountry) 
-          ? adminUser.managedCountry 
-          : reqMarket;
+        
+        const isSuperAdmin = adminUser?.role === 'SUPER_ADMIN' || adminUser?.role === 'ADMIN';
+        const market = isSuperAdmin ? (reqMarket && reqMarket !== 'all' ? reqMarket : null) : (adminUser?.managedCountry || reqMarket);
 
-        const take = parseInt(limit as string);
+        const take = parseInt(limit as string, 10) || 500;
+        const searchStr = search ? String(search).trim() : '';
+
+        const whereClause: any = {
+          deletedAt: null,
+        };
+
+        if (market && market !== 'all') {
+          whereClause.OR = [
+            { countryId: { equals: market, mode: 'insensitive' } },
+            { countryId: null }
+          ];
+        }
+
+        if (searchStr.length > 0) {
+          whereClause.AND = [
+            {
+              OR: [
+                { name: { contains: searchStr, mode: 'insensitive' } },
+                { phone: { contains: searchStr, mode: 'insensitive' } },
+                { email: { contains: searchStr, mode: 'insensitive' } }
+              ]
+            }
+          ];
+        }
 
         const users = await prisma.user.findMany({
           take,
           skip: cursor ? 1 : 0,
           cursor: cursor ? { id: String(cursor) } : undefined,
-          where: {
-            deletedAt: null,
-            // Only filter by countryId when a regular ADMIN is managing a specific country
-            // SUPER_ADMIN sees ALL users regardless of countryId
-            ...(market && market !== 'all' && adminUser.role !== 'SUPER_ADMIN' ? {
-              OR: [
-                { countryId: market },
-                { countryId: null }
-              ]
-            } : {}),
-            ...(search ? { 
-              OR: [
-                { name: { contains: String(search) } },
-                { phone: { contains: String(search) } },
-                { email: { contains: String(search) } }
-              ] 
-            } : {})
-          },
+          where: whereClause,
           orderBy: { createdAt: 'desc' },
           select: {
             id: true,
@@ -1457,6 +1464,7 @@ export class App {
         next(err);
       }
     });
+
 
     this.app.post('/api/users/verify-documents', authMiddleware, async (req, res, next) => {
       try {
@@ -2326,18 +2334,21 @@ Sitemap: ${BASE_URL}/sitemap.xml
         const logoFileName = `platform-logo.${ext}`;
         const logoPath = path.join(uploadsDir, logoFileName);
 
+        // Always save locally to /uploads first so it's instantly available and resilient
+        fs.writeFileSync(logoPath, req.file.buffer);
         let logoUrl = `/uploads/${logoFileName}`;
+        logger.info({ message: `settings/logo saved locally: ${logoFileName}` });
 
-        // Verify if R2 is enabled for this upload
-        const r2Enabled = await isFeatureEnabled('r2_storage', (req as any).user?.id || 'admin');
-        if (r2Enabled) {
-          const destinationKey = `uploads/platform-logo.${ext}`;
-          await storageService.uploadFileByKey(destinationKey, req.file.buffer, req.file.mimetype);
-          logoUrl = `${process.env.MEDIA_PUBLIC_BASE_URL || 'https://media.aswaq22.com'}/${destinationKey}`;
-          logger.info({ message: `settings/logo uploaded to R2: ${destinationKey}` });
-        } else {
-          fs.writeFileSync(logoPath, req.file.buffer);
-          logger.info({ message: `settings/logo saved locally: ${logoFileName}` });
+        try {
+          const r2Enabled = await isFeatureEnabled('r2_storage', (req as any).user?.id || 'admin');
+          if (r2Enabled) {
+            const destinationKey = `uploads/platform-logo.${ext}`;
+            await storageService.uploadFileByKey(destinationKey, req.file.buffer, req.file.mimetype);
+            logoUrl = `${process.env.MEDIA_PUBLIC_BASE_URL || 'https://media.aswaq22.com'}/${destinationKey}`;
+            logger.info({ message: `settings/logo uploaded to R2: ${destinationKey}` });
+          }
+        } catch (r2Err: any) {
+          logger.warn({ message: `[LogoUpload] R2 storage fallback to local URL: ${r2Err.message}` });
         }
 
         const currentSettings = await getPlatformSettings();
@@ -2345,6 +2356,7 @@ Sitemap: ${BASE_URL}/sitemap.xml
         await savePlatformSettings(currentSettings);
 
         res.json({ success: true, logoUrl });
+
       } catch (err: any) {
         logger.error({ message: 'Failed uploading logo', error: err.message });
         res.status(500).json({ error: 'Failed uploading logo', message: err.message });
