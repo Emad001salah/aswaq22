@@ -4275,15 +4275,15 @@ useEffect(() => {
                   {/* Green Gradient Branding Box */}
                   <div className="bg-gradient-to-br from-emerald-950 via-teal-950 to-slate-900 p-8 rounded-[2.5rem] border border-emerald-800/60 shadow-2xl shadow-emerald-950/20 text-center flex flex-col items-center justify-center space-y-4 relative overflow-hidden">
                     <div className="w-24 h-24 rounded-3xl flex items-center justify-center overflow-hidden relative z-10 shadow-2xl bg-emerald-900/60 border border-emerald-500/30 p-1.5">
-                      {platformSettings?.logoUrl ? (
-                        <img src={platformSettings.logoUrl} alt="Logo" className="w-full h-full object-contain" />
-                      ) : (
-                        <div className="w-full h-full bg-emerald-500 flex items-center justify-center shadow-emerald-500/20">
-                          <span className="text-slate-950 font-black text-3xl">
-                            {platformSettings?.logoLetter || (isRtl ? currentMarket.labelAr[0] : currentMarket.labelEn[0])}
-                          </span>
-                        </div>
-                      )}
+                      <img
+                        src={platformSettings?.logoUrl || '/aswaq-icon.png'}
+                        alt="Logo"
+                        className="w-full h-full object-contain"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).src = '/aswaq-icon.png';
+                        }}
+                      />
+
                     </div>
                     <div className="relative z-10">
                       <h4 className="text-xl font-black mb-1 tracking-tighter text-white">

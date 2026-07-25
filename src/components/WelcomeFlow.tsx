@@ -252,13 +252,15 @@ const SplashStep = ({
           transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
           className="relative w-36 h-36 rounded-[2.8rem] bg-gradient-to-br from-emerald-400 via-emerald-500 to-teal-600 shadow-2xl shadow-emerald-500/30 flex items-center justify-center overflow-hidden"
         >
-          {platformSettings?.logoUrl ? (
-            <img src={platformSettings.logoUrl} alt="Logo" className="w-full h-full object-contain p-4" />
-          ) : (
-            <span className="text-6xl font-black text-slate-950 select-none" style={{ fontFamily: 'Georgia, serif' }}>
-              {platformSettings?.logoLetter || 'أ'}
-            </span>
-          )}
+          <img
+            src={platformSettings?.logoUrl || '/aswaq-icon.png'}
+            alt="Logo"
+            className="w-full h-full object-contain p-3"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).src = '/aswaq-icon.png';
+            }}
+          />
+
           {/* Animated ring */}
           <motion.div
             animate={{ scale: [1, 1.15, 1], opacity: [0.4, 0, 0.4] }}
@@ -615,19 +617,17 @@ const AuthStep = ({
 
         {/* Header */}
         <div className="text-center space-y-1">
-          <div className="w-14 h-14 rounded-2xl bg-emerald-500/15 border border-emerald-500/20 flex items-center justify-center mx-auto mb-3 overflow-hidden">
-            {platformSettings?.logoUrl ? (
-              <img
-                src={platformSettings.logoUrl}
-                alt="Logo"
-                className="w-full h-full object-contain p-1"
-                onError={(e) => {
-                  (e.target as HTMLElement).style.display = 'none';
-                }}
-              />
-            ) : null}
-            <ShieldCheck className="w-7 h-7 text-emerald-400" />
+          <div className="w-14 h-14 rounded-2xl bg-emerald-500/15 border border-emerald-500/20 flex items-center justify-center mx-auto mb-3 overflow-hidden p-1">
+            <img
+              src={platformSettings?.logoUrl || '/aswaq-icon.png'}
+              alt="Logo"
+              className="w-full h-full object-contain"
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).src = '/aswaq-icon.png';
+              }}
+            />
           </div>
+
           <h2 className="text-2xl font-black text-white">
             {mode === 'login' ? 'مرحباً بعودتك 👋' : 'انضم إلى أسواق 🚀'}
           </h2>

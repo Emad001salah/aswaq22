@@ -2248,8 +2248,9 @@ Sitemap: ${BASE_URL}/sitemap.xml
         logoLetter: 'أ',
         maintenanceMode: false,
         pushNotifications: true,
-        logoUrl: '',
+        logoUrl: '/aswaq-icon.png',
       };
+
     };
 
     const savePlatformSettings = async (settings: any) => {

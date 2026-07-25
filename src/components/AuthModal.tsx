@@ -416,19 +416,17 @@ export default function AuthModal({ isOpen, onClose, onSuccess, isDark }: AuthMo
           <div className="p-4 sm:p-7 pt-5 space-y-5 sm:space-y-6">
             {/* Header */}
             <div className="text-center space-y-1 pt-2">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-xl shadow-emerald-500/25 flex items-center justify-center mx-auto mb-3 sm:mb-4 overflow-hidden p-1">
-                {platformSettings?.logoUrl ? (
-                  <img
-                    src={platformSettings.logoUrl}
-                    alt="Logo"
-                    className="w-full h-full object-contain"
-                    onError={(e) => {
-                      (e.target as HTMLElement).style.display = 'none';
-                    }}
-                  />
-                ) : null}
-                <ShieldCheck className="w-6 h-6 sm:w-7 sm:h-7 text-slate-950" />
+              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-emerald-500 via-teal-500 to-emerald-600 shadow-xl shadow-emerald-500/25 flex items-center justify-center mx-auto mb-3 sm:mb-4 overflow-hidden p-1">
+                <img
+                  src={platformSettings?.logoUrl || '/aswaq-icon.png'}
+                  alt="Logo"
+                  className="w-full h-full object-contain"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = '/aswaq-icon.png';
+                  }}
+                />
               </div>
+
 
               <h2 className="text-xl sm:text-2xl font-black text-white">
                 {mode === 'login' ? 'مرحباً بعودتك 👋' : 'انضم إلينا 🚀'}
