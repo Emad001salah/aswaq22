@@ -367,14 +367,14 @@ export default function AuthModal({ isOpen, onClose, onSuccess, isDark }: AuthMo
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[5000] flex items-end sm:items-center justify-center">
+      <div className="fixed inset-0 z-[999999] flex items-end sm:items-center justify-center p-0 sm:p-4">
         {/* Backdrop */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
-          className="absolute inset-0 bg-slate-950/85 backdrop-blur-sm"
+          className="absolute inset-0 bg-slate-950/85 backdrop-blur-md"
         />
 
         {/* Panel */}
@@ -383,7 +383,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess, isDark }: AuthMo
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 30, scale: 0.97 }}
           transition={{ type: 'spring', damping: 28, stiffness: 320 }}
-          className={`relative w-full sm:max-w-md max-h-[95dvh] overflow-y-auto rounded-t-[2.5rem] sm:rounded-[2.5rem] shadow-2xl border dir-rtl ${
+          className={`relative w-full sm:max-w-md max-h-[92dvh] overflow-y-auto rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl border dir-rtl overflow-x-hidden ${
             isDark
               ? 'bg-slate-900 border-zinc-800/60'
               : 'bg-slate-900 border-zinc-800/60'
@@ -408,21 +408,21 @@ export default function AuthModal({ isOpen, onClose, onSuccess, isDark }: AuthMo
           {/* Close btn */}
           <button
             onClick={onClose}
-            className="absolute top-5 left-5 w-9 h-9 rounded-xl bg-zinc-800/80 border border-zinc-700/50 flex items-center justify-center text-zinc-400 hover:text-white hover:border-zinc-600 transition-all z-10"
+            className="absolute top-4 left-4 sm:top-5 sm:left-5 w-9 h-9 rounded-xl bg-zinc-800/80 border border-zinc-700/50 flex items-center justify-center text-zinc-400 hover:text-white hover:border-zinc-600 transition-all z-10"
           >
             <X className="w-4 h-4" />
           </button>
 
-          <div className="p-7 pt-6 space-y-6">
+          <div className="p-4 sm:p-7 pt-5 space-y-5 sm:space-y-6">
             {/* Header */}
             <div className="text-center space-y-1 pt-2">
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-xl shadow-emerald-500/25 flex items-center justify-center mx-auto mb-4">
-                <ShieldCheck className="w-7 h-7 text-slate-950" />
+              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-xl shadow-emerald-500/25 flex items-center justify-center mx-auto mb-3 sm:mb-4">
+                <ShieldCheck className="w-6 h-6 sm:w-7 sm:h-7 text-slate-950" />
               </div>
-              <h2 className="text-2xl font-black text-white">
+              <h2 className="text-xl sm:text-2xl font-black text-white">
                 {mode === 'login' ? 'مرحباً بعودتك 👋' : 'انضم إلينا 🚀'}
               </h2>
-              <p className="text-sm text-zinc-500">
+              <p className="text-xs sm:text-sm text-zinc-500">
                 {mode === 'login' ? 'سجّل دخولك لمتابعة حسابك' : 'خطوة واحدة تفصلك عن عالم التجارة'}
               </p>
             </div>
@@ -433,7 +433,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess, isDark }: AuthMo
                 <button
                   key={m}
                   onClick={() => { setMode(m); setError(null); setSuccessMsg(null); setPhoneStep('input'); setOtp(''); }}
-                  className={`flex-1 py-2.5 rounded-xl text-sm font-black transition-all ${
+                  className={`flex-1 py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all ${
                     mode === m
                       ? 'bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/20'
                       : 'text-zinc-500 hover:text-zinc-300'
@@ -449,7 +449,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess, isDark }: AuthMo
               type="button"
               onClick={handleGoogle}
               disabled={loading}
-              className="w-full h-12 rounded-2xl bg-white text-slate-900 font-bold text-sm flex items-center justify-center gap-3 hover:bg-zinc-100 active:scale-95 disabled:opacity-60 transition-all shadow-lg shadow-black/20"
+              className="w-full h-12 rounded-2xl bg-white text-slate-900 font-bold text-xs sm:text-sm flex items-center justify-center gap-3 hover:bg-zinc-100 active:scale-95 disabled:opacity-60 transition-all shadow-lg shadow-black/20"
             >
               {loading ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -550,14 +550,14 @@ export default function AuthModal({ isOpen, onClose, onSuccess, isDark }: AuthMo
                       <motion.div key="ph-input" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
                         <div>
                           <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2 block px-1">رقم الهاتف</label>
-                          <div className="flex gap-2">
+                          <div className="flex gap-2 items-center w-full">
                             <select
                               value={countryCode}
                               onChange={(e) => setCountryCode(e.target.value)}
-                              className="bg-slate-950/80 border border-zinc-800 rounded-2xl px-3 py-3.5 text-sm text-white outline-none focus:border-emerald-500/70 w-28 shrink-0 transition-all"
+                              className="bg-slate-950/80 border border-zinc-800 rounded-2xl px-2 sm:px-3 py-3.5 text-xs sm:text-sm text-white outline-none focus:border-emerald-500/70 w-28 shrink-0 transition-all cursor-pointer"
                             >
                               {COUNTRIES.map((c, i) => (
-                                <option key={`${c.dial_code}-${i}`} value={c.dial_code}>
+                                <option key={`${c.dial_code}-${i}`} value={c.dial_code} className="bg-slate-900 text-white p-2">
                                   {c.dial_code} {c.nameAr}
                                 </option>
                               ))}
@@ -568,10 +568,11 @@ export default function AuthModal({ isOpen, onClose, onSuccess, isDark }: AuthMo
                               value={phone}
                               onChange={(e) => setPhone(e.target.value)}
                               dir="ltr"
-                              className="flex-1 bg-slate-950/80 border border-zinc-800 hover:border-zinc-700 focus:border-emerald-500/70 rounded-2xl py-3.5 px-4 text-sm text-white outline-none transition-all font-mono"
+                              className="flex-1 min-w-0 w-full bg-slate-950/80 border border-zinc-800 hover:border-zinc-700 focus:border-emerald-500/70 rounded-2xl py-3.5 px-3 sm:px-4 text-xs sm:text-sm text-white outline-none transition-all font-mono"
                             />
                           </div>
                         </div>
+
 
                         {error && <ErrorBanner msg={error} />}
                         {successMsg && <SuccessBanner msg={successMsg} />}
