@@ -746,6 +746,7 @@ export const AdsController = () => {
       };
 
       eventBus.emit('ad.updated', mappedAd);
+      await cacheService.invalidateFeedCaches();
 
       res.json({ message: 'تم تحديث الإعلان بنجاح.', ad: mappedAd });
     } catch (e: any) {
@@ -779,6 +780,7 @@ export const AdsController = () => {
 
       await prisma.ad.delete({ where: { id: req.params.id } });
       eventBus.emit('ad.deleted', req.params.id);
+      await cacheService.invalidateFeedCaches();
 
       res.json({ message: 'تم حذف الإعلان بنجاح.' });
     } catch (e: any) {
