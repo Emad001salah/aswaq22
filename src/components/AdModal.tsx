@@ -154,20 +154,45 @@ export default function AdModal({
   const [reportReason, setReportReason] = useState('');
   const [reportSent, setReportSent] = useState(false);
   const [readingMode, setReadingMode] = useState(false);
+  // Full images fetched from /api/ads/:id (feed only returns thumbnail)
+  const [fullAdImages, setFullAdImages] = useState<string[]>([]);
+  const [imagesLoading, setImagesLoading] = useState(true);
 
-  // Fast sanitizer for images - Define BEFORE any state that uses it
-  const safeImages = (Array.isArray(ad?.images)
-    ? ad.images
-    : (() => {
-        try {
-          if (ad?.images && typeof ad.images === 'string') {
-            const parsed = JSON.parse(ad.images);
-            if (Array.isArray(parsed)) return parsed;
+  // Fetch full ad details to get all images (feed returns only thumbnail for performance)
+  useEffect(() => {
+    if (!ad?.id) return;
+    setImagesLoading(true);
+    apiFetch(`/api/ads/${ad.id}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data && Array.isArray(data.images) && data.images.length > 0) {
+          const imgs = data.images
+            .map((img: any) => resolveMediaUrl(img && typeof img === 'object' ? img.url : img))
+            .filter(Boolean) as string[];
+          if (imgs.length > 0) {
+            setFullAdImages(imgs);
           }
-        } catch (e) {}
-        return [];
-      })()
-  ).map((img: any) => resolveMediaUrl(img && typeof img === 'object' ? img.url : img)).filter(Boolean);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setImagesLoading(false));
+  }, [ad.id]);
+
+  // Fast sanitizer for images - Use full images if loaded, else thumbnail from feed
+  const safeImages = fullAdImages.length > 0
+    ? fullAdImages
+    : (Array.isArray(ad?.images)
+      ? ad.images
+      : (() => {
+          try {
+            if (ad?.images && typeof ad.images === 'string') {
+              const parsed = JSON.parse(ad.images);
+              if (Array.isArray(parsed)) return parsed;
+            }
+          } catch (e) {}
+          return [];
+        })()
+    ).map((img: any) => resolveMediaUrl(img && typeof img === 'object' ? img.url : img)).filter(Boolean);
 
   const [activeImage, setActiveImage] = useState(() => {
     return safeImages?.[0] || '';
@@ -176,6 +201,7 @@ export default function AdModal({
   useEffect(() => {
     setActiveImage(safeImages?.[0] || '');
   }, [ad.id, safeImages?.[0]]);
+
   const [viewingVideo, setViewingVideo] = useState(!!ad.isLive);
   const [votedMatch, setVotedMatch] = useState<'yes' | 'no' | null>(null);
   const stableSeed = ad.title.length + ((ad.price || 0) % 7);

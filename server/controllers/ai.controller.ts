@@ -116,5 +116,30 @@ export const AiController = (db: any) => {
     }
   });
 
+  // POST /api/ai/trust-check - Ad trust/safety analysis (public — no auth required)
+  router.post('/trust-check', (req, res) => {
+    try {
+      const { adId, title, price, description } = req.body;
+      // Deterministic trust scoring based on content signals
+      const hasTitle = title && title.trim().length > 5;
+      const hasDescription = description && description.trim().length > 10;
+      const hasReasonablePrice = price && Number(price) > 0;
+      const score = (hasTitle ? 35 : 0) + (hasDescription ? 35 : 0) + (hasReasonablePrice ? 30 : 0);
+      const level = score >= 90 ? 'high' : score >= 60 ? 'medium' : 'low';
+      res.json({
+        adId,
+        trustScore: score,
+        trustLevel: level,
+        signals: {
+          hasTitle,
+          hasDescription,
+          hasReasonablePrice
+        }
+      });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message || 'Trust check error' });
+    }
+  });
+
   return router;
 };

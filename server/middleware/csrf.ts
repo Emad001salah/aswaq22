@@ -36,6 +36,16 @@ export function csrfMiddleware(
     return next();
   }
 
+  // Exempt public read/analytics endpoints from CSRF — no user state mutation risk
+  if (
+    req.path.startsWith('/api/ai/') ||
+    req.path.startsWith('/api/v1/ai/') ||
+    req.path.match(/\/api\/ads\/[^/]+\/view$/) ||
+    req.path.match(/\/api\/v1\/ads\/[^/]+\/view$/)
+  ) {
+    return next();
+  }
+
   if (process.env.NODE_ENV === 'test') {
     return next();
   }
