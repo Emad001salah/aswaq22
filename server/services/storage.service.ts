@@ -48,14 +48,15 @@ export class LocalStorageStrategy implements StorageStrategy {
     const ext = path.extname(file.originalname) || (file.mimetype === 'image/webp' ? '.webp' : '.jpg');
     const folder = customFolder || 'uploads';
     const filename = `${uniqueUuid}${ext}`;
-    const key = `${folder}/${filename}`;
+    const key = `${folder}/${filename}`.replace(/\/+/g, '/');
     const filePath = this.resolveKeyToPath(key);
 
     await fs.promises.writeFile(filePath, file.buffer);
     logger.info(`[Storage] File uploaded locally: ${key}`);
     const publicDomain = process.env.MEDIA_PUBLIC_BASE_URL || process.env.R2_PUBLIC_URL || process.env.API_URL || 'https://api.aswaq22.com';
     const base = publicDomain.endsWith('/') ? publicDomain.slice(0, -1) : publicDomain;
-    return `${base}/uploads/${filename}`;
+    const cleanKey = key.startsWith('/') ? key : `/${key}`;
+    return `${base}${cleanKey}`;
   }
 
   async deleteFile(fileUrl: string): Promise<void> {

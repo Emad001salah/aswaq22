@@ -4,10 +4,13 @@
  * production app always talks to the production backend over HTTPS.
  */
 
-const defaultUrl = typeof window !== 'undefined' ? window.location.origin : 'https://www.aswaq22.com';
+const isBrowser = typeof window !== 'undefined';
+const isLocalhost = isBrowser && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+const defaultUrl = isLocalhost ? 'http://localhost:5000' : 'https://api.aswaq22.com';
 const rawApiUrl = (import.meta.env.VITE_API_URL as string | undefined) || defaultUrl;
 
-/** API origin without any `/api` suffix or trailing slash, e.g. https://aswaq22.com */
+/** API origin without any `/api` suffix or trailing slash, e.g. https://api.aswaq22.com */
 export const API_ORIGIN = rawApiUrl
   .replace(/\/api\/?$/i, '')
   .replace(/\/+$/, '');
