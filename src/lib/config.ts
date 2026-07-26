@@ -21,8 +21,13 @@ export const IS_PRODUCTION = import.meta.env.PROD === true;
 /** Safely resolves any logo URL to a full accessible URL across domains */
 export function getPublicLogoUrl(url?: string | null): string {
   if (!url || typeof url !== 'string') return '/aswaq-icon.png';
-  const trimmed = url.trim();
+  let trimmed = url.trim();
   if (!trimmed) return '/aswaq-icon.png';
+
+  if (trimmed.includes('/uploads/')) {
+    trimmed = trimmed.replace(/^https?:\/\/(www\.)?aswaq22\.com\/uploads\//i, `${API_ORIGIN}/uploads/`);
+  }
+
   if (trimmed.startsWith('data:') || trimmed.startsWith('blob:')) {
     return trimmed;
   }
@@ -38,9 +43,17 @@ export function getPublicLogoUrl(url?: string | null): string {
 /** Safely resolves media URLs (images, videos, audio notes) */
 export function resolveMediaUrl(url?: string | null): string {
   if (!url || typeof url !== 'string') return '';
-  const trimmed = url.trim();
+  let trimmed = url.trim();
   if (!trimmed) return '';
-  if (trimmed.startsWith('data:') || trimmed.startsWith('blob:') || trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+
+  if (trimmed.includes('/uploads/')) {
+    trimmed = trimmed.replace(/^https?:\/\/(www\.)?aswaq22\.com\/uploads\//i, `${API_ORIGIN}/uploads/`);
+  }
+
+  if (trimmed.startsWith('data:') || trimmed.startsWith('blob:')) {
+    return trimmed;
+  }
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
     return trimmed;
   }
   if (trimmed.startsWith('/')) {
