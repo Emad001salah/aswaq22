@@ -172,6 +172,10 @@ export default function AdModal({
   const [activeImage, setActiveImage] = useState(() => {
     return safeImages?.[0] || '';
   });
+
+  useEffect(() => {
+    setActiveImage(safeImages?.[0] || '');
+  }, [ad.id, safeImages?.[0]]);
   const [viewingVideo, setViewingVideo] = useState(!!ad.isLive);
   const [votedMatch, setVotedMatch] = useState<'yes' | 'no' | null>(null);
   const stableSeed = ad.title.length + ((ad.price || 0) % 7);

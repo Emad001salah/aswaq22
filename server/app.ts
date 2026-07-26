@@ -3137,6 +3137,8 @@ Sitemap: ${BASE_URL}/sitemap.xml
               ]
             }
           });
+          const { cacheService } = await import('./services/cache.service.ts');
+          await cacheService.invalidateFeedCaches();
         } catch (cleanErr) {
           logger.warn(`AdImage DB cleanup note: ${(cleanErr as any)?.message}`);
         }
