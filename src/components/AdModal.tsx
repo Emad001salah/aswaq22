@@ -784,7 +784,15 @@ const sessionViewedAdsSet = new Set<string>();
                   onClick={() => setFullScreenIndex(idx)}
                   className={`w-16 h-12 rounded-lg overflow-hidden border-2 shrink-0 transition-all ${idx === fullScreenIndex ? 'border-emerald-500 scale-110 shadow-lg' : 'border-slate-800 opacity-50 hover:opacity-100'}`}
                 >
-                  <img src={img} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  <img 
+                    src={img} 
+                    className="w-full h-full object-cover" 
+                    referrerPolicy="no-referrer" 
+                    onError={(e) => {
+                      const btn = (e.currentTarget as HTMLElement).closest('button');
+                      if (btn) btn.style.display = 'none';
+                    }}
+                  />
                 </button>
               ))}
             </div>
@@ -924,7 +932,16 @@ const sessionViewedAdsSet = new Set<string>();
                       !viewingVideo && activeImage === img ? 'border-emerald-500 scale-100' : 'border-slate-800 scale-95 opacity-70 hover:opacity-100'
                     }`}
                   >
-                    <img src={img} alt={`ad-${idx}`} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                    <img 
+                      src={img} 
+                      alt={`ad-${idx}`} 
+                      className="w-full h-full object-cover" 
+                      referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        const btn = (e.currentTarget as HTMLElement).closest('button');
+                        if (btn) btn.style.display = 'none';
+                      }}
+                    />
                   </button>
                 ))}
 

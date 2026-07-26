@@ -3124,6 +3124,23 @@ Sitemap: ${BASE_URL}/sitemap.xml
 
       // Start V8 heap memory monitoring (leak detection)
       startMemoryMonitor();
+
+      // Clean up old invalid/broken ad image placeholder records from DB on startup
+      (async () => {
+        try {
+          const { prisma } = await import('../src/lib/prisma.ts');
+          await prisma.adImage.deleteMany({
+            where: {
+              OR: [
+                { url: { startsWith: 'ad-' } },
+                { url: { equals: '' } }
+              ]
+            }
+          });
+        } catch (cleanErr) {
+          logger.warn(`AdImage DB cleanup note: ${(cleanErr as any)?.message}`);
+        }
+      })();
     });
   }
 
