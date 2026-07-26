@@ -278,6 +278,7 @@ function AdminPanelInner({
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [selectedAd, setSelectedAd] = useState<any>(null);
   const [settingsSaving, setSettingsSaving] = useState(false);
+  const [logoLoadError, setLogoLoadError] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [newPollQuestion, setNewPollQuestion] = useState('');
   const [newPollOptions, setNewPollOptions] = useState(['', '']);
@@ -716,6 +717,7 @@ function AdminPanelInner({
       if (res.ok) {
         const data = await res.json();
         if (data.logoUrl) {
+          setLogoLoadError(false);
           setSettings((prev: any) => ({ ...prev, logoUrl: data.logoUrl }));
         }
         addToast?.('تم رفع الشعار', 'تم رفع وحفظ الشعار على المنصة بنجاح ✅', 'success');
@@ -3086,8 +3088,13 @@ function AdminPanelInner({
                             <div className="flex items-center gap-4">
                               {/* Preview */}
                               <div className="w-16 h-16 rounded-2xl bg-slate-700 border border-slate-600 flex items-center justify-center overflow-hidden shrink-0">
-                                {settings.logoUrl ? (
-                                  <img src={getPublicLogoUrl(settings.logoUrl)} alt="شعار" className="w-full h-full object-contain" />
+                                {settings.logoUrl && !logoLoadError ? (
+                                  <img
+                                    src={getPublicLogoUrl(settings.logoUrl)}
+                                    alt="شعار"
+                                    className="w-full h-full object-contain"
+                                    onError={() => setLogoLoadError(true)}
+                                  />
                                 ) : (
                                   <span className="text-2xl font-black text-emerald-400">{settings.logoLetter || 'أ'}</span>
                                 )}

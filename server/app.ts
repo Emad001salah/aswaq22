@@ -2582,14 +2582,16 @@ Sitemap: ${BASE_URL}/sitemap.xml
         const uploadsDir = path.join(process.cwd(), 'uploads');
         if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 
-        // Always save as logo.png for a stable URL
+        // Always save to disk as platform-logo.png for static reference
         const ext = req.file.mimetype === 'image/png' ? 'png' : req.file.mimetype === 'image/jpeg' ? 'jpg' : 'png';
         const logoFileName = `platform-logo.${ext}`;
         const logoPath = path.join(uploadsDir, logoFileName);
-
         fs.writeFileSync(logoPath, req.file.buffer);
-        const logoUrl = `/uploads/${logoFileName}?v=${Date.now()}`;
-        logger.info({ message: `settings/logo saved locally: ${logoFileName}` });
+
+        // Store as Base64 Data URI in database for 100% reliability across restarts & domains
+        const mimeType = req.file.mimetype || 'image/png';
+        const logoUrl = `data:${mimeType};base64,${req.file.buffer.toString('base64')}`;
+        logger.info({ message: `settings/logo saved successfully (Size: ${req.file.buffer.length} bytes)` });
 
         const currentSettings = await getPlatformSettings();
         currentSettings.logoUrl = logoUrl;
