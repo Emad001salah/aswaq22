@@ -354,8 +354,8 @@ export class App {
      * 50MB JSON limit allows DoS via large payload — exhausts memory under concurrent requests.
      * Files MUST be sent as multipart/form-data (handled by multer), not base64 in JSON.
      */
-    this.app.use(express.json({ limit: '2mb' }));
-    this.app.use(express.urlencoded({ limit: '2mb', extended: true }));
+    this.app.use(express.json({ limit: '50mb' }));
+    this.app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
     // 5. Cookie parser (required for CSRF double-submit)
     this.app.use(cookieParser());
@@ -2582,16 +2582,25 @@ Sitemap: ${BASE_URL}/sitemap.xml
         const uploadsDir = path.join(process.cwd(), 'uploads');
         if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 
-        // Always save to disk as platform-logo.png for static reference
-        const ext = req.file.mimetype === 'image/png' ? 'png' : req.file.mimetype === 'image/jpeg' ? 'jpg' : 'png';
-        const logoFileName = `platform-logo.${ext}`;
-        const logoPath = path.join(uploadsDir, logoFileName);
-        fs.writeFileSync(logoPath, req.file.buffer);
+        let bufferToSave = req.file.buffer;
+        try {
+          const sharp = (await import('sharp')).default;
+          bufferToSave = await sharp(req.file.buffer)
+            .resize(512, 512, { fit: 'inside', withoutEnlargement: true })
+            .png({ quality: 85 })
+            .toBuffer();
+        } catch (sharpErr) {
+          logger.warn(`Sharp resizing for logo failed: ${(sharpErr as any)?.message}`);
+        }
 
-        // Store as Base64 Data URI in database for 100% reliability across restarts & domains
-        const mimeType = req.file.mimetype || 'image/png';
-        const logoUrl = `data:${mimeType};base64,${req.file.buffer.toString('base64')}`;
-        logger.info({ message: `settings/logo saved successfully (Size: ${req.file.buffer.length} bytes)` });
+        // Always save to disk as platform-logo.png for static reference
+        const logoFileName = `platform-logo.png`;
+        const logoPath = path.join(uploadsDir, logoFileName);
+        fs.writeFileSync(logoPath, bufferToSave);
+
+        // Store optimized Base64 Data URI in database for 100% reliability across restarts & domains
+        const logoUrl = `data:image/png;base64,${bufferToSave.toString('base64')}`;
+        logger.info({ message: `settings/logo saved successfully (Optimized Size: ${bufferToSave.length} bytes)` });
 
         const currentSettings = await getPlatformSettings();
         currentSettings.logoUrl = logoUrl;
