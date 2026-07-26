@@ -455,6 +455,9 @@ export const AdsController = () => {
                   url = resolvedUrl;
                 }
                 objectKey = media.objectKey;
+              }
+            }
+
             // Convert Base64 data: URIs into physical files in /uploads/
             if (url && typeof url === 'string' && url.startsWith('data:image/')) {
               try {
