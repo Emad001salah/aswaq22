@@ -1,7 +1,12 @@
-import { IsString, IsNumber, IsArray, IsOptional, IsNotEmpty, ValidateNested, ArrayMinSize } from 'class-validator';
+import { IsString, IsNumber, IsArray, IsOptional, IsNotEmpty, ValidateNested, ArrayMinSize, ArrayMaxSize } from 'class-validator';
 import { Type } from 'class-transformer';
+import { MAX_AD_IMAGES } from '../../shared/constants.ts';
 
 export class AdImageDto {
+  @IsOptional()
+  @IsString()
+  objectKey?: string;
+
   @IsOptional()
   @IsString()
   url?: string;
@@ -62,6 +67,7 @@ export class CreateAdDto {
 
   @IsOptional()
   @IsArray()
+  @ArrayMaxSize(MAX_AD_IMAGES, { message: `الحد الأقصى لعدد الصور هو ${MAX_AD_IMAGES}` })
   @ValidateNested({ each: true })
   @Type(() => AdImageDto)
   images?: AdImageDto[];

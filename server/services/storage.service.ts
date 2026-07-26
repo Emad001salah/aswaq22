@@ -12,6 +12,13 @@ export interface FileData {
   mimetype: string;
 }
 
+export interface PresignedPostResult {
+  uploadUrl: string;
+  objectKey: string;
+  fields: Record<string, string>;
+  expiresIn: number;
+}
+
 export interface StorageStrategy {
   uploadFile(file: FileData, customFolder?: string): Promise<string>;
   deleteFile(fileUrl: string): Promise<void>;
@@ -19,6 +26,7 @@ export interface StorageStrategy {
   deleteFileByKey(key: string): Promise<void>;
   headObject(key: string): Promise<boolean>;
   getFileBuffer(key: string): Promise<Buffer>;
+  createPresignedUpload(key: string, mimeType: string, expiresIn?: number): Promise<PresignedPostResult>;
 }
 
 export class LocalStorageStrategy implements StorageStrategy {
@@ -93,6 +101,17 @@ export class LocalStorageStrategy implements StorageStrategy {
       throw new Error(`File not found: ${key}`);
     }
     return fs.promises.readFile(filePath);
+  }
+
+  async createPresignedUpload(key: string, mimeType: string, expiresIn = 300): Promise<PresignedPostResult> {
+    const publicDomain = process.env.MEDIA_PUBLIC_BASE_URL || process.env.API_URL || 'http://localhost:5000';
+    const base = publicDomain.endsWith('/') ? publicDomain.slice(0, -1) : publicDomain;
+    return {
+      uploadUrl: `${base}/api/media/upload-local?key=${encodeURIComponent(key)}`,
+      objectKey: key,
+      fields: { 'Content-Type': mimeType },
+      expiresIn,
+    };
   }
 }
 
@@ -247,6 +266,27 @@ export class S3StorageStrategy implements StorageStrategy {
     }
     return Buffer.concat(chunks);
   }
+
+  async createPresignedUpload(key: string, mimeType: string, expiresIn = 300): Promise<PresignedPostResult> {
+    try {
+      const { getSignedUrl } = await import('@aws-sdk/s3-request-presigner');
+      const command = new PutObjectCommand({
+        Bucket: this.bucket,
+        Key: key,
+        ContentType: mimeType,
+      });
+      const url = await getSignedUrl(this.s3Client, command, { expiresIn });
+      return {
+        uploadUrl: url,
+        objectKey: key,
+        fields: { 'Content-Type': mimeType },
+        expiresIn,
+      };
+    } catch (err: any) {
+      logger.error(`[Storage] Failed to generate presigned URL for ${key}: ${err.message}`);
+      throw err;
+    }
+  }
 }
 
 export class StorageService {
@@ -328,6 +368,10 @@ export class StorageService {
 
   public async getFileBuffer(key: string): Promise<Buffer> {
     return this.strategy.getFileBuffer(key);
+  }
+
+  public async createPresignedUpload(key: string, mimeType: string, expiresIn = 300): Promise<PresignedPostResult> {
+    return this.strategy.createPresignedUpload(key, mimeType, expiresIn);
   }
 }
 

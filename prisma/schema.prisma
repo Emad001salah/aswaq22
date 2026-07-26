@@ -54,6 +54,7 @@ model User {
   avatarMediaId    String?             @unique @map("avatar_media_id") @db.Uuid
   avatarMedia      MediaObject?        @relation("UserAvatar", fields: [avatarMediaId], references: [id])
   uploadedMedia    MediaObject[]       @relation("UploadedMedia")
+  pendingUploads   PendingUpload[]
 
   @@map("users")
 }
@@ -142,14 +143,43 @@ model AdImage {
   mediaId   String?      @map("media_id") @db.Uuid
   media     MediaObject? @relation("AdImageMedia", fields: [mediaId], references: [id])
   objectKey String?      @map("object_key")
-  url       String
+  thumbKey  String?      @map("thumb_key")
+  cardKey   String?      @map("card_key")
+  detailKey String?      @map("detail_key")
+  url       String?
   sortOrder Int          @default(0) @map("sort_order")
   width     Int?
-  height     Int?
+  height    Int?
   blurHash  String?      @map("blur_hash")
+  mimeType  String?      @map("mime_type")
+  sizeBytes Int?         @map("size_bytes")
+  isPrimary Boolean      @default(false) @map("is_primary")
+  status    String       @default("pending")
+  uploadedBy String?     @map("uploaded_by") @db.Uuid
+
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @default(now()) @updatedAt @map("updated_at")
 
   @@index([adId, sortOrder])
+  @@index([uploadedBy])
   @@map("ad_images")
+}
+
+model PendingUpload {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  objectKey   String    @unique @map("object_key")
+  mimeType    String    @map("mime_type")
+  sizeBytes   Int       @map("size_bytes")
+  status      String    @default("pending")
+  adImageId   String?   @map("ad_image_id") @db.Uuid
+  expiresAt   DateTime  @map("expires_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("pending_uploads")
 }
 
 model RefreshToken {

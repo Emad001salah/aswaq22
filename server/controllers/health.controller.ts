@@ -99,6 +99,52 @@ export const HealthController = (): Router => {
     });
   });
 
+  /**
+   * GET /api/v1/health/live
+   * Lightweight Liveness Probe for Kubernetes/Render.
+   * Returns 200 as long as Node process is alive. Does NOT crash container if external services (R2/Redis) fail.
+   */
+  router.get('/live', (req: Request, res: Response) => {
+    res.status(200).json({
+      status: 'alive',
+      uptimeSeconds: Math.floor(process.uptime()),
+      timestamp: new Date().toISOString(),
+    });
+  });
+
+  /**
+   * GET /api/v1/health/ready
+   * Strict Readiness Probe. Checks DB, Redis, and Media Storage readiness before taking live traffic.
+   * Returns 503 if any core dependency is unready.
+   */
+  router.get('/ready', async (req: Request, res: Response) => {
+    const checks: Record<string, 'ok' | 'failed'> = {};
+
+    try {
+      await prisma.$queryRaw`SELECT 1`;
+      checks.database = 'ok';
+    } catch {
+      checks.database = 'failed';
+    }
+
+    try {
+      const client = redis.getClient();
+      checks.redis = client ? 'ok' : 'failed';
+    } catch {
+      checks.redis = 'failed';
+    }
+
+    const provider = (process.env.STORAGE_PROVIDER || 'local').toLowerCase();
+    checks.mediaStorage = (provider === 'r2' || provider === 's3' || provider === 'local') ? 'ok' : 'failed';
+
+    const isReady = checks.database === 'ok' && checks.redis === 'ok' && checks.mediaStorage === 'ok';
+    res.status(isReady ? 200 : 503).json({
+      status: isReady ? 'ready' : 'not_ready',
+      checks,
+      timestamp: new Date().toISOString(),
+    });
+  });
+
   return router;
 };
 

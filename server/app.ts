@@ -53,6 +53,7 @@ import { CategoriesController } from './controllers/categories.controller.ts';
 import { MarketsController } from './controllers/markets.controller.ts';
 import { PromoController } from './controllers/promo.controller.ts';
 import { AdminController } from './controllers/admin.controller.ts';
+import MediaController from './controllers/media.controller.ts';
 import { SocketService } from './socket/socket.service.ts';
 
 
@@ -464,6 +465,7 @@ export class App {
     this.app.use('/api/v1/markets', MarketsController(adminAccessGuards));
     this.app.use('/api/v1/promo',   PromoController());
     this.app.use('/api/v1/admin',   AdminController());
+    this.app.use('/api/v1/media',   MediaController);
 
     // Legacy routes (backward compat)
     this.app.use('/api/categories', CategoriesController(adminAccessGuards));
@@ -476,6 +478,7 @@ export class App {
     this.app.use('/api/ads',     AdsController(this.io));
     this.app.use('/api/users',   UsersController());
     this.app.use('/api/storage', StorageController());
+    this.app.use('/api/media',   MediaController);
     this.app.use('/api/ai',      AiController({ ads: [] }));
 
     /**

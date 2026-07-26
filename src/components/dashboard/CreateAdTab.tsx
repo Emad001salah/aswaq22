@@ -20,7 +20,8 @@ import {
   Mic,
   Square,
   Volume2,
-  Upload
+  Upload,
+  Wrench
 } from "lucide-react";
 import { resolveMediaUrl } from "../../lib/config.ts";
 import { apiFetch } from "../../lib/api";
@@ -324,8 +325,8 @@ export default function CreateAdTab({
     const files = Array.from(e.target.files || []) as File[];
     if (files.length === 0) return;
 
-    if (adImages.length + files.length > 5) {
-      addToast?.("خطأ", "الحد الأقصى للصور هو 5 صور", "error");
+    if (adImages.length + files.length > 10) {
+      addToast?.("خطأ", "الحد الأقصى للصور هو 10 صور", "error");
       return;
     }
 
@@ -335,11 +336,47 @@ export default function CreateAdTab({
         continue;
       }
 
+      const previewUrl = URL.createObjectURL(file);
+
+      try {
+        const presignRes = await apiFetch("/api/media/presign", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            filename: file.name,
+            mimeType: file.type || "image/jpeg",
+            sizeBytes: file.size,
+          }),
+        });
+
+        if (presignRes.ok) {
+          const { uploadUrl, objectKey } = await presignRes.json();
+          const uploadRes = await fetch(uploadUrl, {
+            method: "PUT",
+            headers: { "Content-Type": file.type || "image/jpeg" },
+            body: file,
+          });
+
+          if (uploadRes.ok) {
+            setAdImages((prev: any[]) => {
+              const next = [...prev, { objectKey, previewUrl, url: previewUrl }];
+              if (next.length === 1) {
+                handleAiAnalyzeImage(previewUrl);
+              }
+              return next;
+            });
+            continue;
+          }
+        }
+      } catch (err) {
+        console.warn("[Upload] Presigned upload failed, fallback to local preview", err);
+      }
+
       const reader = new FileReader();
       reader.onloadend = () => {
         if (typeof reader.result === "string") {
           const res = reader.result;
-          setAdImages((prev) => {
+          setAdImages((prev: any[]) => {
             const next = [...prev, res];
             if (next.length === 1) {
               handleAiAnalyzeImage(res);
@@ -348,7 +385,7 @@ export default function CreateAdTab({
           });
         }
       };
-      reader.readAsDataURL(file as File);
+      reader.readAsDataURL(file);
     }
   };
 
@@ -483,8 +520,13 @@ export default function CreateAdTab({
       return;
     }
 
-    setCreating(true);
-    const imageList = adImages.map((img) => (typeof img === "object" ? img : { url: img.trim() })).filter((img: any) => img.url !== "");
+    const imageList = adImages.map((img: any, idx) => {
+      if (typeof img === "object" && img !== null && img.objectKey) {
+        return { objectKey: img.objectKey, sortOrder: idx };
+      }
+      const rawUrl = typeof img === "object" && img !== null ? img.url : String(img || "");
+      return { url: rawUrl.trim(), sortOrder: idx };
+    }).filter((img: any) => img.objectKey || (img.url && img.url !== ""));
 
     const finalCategory = category === "other" && customCategoryName.trim() ? customCategoryName.trim() : category;
 
@@ -2078,31 +2120,34 @@ export default function CreateAdTab({
                 <div className={`p-6 sm:p-8 rounded-3xl border transition-colors text-right ${isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200 shadow-sm"}`}>
                   <h3 className={`text-lg font-black flex items-center gap-2 mb-6 justify-end ${isDark ? "text-slate-100" : "text-slate-900"}`}>
                     <Camera className="text-emerald-500 w-5 h-5" />
-                    صور وفيديو العرض (بحد أقصى 5)
+                    صور العرض (بحد أقصى 10)
                   </h3>
 
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                    {adImages.map((img, idx) => (
-                      <div key={idx} className={`relative group rounded-2xl aspect-square overflow-hidden border-2 flex items-center justify-center transition-all ${isDark ? "bg-slate-950 border-slate-800 shadow-xl shadow-black/20" : "bg-slate-100 border-slate-200 shadow-sm"}`}>
-                        <img src={img} alt={`Ad img ${idx}`} className="w-full h-full object-cover" />
-                        {idx === 0 && <div className="absolute top-2 right-2 bg-emerald-600 text-white text-[9px] font-black px-2 py-1 rounded shadow-lg uppercase tracking-wider">الرئيسية</div>}
-                        <div className="absolute inset-0 bg-slate-950/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center backdrop-blur-[1px]">
-                          <button
-                            type="button"
-                            onClick={() => setAdImages((prev) => prev.filter((_, i) => i !== idx))}
-                            className="bg-rose-600 hover:bg-rose-500 text-white rounded-xl px-4 py-2 text-[10px] font-black shadow-lg transition-transform active:scale-95 border-none cursor-pointer"
-                          >
-                            حذف ❌
-                          </button>
+                  <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+                    {adImages.map((img: any, idx) => {
+                      const imgSrc = typeof img === "object" && img !== null ? (img.previewUrl || img.url) : img;
+                      return (
+                        <div key={idx} className={`relative group rounded-2xl aspect-square overflow-hidden border-2 flex items-center justify-center transition-all ${isDark ? "bg-slate-950 border-slate-800 shadow-xl shadow-black/20" : "bg-slate-100 border-slate-200 shadow-sm"}`}>
+                          <img src={imgSrc} alt={`Ad img ${idx}`} className="w-full h-full object-cover" />
+                          {idx === 0 && <div className="absolute top-2 right-2 bg-emerald-600 text-white text-[9px] font-black px-2 py-1 rounded shadow-lg uppercase tracking-wider">الرئيسية</div>}
+                          <div className="absolute inset-0 bg-slate-950/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center backdrop-blur-[1px]">
+                            <button
+                              type="button"
+                              onClick={() => setAdImages((prev: any[]) => prev.filter((_, i) => i !== idx))}
+                              className="bg-rose-600 hover:bg-rose-500 text-white rounded-xl px-4 py-2 text-[10px] font-black shadow-lg transition-transform active:scale-95 border-none cursor-pointer"
+                            >
+                              حذف ❌
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
 
-                    {adImages.length < 5 && (
+                    {adImages.length < 10 && (
                       <label className={`relative group rounded-2xl border-2 border-dashed p-4 transition-all flex flex-col items-center justify-center text-center aspect-square cursor-pointer min-h-[140px] ${isDark ? "border-slate-800 bg-slate-950 hover:border-emerald-500/50" : "border-slate-300 bg-slate-50 hover:border-emerald-500 hover:bg-emerald-50/50"}`}>
                         <Camera className={`w-8 h-8 mb-2 transition-colors ${isDark ? "text-slate-500 group-hover:text-emerald-400" : "text-slate-400 group-hover:text-emerald-600"}`} />
                         <span className={`text-[11px] font-black ${isDark ? "text-slate-200" : "text-slate-700"}`}>أضف صورة</span>
-                        <span className="text-[9px] text-slate-500 mt-1">({adImages.length}/5)</span>
+                        <span className="text-[9px] text-slate-500 mt-1">({adImages.length}/10)</span>
                         <input type="file" accept="image/*" multiple onChange={handleLocalImageUpload} className="hidden" />
                       </label>
                     )}

@@ -29,11 +29,16 @@
     "cap:add-ios": "cap add ios",
     "cap:open-android": "cap open android",
     "cap:open-ios": "cap open ios",
-    "worker": "tsx server/workers/outbox.worker.ts"
+    "preflight:migrate": "npx tsx scripts/preflight-migration-check.ts",
+    "fix:primary-images": "npx tsx scripts/resolve-primary-images.ts",
+    "worker": "tsx server/workers/outbox.worker.ts",
+    "worker:image": "tsx server/workers/image-resize.worker.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1075.0",
     "@aws-sdk/lib-storage": "^3.1075.0",
+    "@aws-sdk/s3-presigned-post": "^3.1095.0",
+    "@aws-sdk/s3-request-presigner": "^3.1095.0",
     "@capacitor/android": "^8.4.0",
     "@capacitor/app": "^8.1.0",
     "@capacitor/browser": "^8.0.3",

@@ -14,6 +14,8 @@ import { getDeterministicUuid, getLegacyName } from '../utils/db-helpers.ts';
 import { resolveMediaUrl } from '../utils/media-url.ts';
 import { cacheService } from '../services/cache.service.ts';
 import { AppError } from '../middleware/error.ts';
+import { enqueueAdImageJob } from '../lib/image-queue.ts';
+import { resolveAdImageUrls } from '../utils/ad-image-resolver.ts';
 
 
 const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -119,15 +121,16 @@ export const AdsController = (io?: Server) => {
       });
 
       const mappedAds = ads.map(ad => {
-        // For feed list: only return thumbnail (first image) + imageCount for performance
-        // Full images are loaded only when opening the ad detail (/api/ads/:id)
         const firstImg = Array.isArray(ad.images) && ad.images.length > 0 ? ad.images[0] : null;
-        const rawThumb = firstImg ? (typeof firstImg === 'object' ? firstImg.url : firstImg) : null;
-        const thumbnail = rawThumb ? resolveMediaUrl(rawThumb) : null;
+        let thumbnail: string | null = null;
+        if (firstImg) {
+          const resolved = resolveAdImageUrls(firstImg);
+          thumbnail = resolved.thumbUrl || resolved.cardUrl || resolved.detailUrl;
+        }
         const imageCount = (ad._count as any)?.images ?? (Array.isArray(ad.images) ? ad.images.length : 0);
         return {
           ...ad,
-          images: thumbnail ? [{ url: thumbnail }] : [],  // Only thumbnail for feed cards
+          images: thumbnail ? [{ url: thumbnail }] : [],
           thumbnail,
           imageCount,
           category: getLegacyName(ad.categoryId) || '',
@@ -371,66 +374,52 @@ export const AdsController = (io?: Server) => {
   router.post('/', authMiddleware, validationMiddleware(CreateAdDto), async (req: AuthenticatedRequest, res) => {
     const dto = req.body as CreateAdDto;
 
-    // Pre-process Base64 image decoding OUTSIDE of database transaction to prevent I/O transaction timeouts
-    const preparedImages: Array<{ url: string; thumbnail: string | null; mediaId: string | null; objectKey: string | null; width: number | null; height: number | null; blurHash: string | null }> = [];
+    // Prepare images from presigned upload objectKeys or legacy URLs
+    const preparedImages: Array<{
+      objectKey: string | null;
+      mimeType: string | null;
+      sizeBytes: number | null;
+      url: string | null;
+      width: number | null;
+      height: number | null;
+      blurHash: string | null;
+      mediaId: string | null;
+    }> = [];
+
     if (dto.images && dto.images.length > 0) {
       for (let idx = 0; idx < dto.images.length; idx++) {
         const img = dto.images[idx];
-        let url = img.url || '';
-        let objectKey = null;
-        let thumbnailDataUri: string | null = null;
+        let objectKey = img.objectKey || null;
+        let mimeType: string | null = null;
+        let sizeBytes: number | null = null;
 
-        if (url && typeof url === 'string' && url.startsWith('data:image/')) {
-          try {
-            const sharp = (await import('sharp')).default;
-            const fs = await import('fs');
-            const path = await import('path');
-            const commaIdx = url.indexOf(',');
-            if (commaIdx !== -1) {
-              const base64Data = url.substring(commaIdx + 1);
-              const buffer = Buffer.from(base64Data.trim(), 'base64');
-
-              // 1. Full image: 800x800 WebP quality 75 — stored in DB, used in ad detail view
-              let fullBuffer = buffer;
-              try {
-                fullBuffer = await sharp(buffer)
-                  .resize(800, 800, { fit: 'inside', withoutEnlargement: true })
-                  .webp({ quality: 75 })
-                  .toBuffer();
-              } catch (sharpErr) {
-                logger.warn(`Sharp full image compression fallback: ${(sharpErr as any)?.message}`);
-              }
-
-              // 2. Thumbnail: 200x200 WebP quality 50 (~3-5KB) — used in feed card for fast loading
-              let thumbBuffer = buffer;
-              try {
-                thumbBuffer = await sharp(buffer)
-                  .resize(200, 200, { fit: 'cover' })
-                  .webp({ quality: 50 })
-                  .toBuffer();
-                thumbnailDataUri = `data:image/webp;base64,${thumbBuffer.toString('base64')}`;
-              } catch (sharpErr) {
-                logger.warn(`Sharp thumbnail compression fallback: ${(sharpErr as any)?.message}`);
-              }
-
-              // Store permanent full WebP Base64 in Postgres DB (never lost on Render disk restarts)
-              url = `data:image/webp;base64,${fullBuffer.toString('base64')}`;
-            }
-          } catch (base64Err) {
-            logger.error({ message: 'Failed decoding ad base64 image', error: (base64Err as any)?.message });
+        if (objectKey && typeof objectKey === 'string') {
+          if (!objectKey.startsWith(`uploads/ads/${req.user!.id}/`)) {
+            throw new AppError(403, `مفتاح رفع غير صريح للمستخدم الحالي: ${objectKey}`);
           }
+          const pending = await prisma.pendingUpload.findUnique({
+            where: { objectKey }
+          });
+          if (!pending || pending.userId !== req.user!.id) {
+            throw new AppError(400, `طلب الرفع غير موجود أو غير تابع لك: ${objectKey}`);
+          }
+          if (new Date() > pending.expiresAt) {
+            throw new AppError(400, `انتهت صلاحية رابط رفع الصورة. يرجى إعادة محاولة الرفع.`);
+          }
+          mimeType = pending.mimeType;
+          sizeBytes = pending.sizeBytes;
         }
 
         preparedImages.push({
-          url,
-          thumbnail: thumbnailDataUri,
-          mediaId: (img.mediaId && uuidRegex.test(img.mediaId)) ? img.mediaId : null,
-          objectKey: objectKey || img.url || null,
+          objectKey,
+          mimeType,
+          sizeBytes,
+          url: img.url || null,
           width: img.width || null,
           height: img.height || null,
           blurHash: img.blurHash || null,
+          mediaId: (img.mediaId && uuidRegex.test(img.mediaId)) ? img.mediaId : null,
         });
-
       }
     }
 
@@ -500,11 +489,8 @@ export const AdsController = (io?: Server) => {
             latitude: dto.latitude,
             longitude: dto.longitude,
             contactNumber: dto.contactNumber,
-            userId: req.user!.id, // Securely mapped from JWT
-            // Status is ALWAYS determined server-side — never trust the client
-            status: (['ADMIN', 'SUPER_ADMIN'].includes(req.user!.role.toUpperCase())
-              ? 'ACTIVE'
-              : 'ACTIVE') as any, // Regular users publish as ACTIVE (auto-approve flow)
+            userId: req.user!.id,
+            status: 'ACTIVE' as any,
           }
         });
 
@@ -514,55 +500,48 @@ export const AdsController = (io?: Server) => {
           const imageRecords = [];
           for (let idx = 0; idx < preparedImages.length; idx++) {
             const img = preparedImages[idx];
-            let url = img.url;
-            let objectKey = img.objectKey;
-
-            if (img.mediaId && uuidRegex.test(img.mediaId)) {
-              const media = await tx.mediaObject.findUnique({
-                where: { id: img.mediaId }
-              });
-              if (media) {
-                if (media.uploadedBy !== req.user!.id) {
-                  throw new Error('Unauthorized or invalid media resource');
-                }
-                const resolvedUrl = resolveMediaUrl(media);
-                if (resolvedUrl) {
-                  url = resolvedUrl;
-                }
-                objectKey = media.objectKey;
-              }
-            }
-
             imageRecords.push({
               adId: ad.id,
               mediaId: img.mediaId,
-              objectKey: objectKey || img.url || null,
-              url: url,
-              // Store thumbnail as blurHash field if no blurHash provided (reuse for card speed)
-              blurHash: img.blurHash || img.thumbnail || null,
+              objectKey: img.objectKey,
+              url: img.objectKey ? null : img.url,
+              mimeType: img.mimeType,
+              sizeBytes: img.sizeBytes,
+              blurHash: img.blurHash,
               sortOrder: idx,
+              isPrimary: idx === 0,
+              status: img.objectKey ? 'pending' : 'ready',
+              uploadedBy: req.user!.id,
               width: img.width,
               height: img.height,
             });
           }
 
           await tx.adImage.createMany({ data: imageRecords });
-          
-          // Re-fetch to retrieve auto-generated IDs
-          const insertedImages = await tx.adImage.findMany({ where: { adId: ad.id } });
-          imagesToProcess = insertedImages;
+          imagesToProcess = await tx.adImage.findMany({ where: { adId: ad.id } });
         }
 
         return { ad, imagesToProcess };
       }, { maxWait: 15000, timeout: 30000 });
 
-      // Emit event asynchronously to trigger Search indexing and BullMQ resizing worker
+      // Enqueue background processing for each uploaded image
+      for (const imgRecord of result.imagesToProcess) {
+        if (imgRecord.objectKey && imgRecord.status === 'pending') {
+          await enqueueAdImageJob({
+            adImageId: imgRecord.id,
+            objectKey: imgRecord.objectKey,
+            userId: req.user!.id,
+          });
+        }
+      }
+
+      // Emit event asynchronously to trigger Search indexing
       eventBus.emit('ad.created', {
         ...result.ad,
         imagesToProcess: result.imagesToProcess,
       });
 
-      // Clear related Redis latest ad feeds caches non-blockingly using SCAN
+      // Clear related Redis latest ad feeds caches non-blockingly
       await cacheService.invalidateFeedCaches();
 
 
@@ -574,11 +553,12 @@ export const AdsController = (io?: Server) => {
         }
       });
 
-      // Build thumbnail from first image blurHash (thumbnail) or full url
       const firstSavedImg = adWithUser?.images?.[0];
-      const feedThumbnail = firstSavedImg?.blurHash && firstSavedImg.blurHash.startsWith('data:')
-        ? firstSavedImg.blurHash
-        : (firstSavedImg?.url ? resolveMediaUrl(firstSavedImg.url) : null);
+      let feedThumbnail: string | null = null;
+      if (firstSavedImg) {
+        const resolved = resolveAdImageUrls(firstSavedImg);
+        feedThumbnail = resolved.thumbUrl || resolved.cardUrl || resolved.detailUrl;
+      }
 
       const mappedAd = adWithUser ? {
         ...adWithUser,
@@ -673,9 +653,19 @@ export const AdsController = (io?: Server) => {
       const highestBid = (ad as any).bids && (ad as any).bids.length > 0 ? (ad as any).bids[0].amount : (ad.startingPrice || ad.price);
 
       const safeImgs = Array.isArray(ad.images) ? ad.images.map((img: any) => {
-        const rawUrl = typeof img === 'object' && img !== null ? img.url : img;
-        const resolved = resolveMediaUrl(rawUrl);
-        return typeof img === 'object' && img !== null ? { ...img, url: resolved } : resolved;
+        if (typeof img === 'object' && img !== null) {
+          const resolved = resolveAdImageUrls(img);
+          const finalUrl = resolved.detailUrl || resolved.cardUrl || resolved.thumbUrl || img.url;
+          return {
+            ...img,
+            url: finalUrl,
+            thumbUrl: resolved.thumbUrl,
+            cardUrl: resolved.cardUrl,
+            detailUrl: resolved.detailUrl,
+          };
+        }
+        const resolved = resolveAdImageUrls({ url: String(img) });
+        return { url: resolved.detailUrl || String(img) };
       }) : [];
 
       const mappedAd = {

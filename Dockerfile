@@ -48,9 +48,10 @@ COPY --from=builder /app/server.ts    ./server.ts
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/tsconfig.json ./tsconfig.json
 COPY --from=builder /app/scripts/start-prod.sh /app/scripts/start-prod.sh
+COPY --from=builder /app/scripts/start-worker.sh /app/scripts/start-worker.sh
 
 # Create non-root user for security
-RUN chmod +x /app/scripts/start-prod.sh
+RUN chmod +x /app/scripts/start-prod.sh /app/scripts/start-worker.sh
 RUN groupadd -r aswaq && useradd -r -g aswaq aswaq
 RUN mkdir -p uploads logs && chown -R aswaq:aswaq uploads logs
 USER aswaq
