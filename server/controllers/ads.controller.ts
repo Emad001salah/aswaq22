@@ -384,12 +384,12 @@ export const AdsController = () => {
               const base64Data = url.substring(commaIdx + 1);
               const buffer = Buffer.from(base64Data.trim(), 'base64');
 
-              // Compress to optimized WebP (~35KB per photo)
+              // Compress to ultra-light WebP (~25KB per photo)
               let compressedBuffer = buffer;
               try {
                 compressedBuffer = await sharp(buffer)
-                  .resize(1024, 1024, { fit: 'inside', withoutEnlargement: true })
-                  .webp({ quality: 80 })
+                  .resize(800, 800, { fit: 'inside', withoutEnlargement: true })
+                  .webp({ quality: 75 })
                   .toBuffer();
               } catch (sharpErr) {
                 logger.warn(`Sharp ad image compression fallback: ${(sharpErr as any)?.message}`);
@@ -402,8 +402,8 @@ export const AdsController = () => {
               const filePath = path.join(uploadsDir, filename);
               await fs.promises.writeFile(filePath, compressedBuffer);
 
-              // Store clean static file path in database (fits within VARCHAR(255) without truncation)
-              url = `/uploads/${filename}`;
+              // Store permanent compressed WebP Base64 Data URI in Postgres DB so images NEVER get lost on Render disk restarts
+              url = `data:image/webp;base64,${compressedBuffer.toString('base64')}`;
             }
           } catch (base64Err) {
             logger.error({ message: 'Failed decoding ad base64 image', error: (base64Err as any)?.message });

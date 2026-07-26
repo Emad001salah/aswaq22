@@ -793,8 +793,7 @@ const sessionViewedAdsSet = new Set<string>();
                     className="w-full h-full object-cover" 
                     referrerPolicy="no-referrer" 
                     onError={(e) => {
-                      const btn = (e.currentTarget as HTMLElement).closest('button');
-                      if (btn) btn.style.display = 'none';
+                      (e.currentTarget as HTMLImageElement).src = fallbackSvg;
                     }}
                   />
                 </button>
@@ -942,8 +941,7 @@ const sessionViewedAdsSet = new Set<string>();
                       className="w-full h-full object-cover" 
                       referrerPolicy="no-referrer"
                       onError={(e) => {
-                        const btn = (e.currentTarget as HTMLElement).closest('button');
-                        if (btn) btn.style.display = 'none';
+                        (e.currentTarget as HTMLImageElement).src = fallbackSvg;
                       }}
                     />
                   </button>
