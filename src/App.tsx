@@ -1244,6 +1244,23 @@ useEffect(() => {
     fetchPlatformSettings();
   }, [currentMarket.countryCode]);
 
+  // Real-time: listen for new ads published by ANY user and prepend to local feed immediately
+  useEffect(() => {
+    const handleNewAd = (newAd: Ad) => {
+      // Only add if this ad belongs to the current market's cities
+      const isInMarket = currentMarket.cities.some(
+        c => c.id === newAd.city || c.nameAr === newAd.city || c.nameEn === newAd.city
+      );
+      if (!isInMarket) return;
+      setAds(prev => {
+        if (prev.some(a => a.id === newAd.id)) return prev; // avoid duplicates
+        return [newAd, ...prev];
+      });
+    };
+    socket.on('new-ad', handleNewAd);
+    return () => { socket.off('new-ad', handleNewAd); };
+  }, [currentMarket.countryCode]);
+
   // Social Community Network States (Persisted in localStorage)
   const [socialPosts, setSocialPosts] = useState<any[]>(() => {
     try {

@@ -116,6 +116,10 @@ export const parseVideoUrl = (rawUrl?: string) => {
 
 export const getImageUrl = (rawImg: any, fallback = 'https://images.unsplash.com/photo-1496181130204-755241544e35?auto=format&fit=crop&w=1920&q=80'): string => {
   if (!rawImg) return fallback;
+  // Support direct ad object with thumbnail field (fast path for feed cards)
+  if (typeof rawImg === 'object' && rawImg !== null && typeof rawImg.thumbnail === 'string' && rawImg.thumbnail.trim()) {
+    return rawImg.thumbnail;
+  }
   const rawUrl = typeof rawImg === 'object' && rawImg !== null ? rawImg.url : rawImg;
   if (typeof rawUrl === 'string' && rawUrl.trim()) {
     const resolved = resolveMediaUrl(rawUrl);

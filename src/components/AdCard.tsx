@@ -58,7 +58,8 @@ export default React.memo(function AdCard({ ad, onClick, onLikeToggle, onChatCli
     );
   }
 
-  // Fast sanitizer for images
+  // Fast sanitizer for images — prefer thumbnail field for fast display in feed
+  const thumbnailUrl = (ad as any)?.thumbnail as string | undefined;
   const safeImages = (Array.isArray(ad?.images)
     ? ad.images
     : (() => {
@@ -81,6 +82,8 @@ export default React.memo(function AdCard({ ad, onClick, onLikeToggle, onChatCli
   const [showPhone, setShowPhone] = useState(false);
 
   const getDisplayImage = (index: number) => {
+    // Use thumbnail for first image (fast path — small Base64 already in DB response)
+    if (index === 0 && thumbnailUrl) return thumbnailUrl;
     if (!safeImages || safeImages.length === 0) {
       return 'https://images.unsplash.com/photo-1496181130204-755241544e35?auto=format&fit=crop&w=800&q=80';
     }

@@ -454,7 +454,7 @@ export class App {
     this.app.use('/api/v1/health', HealthController());
     this.app.use('/api/v1/auth',   AuthController());
     this.app.use('/api/v1/auth',   OAuthController());
-    this.app.use('/api/v1/ads',    AdsController());
+    this.app.use('/api/v1/ads',    AdsController(this.io));
     this.app.use('/api/v1/users',  UsersController());
     this.app.use('/api/v1/storage', StorageController());
     this.app.use('/api/v1',         BetaController());
@@ -473,7 +473,7 @@ export class App {
     this.app.use('/api/admin', AdminController());
 
     // Legacy routes (backward compat – redirect to v1)
-    this.app.use('/api/ads',     AdsController());
+    this.app.use('/api/ads',     AdsController(this.io));
     this.app.use('/api/users',   UsersController());
     this.app.use('/api/storage', StorageController());
     this.app.use('/api/ai',      AiController({ ads: [] }));

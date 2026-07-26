@@ -1,4 +1,5 @@
 import express, { Router } from 'express';
+import { Server } from 'socket.io';
 import { prisma } from '../../src/lib/prisma.ts';
 import { redis } from '../../src/lib/redis.ts';
 import { searchEngine } from '../../src/lib/meilisearch.ts';
@@ -17,7 +18,7 @@ import { AppError } from '../middleware/error.ts';
 
 const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export const AdsController = () => {
+export const AdsController = (io?: Server) => {
   const router = Router();
 
   // GET /api/ads (With Cursor Pagination + Redis Caching)
@@ -105,26 +106,30 @@ export const AdsController = () => {
         },
         include: {
           images: {
-            orderBy: { sortOrder: 'asc' }
+            orderBy: { sortOrder: 'asc' },
+            take: 1  // Only fetch first image for feed cards (performance)
           },
           user: {
             select: { id: true, name: true, avatar: true, isVerified: true }
           },
           _count: {
-            select: { likedBy: true }
+            select: { likedBy: true, images: true }
           }
         }
       });
 
       const mappedAds = ads.map(ad => {
-        const safeImgs = Array.isArray(ad.images) ? ad.images.map((img: any) => {
-          const rawUrl = typeof img === 'object' && img !== null ? img.url : img;
-          const resolved = resolveMediaUrl(rawUrl);
-          return typeof img === 'object' && img !== null ? { ...img, url: resolved } : resolved;
-        }) : [];
+        // For feed list: only return thumbnail (first image) + imageCount for performance
+        // Full images are loaded only when opening the ad detail (/api/ads/:id)
+        const firstImg = Array.isArray(ad.images) && ad.images.length > 0 ? ad.images[0] : null;
+        const rawThumb = firstImg ? (typeof firstImg === 'object' ? firstImg.url : firstImg) : null;
+        const thumbnail = rawThumb ? resolveMediaUrl(rawThumb) : null;
+        const imageCount = (ad._count as any)?.images ?? (Array.isArray(ad.images) ? ad.images.length : 0);
         return {
           ...ad,
-          images: safeImgs,
+          images: thumbnail ? [{ url: thumbnail }] : [],  // Only thumbnail for feed cards
+          thumbnail,
+          imageCount,
           category: getLegacyName(ad.categoryId) || '',
           subCategory: getLegacyName(ad.subCategoryId) || null,
           likes: ad._count?.likedBy || 0,
@@ -136,14 +141,14 @@ export const AdsController = () => {
       const nextCursor = mappedAds.length === take ? mappedAds[mappedAds.length - 1].id : undefined;
       const responseData = { ads: mappedAds, nextCursor };
 
-      // Cache for 120 seconds — higher than before, still fresh enough
+      // Cache for 30 seconds — short TTL so new ads appear quickly for all users
       if (!cursor) {
         const payload = JSON.stringify(responseData);
-        await redis.set(cacheKey, payload, 120);
+        await redis.set(cacheKey, payload, 30);
         const etag = `"ads-${cacheKey.length}-${payload.length}"`;
         res.setHeader('ETag', etag);
         res.setHeader('X-Cache', 'MISS');
-        res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=120');
+        res.setHeader('Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
       }
 
       res.json(responseData);
@@ -367,12 +372,13 @@ export const AdsController = () => {
     const dto = req.body as CreateAdDto;
 
     // Pre-process Base64 image decoding OUTSIDE of database transaction to prevent I/O transaction timeouts
-    const preparedImages: Array<{ url: string; mediaId: string | null; objectKey: string | null; width: number | null; height: number | null; blurHash: string | null }> = [];
+    const preparedImages: Array<{ url: string; thumbnail: string | null; mediaId: string | null; objectKey: string | null; width: number | null; height: number | null; blurHash: string | null }> = [];
     if (dto.images && dto.images.length > 0) {
       for (let idx = 0; idx < dto.images.length; idx++) {
         const img = dto.images[idx];
         let url = img.url || '';
         let objectKey = null;
+        let thumbnailDataUri: string | null = null;
 
         if (url && typeof url === 'string' && url.startsWith('data:image/')) {
           try {
@@ -384,26 +390,31 @@ export const AdsController = () => {
               const base64Data = url.substring(commaIdx + 1);
               const buffer = Buffer.from(base64Data.trim(), 'base64');
 
-              // Compress to ultra-light WebP (~25KB per photo)
-              let compressedBuffer = buffer;
+              // 1. Full image: 800x800 WebP quality 75 — stored in DB, used in ad detail view
+              let fullBuffer = buffer;
               try {
-                compressedBuffer = await sharp(buffer)
+                fullBuffer = await sharp(buffer)
                   .resize(800, 800, { fit: 'inside', withoutEnlargement: true })
                   .webp({ quality: 75 })
                   .toBuffer();
               } catch (sharpErr) {
-                logger.warn(`Sharp ad image compression fallback: ${(sharpErr as any)?.message}`);
+                logger.warn(`Sharp full image compression fallback: ${(sharpErr as any)?.message}`);
               }
 
-              // Also write static file to disk
-              const uploadsDir = path.join(process.cwd(), 'uploads');
-              if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
-              const filename = `ad-img-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 7)}.webp`;
-              const filePath = path.join(uploadsDir, filename);
-              await fs.promises.writeFile(filePath, compressedBuffer);
+              // 2. Thumbnail: 200x200 WebP quality 50 (~3-5KB) — used in feed card for fast loading
+              let thumbBuffer = buffer;
+              try {
+                thumbBuffer = await sharp(buffer)
+                  .resize(200, 200, { fit: 'cover' })
+                  .webp({ quality: 50 })
+                  .toBuffer();
+                thumbnailDataUri = `data:image/webp;base64,${thumbBuffer.toString('base64')}`;
+              } catch (sharpErr) {
+                logger.warn(`Sharp thumbnail compression fallback: ${(sharpErr as any)?.message}`);
+              }
 
-              // Store permanent compressed WebP Base64 Data URI in Postgres DB so images NEVER get lost on Render disk restarts
-              url = `data:image/webp;base64,${compressedBuffer.toString('base64')}`;
+              // Store permanent full WebP Base64 in Postgres DB (never lost on Render disk restarts)
+              url = `data:image/webp;base64,${fullBuffer.toString('base64')}`;
             }
           } catch (base64Err) {
             logger.error({ message: 'Failed decoding ad base64 image', error: (base64Err as any)?.message });
@@ -412,12 +423,14 @@ export const AdsController = () => {
 
         preparedImages.push({
           url,
+          thumbnail: thumbnailDataUri,
           mediaId: (img.mediaId && uuidRegex.test(img.mediaId)) ? img.mediaId : null,
           objectKey: objectKey || img.url || null,
           width: img.width || null,
           height: img.height || null,
           blurHash: img.blurHash || null,
         });
+
       }
     }
 
@@ -525,10 +538,11 @@ export const AdsController = () => {
               mediaId: img.mediaId,
               objectKey: objectKey || img.url || null,
               url: url,
+              // Store thumbnail as blurHash field if no blurHash provided (reuse for card speed)
+              blurHash: img.blurHash || img.thumbnail || null,
               sortOrder: idx,
               width: img.width,
               height: img.height,
-              blurHash: img.blurHash,
             });
           }
 
@@ -555,16 +569,31 @@ export const AdsController = () => {
       const adWithUser = await prisma.ad.findUnique({
         where: { id: result.ad.id },
         include: {
-          images: { orderBy: { sortOrder: 'asc' } },
+          images: { orderBy: { sortOrder: 'asc' }, take: 1 },
           user: { select: { id: true, name: true, avatar: true, isVerified: true } }
         }
       });
+
+      // Build thumbnail from first image blurHash (thumbnail) or full url
+      const firstSavedImg = adWithUser?.images?.[0];
+      const feedThumbnail = firstSavedImg?.blurHash && firstSavedImg.blurHash.startsWith('data:')
+        ? firstSavedImg.blurHash
+        : (firstSavedImg?.url ? resolveMediaUrl(firstSavedImg.url) : null);
+
       const mappedAd = adWithUser ? {
         ...adWithUser,
+        thumbnail: feedThumbnail,
+        imageCount: preparedImages.length,
+        images: feedThumbnail ? [{ url: feedThumbnail }] : [],
         userName: adWithUser.user?.name,
         userAvatar: adWithUser.user?.avatar,
         userVerified: adWithUser.user?.isVerified === 'verified'
-      } : { ...result.ad, images: result.imagesToProcess };
+      } : { ...result.ad, thumbnail: null, imageCount: 0, images: [] };
+
+      // Notify ALL connected clients in real-time about new ad (so feed updates instantly)
+      if (io) {
+        io.emit('new-ad', mappedAd);
+      }
 
       res.status(201).json({
         message: 'تم نشر الإعلان بنجاح.',
