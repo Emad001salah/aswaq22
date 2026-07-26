@@ -358,6 +358,49 @@ export const AdsController = () => {
   router.post('/', authMiddleware, validationMiddleware(CreateAdDto), async (req: AuthenticatedRequest, res) => {
     const dto = req.body as CreateAdDto;
 
+    // Pre-process Base64 image decoding OUTSIDE of database transaction to prevent I/O transaction timeouts
+    const preparedImages: Array<{ url: string; mediaId: string | null; objectKey: string | null; width: number | null; height: number | null; blurHash: string | null }> = [];
+    if (dto.images && dto.images.length > 0) {
+      for (let idx = 0; idx < dto.images.length; idx++) {
+        const img = dto.images[idx];
+        let url = img.url || '';
+        let objectKey = null;
+
+        if (url && typeof url === 'string' && url.startsWith('data:image/')) {
+          try {
+            const fs = await import('fs');
+            const path = await import('path');
+            const commaIdx = url.indexOf(',');
+            if (commaIdx !== -1) {
+              const header = url.substring(0, commaIdx);
+              const base64Data = url.substring(commaIdx + 1);
+              const mimeMatch = header.match(/data:image\/([a-zA-Z0-9+]+)/);
+              const rawExt = mimeMatch ? mimeMatch[1] : 'png';
+              const ext = rawExt === 'jpeg' ? 'jpg' : rawExt === 'svg+xml' ? 'svg' : (rawExt || 'png');
+              const buffer = Buffer.from(base64Data.trim(), 'base64');
+              const uploadsDir = path.join(process.cwd(), 'uploads');
+              if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+              const filename = `ad-img-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 7)}.${ext}`;
+              const filePath = path.join(uploadsDir, filename);
+              await fs.promises.writeFile(filePath, buffer);
+              url = `/uploads/${filename}`;
+            }
+          } catch (base64Err) {
+            logger.error({ message: 'Failed decoding ad base64 image', error: (base64Err as any)?.message });
+          }
+        }
+
+        preparedImages.push({
+          url,
+          mediaId: (img.mediaId && uuidRegex.test(img.mediaId)) ? img.mediaId : null,
+          objectKey: objectKey || img.url || null,
+          width: img.width || null,
+          height: img.height || null,
+          blurHash: img.blurHash || null,
+        });
+      }
+    }
+
     try {
       const result = await prisma.$transaction(async (tx) => {
         // Resolve category — must already exist in DB; never auto-create to prevent ghost categories
@@ -434,12 +477,12 @@ export const AdsController = () => {
 
         // Insert initial images
         let imagesToProcess: any[] = [];
-        if (dto.images && dto.images.length > 0) {
+        if (preparedImages.length > 0) {
           const imageRecords = [];
-          for (let idx = 0; idx < dto.images.length; idx++) {
-            const img = dto.images[idx];
-            let url = img.url || '';
-            let objectKey = null;
+          for (let idx = 0; idx < preparedImages.length; idx++) {
+            const img = preparedImages[idx];
+            let url = img.url;
+            let objectKey = img.objectKey;
 
             if (img.mediaId && uuidRegex.test(img.mediaId)) {
               const media = await tx.mediaObject.findUnique({
@@ -449,7 +492,6 @@ export const AdsController = () => {
                 if (media.uploadedBy !== req.user!.id) {
                   throw new Error('Unauthorized or invalid media resource');
                 }
-                
                 const resolvedUrl = resolveMediaUrl(media);
                 if (resolvedUrl) {
                   url = resolvedUrl;
@@ -458,40 +500,15 @@ export const AdsController = () => {
               }
             }
 
-            // Convert Base64 data: URIs into physical files in /uploads/
-            if (url && typeof url === 'string' && url.startsWith('data:image/')) {
-              try {
-                const fs = await import('fs');
-                const path = await import('path');
-                const commaIdx = url.indexOf(',');
-                if (commaIdx !== -1) {
-                  const header = url.substring(0, commaIdx);
-                  const base64Data = url.substring(commaIdx + 1);
-                  const mimeMatch = header.match(/data:image\/([a-zA-Z0-9+]+)/);
-                  const rawExt = mimeMatch ? mimeMatch[1] : 'png';
-                  const ext = rawExt === 'jpeg' ? 'jpg' : rawExt === 'svg+xml' ? 'svg' : (rawExt || 'png');
-                  const buffer = Buffer.from(base64Data.trim(), 'base64');
-                  const uploadsDir = path.join(process.cwd(), 'uploads');
-                  if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
-                  const filename = `ad-img-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 7)}.${ext}`;
-                  const filePath = path.join(uploadsDir, filename);
-                  fs.writeFileSync(filePath, buffer);
-                  url = `/uploads/${filename}`;
-                }
-              } catch (base64Err) {
-                logger.error({ message: 'Failed decoding ad base64 image', error: (base64Err as any)?.message });
-              }
-            }
-
             imageRecords.push({
               adId: ad.id,
-              mediaId: (img.mediaId && uuidRegex.test(img.mediaId)) ? img.mediaId : null,
+              mediaId: img.mediaId,
               objectKey: objectKey || img.url || null,
               url: url,
               sortOrder: idx,
-              width: img.width || null,
-              height: img.height || null,
-              blurHash: img.blurHash || null,
+              width: img.width,
+              height: img.height,
+              blurHash: img.blurHash,
             });
           }
 
@@ -503,7 +520,7 @@ export const AdsController = () => {
         }
 
         return { ad, imagesToProcess };
-      });
+      }, { maxWait: 15000, timeout: 30000 });
 
       // Emit event asynchronously to trigger Search indexing and BullMQ resizing worker
       eventBus.emit('ad.created', {
