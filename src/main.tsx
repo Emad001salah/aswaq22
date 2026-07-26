@@ -70,7 +70,23 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
             <button
               onClick={() => {
                 try {
-                  const accessToken = localStorage.getItem('aswaq_access_token'); const refreshToken = localStorage.getItem('aswaq_refresh_token'); const currentUser = localStorage.getItem('aswaq_current_user'); const authToken = localStorage.getItem('auth_token'); localStorage.clear(); sessionStorage.clear(); if (accessToken) localStorage.setItem('aswaq_access_token', accessToken); if (refreshToken) localStorage.setItem('aswaq_refresh_token', refreshToken); if (currentUser) localStorage.setItem('aswaq_current_user', currentUser); if (authToken) localStorage.setItem('auth_token', authToken);
+                  const accessToken = localStorage.getItem('aswaq_access_token');
+                  const refreshToken = localStorage.getItem('aswaq_refresh_token');
+                  const currentUser = localStorage.getItem('aswaq_current_user');
+                  const authToken = localStorage.getItem('auth_token');
+                  const selectedMarket = localStorage.getItem('selected_market_id');
+                  const manualMarket = localStorage.getItem('user_manually_selected_market');
+
+                  localStorage.clear();
+                  sessionStorage.clear();
+
+                  if (accessToken) localStorage.setItem('aswaq_access_token', accessToken);
+                  if (refreshToken) localStorage.setItem('aswaq_refresh_token', refreshToken);
+                  if (currentUser) localStorage.setItem('aswaq_current_user', currentUser);
+                  if (authToken) localStorage.setItem('auth_token', authToken);
+                  if (selectedMarket) localStorage.setItem('selected_market_id', selectedMarket);
+                  if (manualMarket) localStorage.setItem('user_manually_selected_market', manualMarket);
+
                   if ('caches' in window) {
                     caches.keys().then(names => {
                       names.forEach(name => caches.delete(name));
@@ -82,7 +98,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
                     });
                   }
                 } catch (_) {}
-                window.location.href = '/?reload=' + Date.now();
+                window.location.reload();
               }}
               style={{
                 width: '100%',

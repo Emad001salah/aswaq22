@@ -106,6 +106,8 @@ export default function AdModal({
   favorites = [],
   onLikeToggle
 }: AdModalProps) {
+  if (!ad) return null;
+
   const isRtl = document.documentElement.dir === 'rtl';
   const navigate = useNavigate();
   const [similarAds, setSimilarAds] = useState<Ad[]>([]);
@@ -113,6 +115,7 @@ export default function AdModal({
 
   useEffect(() => {
     const fetchSimilar = async () => {
+      if (!ad?.id || !ad?.category) return;
       setLoadingSimilar(true);
       try {
         const res = await apiFetch(`/api/ads?category=${ad.category}&limit=10`);
@@ -128,13 +131,11 @@ export default function AdModal({
         setLoadingSimilar(false);
       }
     };
-    if (ad?.id && ad?.category) {
-      fetchSimilar();
-    }
-  }, [ad.id, ad.category]);
+    fetchSimilar();
+  }, [ad?.id, ad?.category]);
 
   const slugify = (text: string): string => {
-    return text
+    return (text || '')
       .toString()
       .toLowerCase()
       .replace(/\s+/g, '-')
@@ -144,12 +145,12 @@ export default function AdModal({
       .replace(/-+$/, '');
   };
 
-  const categoryObject = CATEGORIES.find(c => c.id === ad.category);
+  const categoryObject = CATEGORIES.find(c => c.id === ad?.category);
   const categoryName = categoryObject?.nameAr || 'القسم';
 
-  const rawSellerName = ad.user?.name || ad.userName || (isRtl ? 'بائع أسواق' : 'Aswaq Seller');
+  const rawSellerName = ad?.user?.name || ad?.userName || (isRtl ? 'بائع أسواق' : 'Aswaq Seller');
   const sellerName = sanitizeName(rawSellerName);
-  const sellerAvatar = ad.user?.avatar || ad.userAvatar;
+  const sellerAvatar = ad?.user?.avatar || ad?.userAvatar;
   const [showReportForm, setShowReportForm] = useState(false);
   const [reportReason, setReportReason] = useState('');
   const [reportSent, setReportSent] = useState(false);
@@ -176,7 +177,7 @@ export default function AdModal({
       })
       .catch(() => {})
       .finally(() => setImagesLoading(false));
-  }, [ad.id]);
+  }, [ad?.id]);
 
   // Fast sanitizer for images - Use full images if loaded, else thumbnail from feed
   const safeImages = fullAdImages.length > 0
@@ -200,16 +201,16 @@ export default function AdModal({
 
   useEffect(() => {
     setActiveImage(safeImages?.[0] || '');
-  }, [ad.id, safeImages?.[0]]);
+  }, [ad?.id, safeImages?.[0]]);
 
-  const [viewingVideo, setViewingVideo] = useState(!!ad.isLive);
+  const [viewingVideo, setViewingVideo] = useState(!!ad?.isLive);
   const [votedMatch, setVotedMatch] = useState<'yes' | 'no' | null>(null);
-  const stableSeed = ad.title.length + ((ad.price || 0) % 7);
+  const stableSeed = (ad?.title || '').length + (((ad?.price || 0)) % 7);
   const [yesVotes, setYesVotes] = useState(stableSeed * 4 + 7);
   const [noVotes, setNoVotes] = useState((stableSeed % 3) + 1);
   const [verificationSent, setVerificationSent] = useState(false);
-  const [internalViews, setInternalViews] = useState(ad.views || 0);
-  const [hideContactNumber, setHideContactNumber] = useState(() => !ad.contactNumber || !!ad.hideContactNumber);
+  const [internalViews, setInternalViews] = useState(ad?.views || 0);
+  const [hideContactNumber, setHideContactNumber] = useState(() => !ad?.contactNumber || !!ad?.hideContactNumber);
 
   const handleToggleContactNumber = async () => {
     const nextHidden = !hideContactNumber;
