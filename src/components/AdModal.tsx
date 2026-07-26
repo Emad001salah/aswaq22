@@ -445,6 +445,7 @@ const sessionViewedAdsSet = new Set<string>();
   }, [ad.id]);
 
   const fetchChats = async () => {
+    if (!currentUser) return;
     try {
       const response = await apiFetch('/api/messages');
       const contentType = response.headers.get("content-type");
@@ -1122,7 +1123,7 @@ const sessionViewedAdsSet = new Set<string>();
                         <p className={`text-[11px] font-medium leading-relaxed line-clamp-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
                           {trustData.advice}
                         </p>
-                        {trustData.risks.length > 0 && (
+                        {Array.isArray(trustData?.risks) && trustData.risks.length > 0 && (
                           <div className="flex flex-wrap gap-1 mt-1">
                             {trustData.risks.slice(0, 2).map((risk, i) => (
                               <span key={i} className="text-[8px] bg-red-500/10 text-red-500 border border-red-500/20 px-2 py-0.5 rounded-lg">
@@ -1501,7 +1502,7 @@ const sessionViewedAdsSet = new Set<string>();
                 <div className={`border p-4 rounded-2xl ${isDark ? 'bg-slate-950/30 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
                   <span className={`text-[10px] font-bold uppercase tracking-wider block mb-2 ${isDark ? 'text-zinc-500' : 'text-slate-500'}`}>الخدمات والمرافق</span>
                   <div className="flex flex-wrap gap-1.5">
-                    {ad.amenities && ad.amenities.length > 0 ? (
+                    {Array.isArray(ad?.amenities) && ad.amenities.length > 0 ? (
                       ad.amenities.map((amenity, idx) => (
                         <span key={idx} className="px-2 py-1 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 rounded-lg text-[10px] font-bold">
                           {amenity === 'water' ? 'مشروع مياه' : 

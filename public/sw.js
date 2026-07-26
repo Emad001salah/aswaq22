@@ -1,4 +1,4 @@
-const CACHE_NAME = 'aswaq-pwa-cache-v7-maskable-icons';
+const CACHE_NAME = 'aswaq-pwa-cache-v9-null-guards-trustdata';
 const ASSETS_TO_CACHE = [
   '/aswaq-icon.png',
   '/aswaq-icon-192.png',
