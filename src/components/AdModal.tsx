@@ -167,11 +167,10 @@ export default function AdModal({
         } catch (e) {}
         return [];
       })()
-  ).map((img: any) => (img && typeof img === 'object' ? img.url : img)).filter(Boolean);
+  ).map((img: any) => resolveMediaUrl(img && typeof img === 'object' ? img.url : img)).filter(Boolean);
 
   const [activeImage, setActiveImage] = useState(() => {
-    const uploaded = safeImages?.find(img => img && typeof img === 'string' && img.startsWith('/uploads/'));
-    return uploaded || safeImages?.[0] || '';
+    return safeImages?.[0] || '';
   });
   const [viewingVideo, setViewingVideo] = useState(!!ad.isLive);
   const [votedMatch, setVotedMatch] = useState<'yes' | 'no' | null>(null);

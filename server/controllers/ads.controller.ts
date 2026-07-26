@@ -455,6 +455,24 @@ export const AdsController = () => {
                   url = resolvedUrl;
                 }
                 objectKey = media.objectKey;
+            // Convert Base64 data: URIs into physical files in /uploads/
+            if (url && typeof url === 'string' && url.startsWith('data:image/')) {
+              try {
+                const fs = await import('fs');
+                const path = await import('path');
+                const matches = url.match(/^data:image\/([a-zA-Z0-9+]+);base64,(.+)$/);
+                if (matches && matches[2]) {
+                  const ext = matches[1] === 'jpeg' ? 'jpg' : matches[1] === 'svg+xml' ? 'svg' : (matches[1] || 'png');
+                  const buffer = Buffer.from(matches[2], 'base64');
+                  const uploadsDir = path.join(process.cwd(), 'uploads');
+                  if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+                  const filename = `ad-img-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 7)}.${ext}`;
+                  const filePath = path.join(uploadsDir, filename);
+                  fs.writeFileSync(filePath, buffer);
+                  url = `/uploads/${filename}`;
+                }
+              } catch (base64Err) {
+                logger.error({ message: 'Failed decoding ad base64 image', error: (base64Err as any)?.message });
               }
             }
 

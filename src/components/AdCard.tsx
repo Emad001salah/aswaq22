@@ -16,6 +16,7 @@ import { useTranslation } from 'react-i18next';
 import { CATEGORIES, buildAdSeoUrl } from '../data.ts';
 import toast from 'react-hot-toast';
 import { Avatar, sanitizeName } from './Avatar.tsx';
+import { resolveMediaUrl } from '../lib/config.ts';
 
 interface AdCardProps {
   key?: string;
@@ -85,12 +86,7 @@ export default React.memo(function AdCard({ ad, onClick, onLikeToggle, onChatCli
     }
     const raw = safeImages[index % safeImages.length] || safeImages[0];
     if (!raw || typeof raw !== 'string') return 'https://images.unsplash.com/photo-1496181130204-755241544e35?auto=format&fit=crop&w=800&q=80';
-    const trimmed = raw.trim();
-    if (trimmed.startsWith('data:') || trimmed.startsWith('blob:') || trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
-      return trimmed;
-    }
-    if (trimmed.startsWith('/')) return trimmed;
-    return `/${trimmed}`;
+    return resolveMediaUrl(raw);
   };
 
   const [imgSrc, setImgSrc] = useState(getDisplayImage(0));
