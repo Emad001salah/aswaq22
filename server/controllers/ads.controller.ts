@@ -116,15 +116,23 @@ export const AdsController = () => {
         }
       });
 
-      const mappedAds = ads.map(ad => ({
-        ...ad,
-        category: getLegacyName(ad.categoryId) || '',
-        subCategory: getLegacyName(ad.subCategoryId) || null,
-        likes: ad._count?.likedBy || 0,
-        userName: ad.user?.name,
-        userAvatar: ad.user?.avatar,
-        userVerified: ad.user?.isVerified === 'verified'
-      }));
+      const mappedAds = ads.map(ad => {
+        const safeImgs = Array.isArray(ad.images) ? ad.images.map((img: any) => {
+          const rawUrl = typeof img === 'object' && img !== null ? img.url : img;
+          const resolved = resolveMediaUrl(rawUrl);
+          return typeof img === 'object' && img !== null ? { ...img, url: resolved } : resolved;
+        }) : [];
+        return {
+          ...ad,
+          images: safeImgs,
+          category: getLegacyName(ad.categoryId) || '',
+          subCategory: getLegacyName(ad.subCategoryId) || null,
+          likes: ad._count?.likedBy || 0,
+          userName: ad.user?.name,
+          userAvatar: ad.user?.avatar,
+          userVerified: ad.user?.isVerified === 'verified'
+        };
+      });
       const nextCursor = mappedAds.length === take ? mappedAds[mappedAds.length - 1].id : undefined;
       const responseData = { ads: mappedAds, nextCursor };
 
@@ -635,8 +643,15 @@ export const AdsController = () => {
 
       const highestBid = (ad as any).bids && (ad as any).bids.length > 0 ? (ad as any).bids[0].amount : (ad.startingPrice || ad.price);
 
+      const safeImgs = Array.isArray(ad.images) ? ad.images.map((img: any) => {
+        const rawUrl = typeof img === 'object' && img !== null ? img.url : img;
+        const resolved = resolveMediaUrl(rawUrl);
+        return typeof img === 'object' && img !== null ? { ...img, url: resolved } : resolved;
+      }) : [];
+
       const mappedAd = {
         ...ad,
+        images: safeImgs,
         likes: ad._count?.likedBy || 0,
         highestBid,
         totalBids: (ad as any).bids ? (ad as any).bids.length : 0,

@@ -116,15 +116,10 @@ export const parseVideoUrl = (rawUrl?: string) => {
 
 export const getImageUrl = (rawImg: any, fallback = 'https://images.unsplash.com/photo-1496181130204-755241544e35?auto=format&fit=crop&w=1920&q=80'): string => {
   if (!rawImg) return fallback;
-  if (typeof rawImg === 'string') {
-    const s = rawImg.trim();
-    if (s.startsWith('http') || s.startsWith('/') || s.startsWith('data:')) return s;
-    return fallback;
-  }
-  if (typeof rawImg === 'object' && rawImg && typeof rawImg.url === 'string') {
-    const s = rawImg.url.trim();
-    if (s.startsWith('http') || s.startsWith('/') || s.startsWith('data:')) return s;
-    return fallback;
+  const rawUrl = typeof rawImg === 'object' && rawImg !== null ? rawImg.url : rawImg;
+  if (typeof rawUrl === 'string' && rawUrl.trim()) {
+    const resolved = resolveMediaUrl(rawUrl);
+    if (resolved) return resolved;
   }
   return fallback;
 };
