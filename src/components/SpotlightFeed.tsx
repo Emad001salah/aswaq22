@@ -51,6 +51,7 @@ import { getCurrencyAr, getCurrencyNameAr, MARKETS } from '../markets.ts';
 import socket from '../lib/socket.ts';
 import { Avatar, sanitizeName } from './Avatar.tsx';
 import { apiFetch } from '../lib/api';
+import { resolveMediaUrl } from '../lib/config.ts';
 
 // ── WebRTC ICE Server Configuration ──────────────────────────────────────────
 // Includes free public TURN servers so WebRTC works on restrictive mobile
