@@ -394,8 +394,8 @@ export const AdsController = () => {
               const filePath = path.join(uploadsDir, filename);
               await fs.promises.writeFile(filePath, compressedBuffer);
 
-              // Save ultra-light WebP Base64 in database so photos NEVER break across restarts or domains
-              url = `data:image/webp;base64,${compressedBuffer.toString('base64')}`;
+              // Store clean static file path in database (fits within VARCHAR(255) without truncation)
+              url = `/uploads/${filename}`;
             }
           } catch (base64Err) {
             logger.error({ message: 'Failed decoding ad base64 image', error: (base64Err as any)?.message });
