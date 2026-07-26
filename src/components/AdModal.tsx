@@ -414,10 +414,10 @@ const sessionViewedAdsSet = new Set<string>();
     }
   };
 
-  const cityObj = currentMarket.cities.find((c) => c.id === ad.city);
+  const cityObj = currentMarket?.cities?.find((c) => c.id === ad?.city);
   // Note: CATEGORIES and DISTRICTS are currently global in data.ts, but we use city-lookup from market
-  const cityName = cityObj ? cityObj.nameAr : ad.city;
-  const districtName = ad.district;
+  const cityName = cityObj ? cityObj.nameAr : (ad?.city || '');
+  const districtName = ad?.district;
 
   // Load chat logs for this ad from Database
   useEffect(() => {
@@ -538,7 +538,7 @@ const sessionViewedAdsSet = new Set<string>();
           adPrice: ad.price,
           adCurrency: ad.currency,
           sellerName: ad.userName || 'أبو أحمد الهمداني',
-          sellerBio: ad.userId === 'user_1' ? `معرض سيارات مرخص في ${currentMarket.labelAr}` : `بائع موثوق في أسواق ${currentMarket.labelAr} بمختلف المحافظات`,
+          sellerBio: ad.userId === 'user_1' ? `معرض سيارات مرخص في ${currentMarket?.labelAr || 'أسواق'}` : `بائع موثوق في أسواق ${currentMarket?.labelAr || 'أسواق'} بمختلف المحافظات`,
           messageHistory: aiChatLogs,
           newMessage: userMsg
         })
@@ -656,7 +656,7 @@ const sessionViewedAdsSet = new Set<string>();
     // general fallback
     const valPct = (p % 3) * 25 + 35; // stable deterministic percent for presentation
     if (valPct < 45) return { label: 'معروض مخفض ومميز', color: 'text-emerald-400 bg-emerald-950/25 border-emerald-500/20', pct: `${valPct}%`, badge: '🔥 عرض مميز' };
-    if (valPct <= 75) return { label: `سعر ملائم ومقنع في أسواق ${currentMarket.labelAr} المحلية`, color: 'text-cyan-400 bg-cyan-950/25 border-cyan-500/20', pct: `${valPct}%`, badge: '⚖️ سعر معقول' };
+    if (valPct <= 75) return { label: `سعر ملائم ومقنع في أسواق ${currentMarket?.labelAr || 'أسواق'} المحلية`, color: 'text-cyan-400 bg-cyan-950/25 border-cyan-500/20', pct: `${valPct}%`, badge: '⚖️ سعر معقول' };
     return { label: 'سعر حصري للجودة والأصل المضمون', color: 'text-amber-400 bg-amber-950/25 border-amber-500/20', pct: `${valPct}%`, badge: '💎 جودة ممتازة' };
   };
   const valuation = getAdValuation();
@@ -852,7 +852,7 @@ const sessionViewedAdsSet = new Set<string>();
           <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-bold mb-2 dir-rtl text-right select-none">
             <span onClick={onClose} className="hover:text-emerald-500 cursor-pointer transition-colors">الرئيسية</span>
             <ChevronRight className="w-3 h-3 shrink-0" />
-            <span className="text-slate-400 dark:text-slate-500">{currentMarket.labelAr}</span>
+            <span className="text-slate-400 dark:text-slate-500">{currentMarket?.labelAr || 'أسواق'}</span>
             <ChevronRight className="w-3 h-3 shrink-0" />
             <span className="text-slate-400 dark:text-slate-500">{categoryName}</span>
             <ChevronRight className="w-3 h-3 shrink-0" />
@@ -1027,7 +1027,7 @@ const sessionViewedAdsSet = new Set<string>();
                  <span className="text-white font-black text-[10px]">SOLD</span>
                </div>
                <div className="text-right">
-                 <h3 className="text-rose-400 font-black text-sm">لقد تمت بيعة هذا الغرض بنجاح عبر أسواق {currentMarket.labelAr}!</h3>
+                 <h3 className="text-rose-400 font-black text-sm">لقد تمت بيعة هذا الغرض بنجاح عبر أسواق {currentMarket?.labelAr || 'أسواق'}!</h3>
                  <p className="text-zinc-500 text-[10px] font-bold">هذا الإعلان مؤرشف حالياً ولم يعد متاحاً للتواصل المباشر مع المعلن.</p>
                </div>
             </div>
@@ -1239,7 +1239,7 @@ const sessionViewedAdsSet = new Set<string>();
                   </div>
                   <div className={`flex items-center gap-2 p-2 rounded-xl border ${isDark ? 'bg-slate-950/40 border-slate-800/60 text-slate-400' : 'bg-white border-slate-205 text-slate-700 border-slate-200'}`}>
                     <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                    <span>مطابقة الإقليم الجغرافي: {cityName || `مؤكد بـ ${currentMarket.labelAr || 'البلد'}`}</span>
+                    <span>مطابقة الإقليم الجغرافي: {cityName || `مؤكد بـ ${currentMarket?.labelAr || 'البلد'}`}</span>
                   </div>
                   <div className={`flex items-center gap-2 p-2 rounded-xl border ${isDark ? 'bg-slate-950/40 border-slate-800/60 text-slate-400' : 'bg-white border-slate-205 text-slate-700 border-slate-200'}`}>
                     <Check className="w-4 h-4 text-emerald-500 shrink-0" />
@@ -1577,9 +1577,9 @@ const sessionViewedAdsSet = new Set<string>();
           <div className={`p-4 rounded-xl border flex items-start gap-3 ${isDark ? 'bg-amber-950/15 border-amber-900/30' : 'bg-amber-50 border-amber-200'}`}>
             <ShieldCheck className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />
             <div className="text-right">
-              <p className="text-xs font-bold text-amber-600 dark:text-amber-500">تنويه الأمان في أسواق {currentMarket.labelAr}</p>
+              <p className="text-xs font-bold text-amber-600 dark:text-amber-500">تنويه الأمان في أسواق {currentMarket?.labelAr || 'أسواق'}</p>
               <p className={`text-[11px] mt-1 leading-normal ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                لا ترسل مبالغ مالية مقدماً أو حوالات إلكترونية للبائع قبل معاينة السلعة في مكان عام آمن والتأكد من سلامتها يداً بيد. أسواق {currentMarket.labelAr} لا تتدخل في المعاملات المالية المباشرة.
+                لا ترسل مبالغ مالية مقدماً أو حوالات إلكترونية للبائع قبل معاينة السلعة في مكان عام آمن والتأكد من سلامتها يداً بيد. أسواق {currentMarket?.labelAr || 'أسواق'} لا تتدخل في المعاملات المالية المباشرة.
               </p>
             </div>
           </div>
@@ -1597,7 +1597,7 @@ const sessionViewedAdsSet = new Set<string>();
                     : 'https://www.aswaq22.com/aswaq-icon-512.png';
                   
                   const targetUrl = (() => {
-                    const countryCode = currentMarket.countryCode.toLowerCase() || 'ye';
+                    const countryCode = currentMarket?.countryCode?.toLowerCase() || 'jo';
                     const categoryObject = CATEGORIES.find(c => c.id === similarAd.category);
                     const categorySlug = categoryObject?.nameEn?.toLowerCase() || 'ads';
                     const titleSlug = slugify(similarAd.title);
