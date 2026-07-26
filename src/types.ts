@@ -118,6 +118,7 @@ export interface Ad {
   warranty?: boolean;
   brand?: string;
   videoUrl?: string;
+  audioUrl?: string;
   isPromo?: boolean;
   isLive?: boolean;
   marketId?: string;

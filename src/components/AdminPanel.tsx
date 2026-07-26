@@ -67,6 +67,7 @@ import {
 import DeliveryDashboard from '../modules/shipping/DeliveryDashboard';
 import { User, Ad } from '../types.ts';
 import { MARKETS, getCurrencyAr } from '../markets.ts';
+import { getPublicLogoUrl } from '../lib/config.ts';
 import {
   AreaChart,
   Area,
@@ -3086,7 +3087,7 @@ function AdminPanelInner({
                               {/* Preview */}
                               <div className="w-16 h-16 rounded-2xl bg-slate-700 border border-slate-600 flex items-center justify-center overflow-hidden shrink-0">
                                 {settings.logoUrl ? (
-                                  <img src={settings.logoUrl} alt="شعار" className="w-full h-full object-contain" />
+                                  <img src={getPublicLogoUrl(settings.logoUrl)} alt="شعار" className="w-full h-full object-contain" />
                                 ) : (
                                   <span className="text-2xl font-black text-emerald-400">{settings.logoLetter || 'أ'}</span>
                                 )}

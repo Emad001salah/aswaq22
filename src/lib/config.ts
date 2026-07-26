@@ -17,3 +17,34 @@ export const API_BASE_URL = `${API_ORIGIN}/api`;
 
 /** Whether the running build targets production (used for logging/telemetry). */
 export const IS_PRODUCTION = import.meta.env.PROD === true;
+
+/** Safely resolves any logo URL to a full accessible URL across domains */
+export function getPublicLogoUrl(url?: string | null): string {
+  if (!url || typeof url !== 'string') return '/aswaq-icon.png';
+  const trimmed = url.trim();
+  if (!trimmed) return '/aswaq-icon.png';
+  if (trimmed.startsWith('data:') || trimmed.startsWith('blob:')) {
+    return trimmed;
+  }
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    return trimmed;
+  }
+  if (trimmed.startsWith('/')) {
+    return `${API_ORIGIN}${trimmed}`;
+  }
+  return `${API_ORIGIN}/${trimmed}`;
+}
+
+/** Safely resolves media URLs (images, videos, audio notes) */
+export function resolveMediaUrl(url?: string | null): string {
+  if (!url || typeof url !== 'string') return '';
+  const trimmed = url.trim();
+  if (!trimmed) return '';
+  if (trimmed.startsWith('data:') || trimmed.startsWith('blob:') || trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    return trimmed;
+  }
+  if (trimmed.startsWith('/')) {
+    return `${API_ORIGIN}${trimmed}`;
+  }
+  return `${API_ORIGIN}/${trimmed}`;
+}

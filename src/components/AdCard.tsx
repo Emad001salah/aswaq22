@@ -423,6 +423,14 @@ export default React.memo(function AdCard({ ad, onClick, onLikeToggle, onChatCli
             {categoryName}
           </span>
         )}
+
+        {/* Voice Note Badge Overlay */}
+        {(ad.audioUrl || (ad.videoUrl && (ad.videoUrl.endsWith('.mp3') || ad.videoUrl.endsWith('.wav') || ad.videoUrl.endsWith('.m4a') || ad.videoUrl.includes('/audio-')))) && (
+          <span className={`absolute bottom-3 z-10 bg-emerald-950/90 text-emerald-300 backdrop-blur border border-emerald-500/40 font-extrabold text-[9px] px-2 py-0.5 rounded-md flex items-center gap-1 shadow-lg ${isRtl ? 'right-3' : 'left-3'}`}>
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            🎙️ {isRtl ? 'توضيح صوتي' : 'Voice Note'}
+          </span>
+        )}
       </div>
 
       {/* Information Content Block */}

@@ -29,6 +29,8 @@ import {
   Map
 } from 'lucide-react';
 
+import { getPublicLogoUrl } from '../lib/config.ts';
+
 interface NavbarProps {
   currentUser: User | null;
   unreadMessagesCount: number;
@@ -128,7 +130,7 @@ export default function Navbar({
               <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-emerald-600 via-teal-500 to-emerald-400 flex items-center justify-center shadow-xl shadow-emerald-500/25 group-hover:scale-110 group-hover:shadow-emerald-500/40 transition-all duration-300 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-full h-full bg-gradient-to-tr from-amber-400/20 to-transparent" />
                 <img
-                  src={platformSettings?.logoUrl || '/aswaq-icon.png'}
+                  src={getPublicLogoUrl(platformSettings?.logoUrl)}
                   alt="Logo"
                   className="w-full h-full object-contain p-1 relative z-10"
                   referrerPolicy="no-referrer"

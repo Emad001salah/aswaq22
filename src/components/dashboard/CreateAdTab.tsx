@@ -17,7 +17,12 @@ import {
   Scan,
   Briefcase,
   CheckCircle2,
+  Mic,
+  Square,
+  Volume2,
+  Upload
 } from "lucide-react";
+import { resolveMediaUrl } from "../../lib/config.ts";
 import { apiFetch } from "../../lib/api";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -104,6 +109,16 @@ export default function CreateAdTab({
   const [videoProgress, setVideoProgress] = useState(0);
   const [videoUploadXhr, setVideoUploadXhr] = useState<XMLHttpRequest | null>(null);
 
+  // Audio / Voice Note States
+  const [audioUrl, setAudioUrl] = useState("");
+  const [uploadingAudio, setUploadingAudio] = useState(false);
+  const [audioProgress, setAudioProgress] = useState(0);
+  const [isRecordingAudio, setIsRecordingAudio] = useState(false);
+  const [audioDuration, setAudioDuration] = useState(0);
+  const audioRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const audioTimerRef = useRef<any>(null);
+
   // Dropdowns search states
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
   const [categorySearch, setCategorySearch] = useState("");
@@ -156,6 +171,7 @@ export default function CreateAdTab({
       setSubCategory(editingAd.subCategory || "");
       setAdImages(editingAd.images || []);
       setVideoUrl(editingAd.videoUrl || "");
+      setAudioUrl(editingAd.audioUrl || (editingAd.videoUrl?.match(/\.(mp3|wav|m4a|ogg|aac|webm)$/i) ? editingAd.videoUrl : ""));
       setAdStatus(editingAd.status === "sold" ? "sold" : "active");
       setContactNumber(editingAd.contactNumber || "");
       setShowPhone(!!editingAd.contactNumber);
@@ -491,7 +507,8 @@ export default function CreateAdTab({
       userName: currentUser.name,
       userAvatar: currentUser.avatar,
       userVerified: currentUser.verified,
-      videoUrl: videoUrl.trim() || undefined,
+      videoUrl: videoUrl.trim() || (!videoUrl && audioUrl ? audioUrl.trim() : undefined),
+      audioUrl: audioUrl.trim() || undefined,
       customFieldValues,
       ...(finalCategory === "realestate"
         ? {
@@ -2143,6 +2160,148 @@ export default function CreateAdTab({
                       </div>
                     )}
                   </div>
+                </div>
+
+                {/* ── Audio / Voice Note Explanation Section ── */}
+                <div className={`p-4 rounded-2xl border space-y-3 transition-all ${isDark ? "bg-slate-900/60 border-slate-800" : "bg-slate-50 border-slate-200"}`}>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-xl bg-teal-500/10 text-teal-400 flex items-center justify-center font-bold">
+                        🎙️
+                      </div>
+                      <div>
+                        <h4 className={`text-xs font-bold ${isDark ? "text-white" : "text-slate-900"}`}>
+                          توضيح بصوتك / تسجيل صوتي للإعلان 🎙️
+                        </h4>
+                        <p className="text-[10px] text-slate-400">
+                          سجّل مقطعاً صوتياً لشرح حالة السلعة أو أرفق ملفاً صوتياً ليعمل تلقائياً في الإعلان
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {!isRecordingAudio ? (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                              const recorder = new MediaRecorder(stream);
+                              audioChunksRef.current = [];
+                              recorder.ondataavailable = (e) => {
+                                if (e.data.size > 0) audioChunksRef.current.push(e.data);
+                              };
+                              recorder.onstop = async () => {
+                                const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+                                stream.getTracks().forEach(t => t.stop());
+                                setUploadingAudio(true);
+                                const formData = new FormData();
+                                formData.append('file', new File([audioBlob], `voice-note-${Date.now()}.webm`, { type: 'audio/webm' }));
+                                uploadFileWithProgress({
+                                  url: '/api/storage/upload',
+                                  formData,
+                                  onProgress: (p) => setAudioProgress(p),
+                                  onSuccess: (data) => {
+                                    const url = data?.url || URL.createObjectURL(audioBlob);
+                                    setAudioUrl(url);
+                                    setUploadingAudio(false);
+                                    addToast?.("تم حفظ المقطع الصوتي 🎙️", "تم إرفاق الشرح الصوتي بالإعلان بنجاح.", "success");
+                                  },
+                                  onError: () => {
+                                    const url = URL.createObjectURL(audioBlob);
+                                    setAudioUrl(url);
+                                    setUploadingAudio(false);
+                                  }
+                                });
+                              };
+                              audioRecorderRef.current = recorder;
+                              recorder.start();
+                              setIsRecordingAudio(true);
+                              setAudioDuration(0);
+                              audioTimerRef.current = setInterval(() => {
+                                setAudioDuration(prev => prev + 1);
+                              }, 1000);
+                            } catch (e) {
+                              addToast?.("تعذر الوصول للميكروفون ⚠️", "يرجى السماح بصلاحيات الميكروفون في المتصفح لتسجيل الصوت.", "error");
+                            }
+                          }}
+                          className="bg-teal-600 hover:bg-teal-500 text-white text-[10px] font-black px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition-all shadow-md cursor-pointer"
+                        >
+                          <Mic className="w-3.5 h-3.5" />
+                          <span>بدء التسجيل 🎙️</span>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (audioRecorderRef.current && audioRecorderRef.current.state !== 'inactive') {
+                              audioRecorderRef.current.stop();
+                            }
+                            setIsRecordingAudio(false);
+                            if (audioTimerRef.current) clearInterval(audioTimerRef.current);
+                          }}
+                          className="bg-red-600 hover:bg-red-500 text-white text-[10px] font-black px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition-all shadow-md animate-pulse cursor-pointer"
+                        >
+                          <Square className="w-3.5 h-3.5" />
+                          <span>إيقاف الحفظ ({audioDuration}ث) ⏹️</span>
+                        </button>
+                      )}
+
+                      <label className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] font-bold px-3 py-1.5 rounded-xl flex items-center gap-1 cursor-pointer transition-colors border border-slate-700">
+                        <Upload className="w-3 h-3 text-slate-400" />
+                        <span>ملف 🎵</span>
+                        <input
+                          type="file"
+                          accept="audio/*"
+                          className="hidden"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            setUploadingAudio(true);
+                            const formData = new FormData();
+                            formData.append('file', file);
+                            uploadFileWithProgress({
+                              url: '/api/storage/upload',
+                              formData,
+                              onProgress: (p) => setAudioProgress(p),
+                              onSuccess: (data) => {
+                                setAudioUrl(data?.url || '');
+                                setUploadingAudio(false);
+                                addToast?.("تم رفع الملف الصوتي 🎵", "تم ربط المقطع الصوتي بنجاح.", "success");
+                              },
+                              onError: () => {
+                                setUploadingAudio(false);
+                                addToast?.("فشل الرفع ⚠️", "تعذر رفع ملف الصوت.", "error");
+                              }
+                            });
+                          }}
+                        />
+                      </label>
+                    </div>
+                  </div>
+
+                  {uploadingAudio && (
+                    <div className="flex items-center gap-2 text-teal-400 text-xs font-bold bg-teal-500/10 p-2.5 rounded-xl">
+                      <span className="w-3 h-3 rounded-full border-2 border-teal-500 border-t-transparent animate-spin"></span>
+                      <span>جاري رفع المقطع الصوتي: {audioProgress}%</span>
+                    </div>
+                  )}
+
+                  {audioUrl && !uploadingAudio && (
+                    <div className="flex items-center justify-between gap-2 bg-emerald-500/10 border border-emerald-500/30 p-2.5 rounded-xl text-emerald-400 text-xs">
+                      <div className="flex items-center gap-2 overflow-hidden">
+                        <Volume2 className="w-4 h-4 shrink-0 text-emerald-400 animate-pulse" />
+                        <audio src={resolveMediaUrl(audioUrl)} controls className="h-8 text-xs max-w-[240px] sm:max-w-xs" />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setAudioUrl("")}
+                        className="text-rose-400 hover:text-rose-300 text-[10px] font-black underline shrink-0 cursor-pointer"
+                      >
+                        حذف ❌
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {showVideoRecorder && (

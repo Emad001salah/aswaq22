@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { getPublicLogoUrl } from '../lib/config.ts';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   X,
@@ -418,7 +419,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess, isDark }: AuthMo
             <div className="text-center space-y-1.5 pt-3">
               <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-emerald-500 via-teal-500 to-emerald-600 shadow-xl shadow-emerald-500/25 flex items-center justify-center mx-auto mb-3 sm:mb-4 overflow-hidden p-1.5 ring-4 ring-emerald-500/10">
                 <img
-                  src={platformSettings?.logoUrl || '/aswaq-icon.png'}
+                  src={getPublicLogoUrl(platformSettings?.logoUrl)}
                   alt="Logo"
                   className="w-full h-full object-contain"
                   onError={(e) => {

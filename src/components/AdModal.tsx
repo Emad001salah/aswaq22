@@ -43,6 +43,23 @@ import { Market, getCurrencyAr, getCurrencyNameAr } from '../markets.ts';
 import { INITIAL_USERS, CATEGORIES, getAdReferenceCode } from '../data.ts';
 import { Avatar, sanitizeName } from './Avatar.tsx';
 import { apiFetch } from '../lib/api';
+import { resolveMediaUrl } from '../lib/config.ts';
+
+const isAudioFile = (url?: string): boolean => {
+  if (!url) return false;
+  const lower = url.toLowerCase();
+  return (
+    lower.endsWith('.mp3') ||
+    lower.endsWith('.wav') ||
+    lower.endsWith('.m4a') ||
+    lower.endsWith('.ogg') ||
+    lower.endsWith('.aac') ||
+    lower.endsWith('.flac') ||
+    lower.includes('/audio-') ||
+    lower.includes('/voice-') ||
+    lower.startsWith('data:audio/')
+  );
+};
 
 const getYoutubeEmbedUrl = (url?: string): string | null => {
   if (!url) return null;
@@ -923,6 +940,36 @@ const sessionViewedAdsSet = new Set<string>();
                     <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping"></span>
                   </button>
                 )}
+              </div>
+            )}
+
+            {/* ── Voice Note Audio Player Card ── */}
+            {(ad.audioUrl || isAudioFile(ad.videoUrl)) && (
+              <div className={`p-4 rounded-2xl border transition-all shadow-xl ${isDark ? 'bg-gradient-to-r from-emerald-950/60 via-slate-900 to-teal-950/60 border-emerald-500/30' : 'bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-100 border-emerald-200'}`}>
+                <div className="flex items-center justify-between gap-3 mb-2.5">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-black animate-pulse text-lg border border-emerald-500/30">
+                      🎙️
+                    </div>
+                    <div>
+                      <h4 className={`text-xs sm:text-sm font-extrabold ${isDark ? 'text-emerald-300' : 'text-emerald-950'}`}>
+                        {isRtl ? 'توضيح بصوت البائع (تسجيل صوتي)' : 'Advertiser Voice Explanation'}
+                      </h4>
+                      <p className="text-[10px] sm:text-xs text-slate-400">
+                        {isRtl ? 'استمع لشرح كامل ومباشر عن السلعة بصوت البائع' : 'Listen to full voice note description directly from the seller'}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-mono px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-extrabold shrink-0">
+                    صوت موثّق 🔊
+                  </span>
+                </div>
+                <audio
+                  src={resolveMediaUrl(ad.audioUrl || ad.videoUrl)}
+                  controls
+                  className="w-full h-10 rounded-xl outline-none shadow-inner"
+                  style={{ accentColor: '#10b981' }}
+                />
               </div>
             )}
           </div>

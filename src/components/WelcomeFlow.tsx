@@ -51,6 +51,8 @@ type AuthMode = 'login' | 'signup';
 type FlowStep = 'splash' | 'features' | 'auth';
 type PhoneStep = 'input' | 'otp';
 
+import { getPublicLogoUrl } from '../lib/config.ts';
+
 interface WelcomeFlowProps {
   onClose: () => void;
   onLogin: (user: any) => void;
@@ -253,7 +255,7 @@ const SplashStep = ({
           className="relative w-36 h-36 rounded-[2.8rem] bg-gradient-to-br from-emerald-400 via-emerald-500 to-teal-600 shadow-2xl shadow-emerald-500/30 flex items-center justify-center overflow-hidden"
         >
           <img
-            src={platformSettings?.logoUrl || '/aswaq-icon.png'}
+            src={getPublicLogoUrl(platformSettings?.logoUrl)}
             alt="Logo"
             className="w-full h-full object-contain p-3"
             onError={(e) => {
