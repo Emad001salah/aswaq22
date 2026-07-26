@@ -368,22 +368,34 @@ export const AdsController = () => {
 
         if (url && typeof url === 'string' && url.startsWith('data:image/')) {
           try {
+            const sharp = (await import('sharp')).default;
             const fs = await import('fs');
             const path = await import('path');
             const commaIdx = url.indexOf(',');
             if (commaIdx !== -1) {
-              const header = url.substring(0, commaIdx);
               const base64Data = url.substring(commaIdx + 1);
-              const mimeMatch = header.match(/data:image\/([a-zA-Z0-9+]+)/);
-              const rawExt = mimeMatch ? mimeMatch[1] : 'png';
-              const ext = rawExt === 'jpeg' ? 'jpg' : rawExt === 'svg+xml' ? 'svg' : (rawExt || 'png');
               const buffer = Buffer.from(base64Data.trim(), 'base64');
+
+              // Compress to optimized WebP (~35KB per photo)
+              let compressedBuffer = buffer;
+              try {
+                compressedBuffer = await sharp(buffer)
+                  .resize(1024, 1024, { fit: 'inside', withoutEnlargement: true })
+                  .webp({ quality: 80 })
+                  .toBuffer();
+              } catch (sharpErr) {
+                logger.warn(`Sharp ad image compression fallback: ${(sharpErr as any)?.message}`);
+              }
+
+              // Also write static file to disk
               const uploadsDir = path.join(process.cwd(), 'uploads');
               if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
-              const filename = `ad-img-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 7)}.${ext}`;
+              const filename = `ad-img-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 7)}.webp`;
               const filePath = path.join(uploadsDir, filename);
-              await fs.promises.writeFile(filePath, buffer);
-              url = `/uploads/${filename}`;
+              await fs.promises.writeFile(filePath, compressedBuffer);
+
+              // Save ultra-light WebP Base64 in database so photos NEVER break across restarts or domains
+              url = `data:image/webp;base64,${compressedBuffer.toString('base64')}`;
             }
           } catch (base64Err) {
             logger.error({ message: 'Failed decoding ad base64 image', error: (base64Err as any)?.message });

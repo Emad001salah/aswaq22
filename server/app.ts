@@ -366,13 +366,20 @@ export class App {
     // 7. Global CSRF protection for mutating requests
     this.app.use(csrfMiddleware);
 
-    // 8. Static files with aggressive caching headers
-    this.app.use('/uploads', express.static(path.join(process.cwd(), 'uploads'), {
+    // 8. Static files with aggressive caching headers and cross-origin permissions
+    this.app.use('/uploads', (req, res, next) => {
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+      res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+      next();
+    }, express.static(path.join(process.cwd(), 'uploads'), {
       maxAge: '7d',       // Browser caches static files for 7 days
       etag: true,
       lastModified: true,
       setHeaders: (res) => {
         res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
       }
     }));
     this.app.use('/status',  express.static(path.join(process.cwd(), 'public', 'status')));
