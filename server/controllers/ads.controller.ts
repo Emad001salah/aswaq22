@@ -463,10 +463,14 @@ export const AdsController = () => {
               try {
                 const fs = await import('fs');
                 const path = await import('path');
-                const matches = url.match(/^data:image\/([a-zA-Z0-9+]+);base64,(.+)$/);
-                if (matches && matches[2]) {
-                  const ext = matches[1] === 'jpeg' ? 'jpg' : matches[1] === 'svg+xml' ? 'svg' : (matches[1] || 'png');
-                  const buffer = Buffer.from(matches[2], 'base64');
+                const commaIdx = url.indexOf(',');
+                if (commaIdx !== -1) {
+                  const header = url.substring(0, commaIdx);
+                  const base64Data = url.substring(commaIdx + 1);
+                  const mimeMatch = header.match(/data:image\/([a-zA-Z0-9+]+)/);
+                  const rawExt = mimeMatch ? mimeMatch[1] : 'png';
+                  const ext = rawExt === 'jpeg' ? 'jpg' : rawExt === 'svg+xml' ? 'svg' : (rawExt || 'png');
+                  const buffer = Buffer.from(base64Data.trim(), 'base64');
                   const uploadsDir = path.join(process.cwd(), 'uploads');
                   if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
                   const filename = `ad-img-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 7)}.${ext}`;

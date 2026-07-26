@@ -579,16 +579,17 @@ const sessionViewedAdsSet = new Set<string>();
     };
   };
 
-  const images = safeImages || [];
+  const fallbackSvg = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600" fill="none"><rect width="800" height="600" fill="%230f172a"/><path d="M400 220L480 340H320L400 220Z" fill="%2310b981" opacity="0.6"/><path d="M460 270L520 340H400L460 270Z" fill="%23059669" opacity="0.8"/><circle cx="340" cy="200" r="30" fill="%23f59e0b" opacity="0.8"/><text x="50%" y="78%" font-family="system-ui, sans-serif" font-size="28" font-weight="bold" fill="%2394a3b8" text-anchor="middle">أَسْوَاق 22 - صورة المعاينة</text></svg>`;
+  const images = safeImages && safeImages.length > 0 ? safeImages : [fallbackSvg];
 
   const handleNextFull = () => {
-    if (fullScreenIndex === null) return;
-    setFullScreenIndex(prev => (prev! + 1) % images.length);
+    if (fullScreenIndex === null || images.length === 0) return;
+    setFullScreenIndex(prev => ((prev ?? 0) + 1) % images.length);
   };
 
   const handlePrevFull = () => {
-    if (fullScreenIndex === null) return;
-    setFullScreenIndex(prev => (prev! - 1 + images.length) % images.length);
+    if (fullScreenIndex === null || images.length === 0) return;
+    setFullScreenIndex(prev => ((prev ?? 0) - 1 + images.length) % images.length);
   };
 
   useEffect(() => {
@@ -727,7 +728,7 @@ const sessionViewedAdsSet = new Set<string>();
 
             {/* Counter */}
             <div className="absolute top-8 right-8 text-white/60 font-mono text-sm tracking-widest z-[110]">
-              {fullScreenIndex + 1} / {images.length}
+              {images.length > 0 ? `${((fullScreenIndex || 0) % images.length) + 1} / ${images.length}` : '1 / 1'}
             </div>
 
             {/* Navigation buttons - Desktop */}
@@ -765,7 +766,7 @@ const sessionViewedAdsSet = new Set<string>();
                       if (info.offset.x > 100) handleNextFull();
                       else if (info.offset.x < -100) handlePrevFull();
                     }}
-                    src={images[fullScreenIndex]} 
+                    src={images[fullScreenIndex !== null ? (fullScreenIndex % images.length) : 0] || fallbackSvg} 
                     alt="full screen" 
                     className="max-w-full max-h-full object-contain rounded-xl shadow-2xl"
                     referrerPolicy="no-referrer"
