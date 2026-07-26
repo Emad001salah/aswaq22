@@ -57,6 +57,7 @@ import {
 import PwaInstallPrompt from "./components/PwaInstallPrompt.tsx";
 
 import { User, Ad, ChatMessage, AppNotification, UserRole } from "./types.ts";
+import { getPublicLogoUrl } from "./lib/config.ts";
 import { CITIES, CATEGORIES, INITIAL_USERS, DISTRICTS, SUB_CATEGORIES, buildAdSeoUrl, getAdReferenceCode } from "./data.ts";
 import { useTheme } from "./context/ThemeContext.tsx";
 import { useMarket } from "./context/MarketContext.tsx";
@@ -4307,7 +4308,7 @@ useEffect(() => {
                   <div className="bg-gradient-to-br from-emerald-950 via-teal-950 to-slate-900 p-8 rounded-[2.5rem] border border-emerald-800/60 shadow-2xl shadow-emerald-950/20 text-center flex flex-col items-center justify-center space-y-4 relative overflow-hidden">
                     <div className="w-24 h-24 rounded-3xl flex items-center justify-center overflow-hidden relative z-10 shadow-2xl bg-emerald-900/60 border border-emerald-500/30 p-1.5">
                       <img
-                        src={platformSettings?.logoUrl || '/aswaq-icon.png'}
+                        src={getPublicLogoUrl(platformSettings?.logoUrl)}
                         alt="Logo"
                         className="w-full h-full object-contain"
                         onError={(e) => {
