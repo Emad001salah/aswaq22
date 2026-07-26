@@ -349,6 +349,7 @@ export default React.memo(function AdCard({ ad, onClick, onLikeToggle, onChatCli
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-in-out"
           referrerPolicy="no-referrer"
           loading="lazy"
+          decoding="async"
           onError={handleImageError}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/50 dark:from-slate-950 via-transparent to-transparent opacity-60 pointer-events-none" />

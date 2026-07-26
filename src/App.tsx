@@ -89,12 +89,12 @@ import { loadGoogleMapsScript } from "./modules/maps/googleMaps.ts";
 const AuthModal = React.lazy(() => import("./components/AuthModal"));
 const WelcomeFlow = React.lazy(() => import("./components/WelcomeFlow"));
 const LocationMapPicker = React.lazy(() => import("./modules/maps/LocationMapPicker"));
-import IdentityVerificationModal from "./components/IdentityVerificationModal";
+const IdentityVerificationModal = React.lazy(() => import("./components/IdentityVerificationModal"));
 const OtpVerification = React.lazy(() => import("./components/OtpVerification").then(m => ({ default: m.OtpVerification })));
 
-import JobPortal from "./components/JobPortal.tsx";
+const JobPortal = React.lazy(() => import("./components/JobPortal.tsx"));
 
-import AdminPanel from "./components/AdminPanel";
+const AdminPanel = React.lazy(() => import("./components/AdminPanel"));
 const Dashboard = React.lazy(() => import("./components/Dashboard"));
 const AdMap = React.lazy(() => import("./modules/maps/AdMap"));
 const SpotlightFeed = React.lazy(() => import("./components/SpotlightFeed"));

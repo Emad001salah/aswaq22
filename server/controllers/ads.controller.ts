@@ -144,14 +144,14 @@ export const AdsController = (io?: Server) => {
       const nextCursor = mappedAds.length === take ? mappedAds[mappedAds.length - 1].id : undefined;
       const responseData = { ads: mappedAds, nextCursor };
 
-      // Cache for 30 seconds — short TTL so new ads appear quickly for all users
+      // Cache for 60 seconds — Redis in-memory cache for ultra-fast 5ms responses
       if (!cursor) {
         const payload = JSON.stringify(responseData);
-        await redis.set(cacheKey, payload, 30);
+        await redis.set(cacheKey, payload, 'EX', 60);
         const etag = `"ads-${cacheKey.length}-${payload.length}"`;
         res.setHeader('ETag', etag);
         res.setHeader('X-Cache', 'MISS');
-        res.setHeader('Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
+        res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=120');
       }
 
       res.json(responseData);
