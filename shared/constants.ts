@@ -8,10 +8,10 @@ export const MAX_IMAGE_SIZE_BYTES = parseInt(process.env.MAX_IMAGE_SIZE_BYTES ||
 export const PRESIGN_EXPIRY_SECONDS = 300;
 
 /** Daily upload limit per user */
-export const DAILY_UPLOAD_LIMIT = 50;
+export const DAILY_UPLOAD_LIMIT = 150;
 
 /** Hourly presign limit per user */
-export const HOURLY_PRESIGN_LIMIT = 20;
+export const HOURLY_PRESIGN_LIMIT = 60;
 
 /** Allowed MIME types for ad images */
 export const ALLOWED_IMAGE_MIMES = new Set([

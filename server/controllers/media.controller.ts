@@ -50,6 +50,7 @@ router.post('/presign', authMiddleware, async (req: AuthenticatedRequest, res: R
     prisma.pendingUpload.count({
       where: {
         userId,
+        status: 'pending',
         createdAt: { gte: oneHourAgo },
       },
     }),

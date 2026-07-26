@@ -349,43 +349,36 @@ export default function CreateAdTab({
           }),
         });
 
-        if (presignRes.ok) {
-          const { uploadUrl, objectKey } = await presignRes.json();
-          const uploadRes = await fetch(uploadUrl, {
-            method: "PUT",
-            headers: { "Content-Type": file.type || "image/jpeg" },
-            body: file,
-          });
-
-          if (uploadRes.ok) {
-            setAdImages((prev: any[]) => {
-              const next = [...prev, { objectKey, previewUrl, url: previewUrl }];
-              if (next.length === 1) {
-                handleAiAnalyzeImage(previewUrl);
-              }
-              return next;
-            });
-            continue;
-          }
+        if (!presignRes.ok) {
+          const errData = await presignRes.json().catch(() => ({}));
+          addToast?.("فشل الرفع ⚠️", errData.message || `تعذر الحصول على تصريح رفع الصورة "${file.name}"`, "error");
+          continue;
         }
-      } catch (err) {
-        console.warn("[Upload] Presigned upload failed, fallback to local preview", err);
-      }
 
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        if (typeof reader.result === "string") {
-          const res = reader.result;
+        const { uploadUrl, objectKey } = await presignRes.json();
+        const uploadRes = await fetch(uploadUrl, {
+          method: "PUT",
+          headers: { "Content-Type": file.type || "image/jpeg" },
+          body: file,
+        });
+
+        if (uploadRes.ok) {
           setAdImages((prev: any[]) => {
-            const next = [...prev, res];
+            const next = [...prev, { objectKey, previewUrl, url: previewUrl }];
             if (next.length === 1) {
-              handleAiAnalyzeImage(res);
+              handleAiAnalyzeImage(previewUrl);
             }
             return next;
           });
+          continue;
+        } else {
+          addToast?.("خطأ في رفع الملف ⚠️", `فشل رفع الملف "${file.name}" إلى التخزين.`, "error");
+          continue;
         }
-      };
-      reader.readAsDataURL(file);
+      } catch (err: any) {
+        console.warn("[Upload] Presigned upload failed:", err);
+        addToast?.("خطأ في الاتصال ⚠️", `تعذر رفع الصورة "${file.name}".`, "error");
+      }
     }
   };
 

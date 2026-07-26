@@ -1,8 +1,10 @@
-const CACHE_NAME = 'aswaq-pwa-cache-v6-r2-media';
+const CACHE_NAME = 'aswaq-pwa-cache-v7-maskable-icons';
 const ASSETS_TO_CACHE = [
   '/aswaq-icon.png',
   '/aswaq-icon-192.png',
   '/aswaq-icon-512.png',
+  '/aswaq-icon-maskable-192.png',
+  '/aswaq-icon-maskable-512.png',
   '/manifest.json',
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
