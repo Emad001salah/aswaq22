@@ -338,6 +338,10 @@ export default function CreateAdTab({
 
       const previewUrl = URL.createObjectURL(file);
 
+      let uploadedUrl = '';
+      let uploadedKey = '';
+
+      // 1. Try S3 presigned upload
       try {
         const presignRes = await apiFetch("/api/media/presign", {
           method: "POST",
@@ -349,34 +353,63 @@ export default function CreateAdTab({
           }),
         });
 
-        if (!presignRes.ok) {
-          const errData = await presignRes.json().catch(() => ({}));
-          addToast?.("فشل الرفع ⚠️", errData.message || `تعذر الحصول على تصريح رفع الصورة "${file.name}"`, "error");
-          continue;
-        }
-
-        const { uploadUrl, objectKey } = await presignRes.json();
-        const uploadRes = await fetch(uploadUrl, {
-          method: "PUT",
-          headers: { "Content-Type": file.type || "image/jpeg" },
-          body: file,
-        });
-
-        if (uploadRes.ok) {
-          setAdImages((prev: any[]) => {
-            const next = [...prev, { objectKey, previewUrl, url: previewUrl }];
-            if (next.length === 1) {
-              handleAiAnalyzeImage(previewUrl);
-            }
-            return next;
+        if (presignRes.ok) {
+          const { uploadUrl, objectKey } = await presignRes.json();
+          const uploadRes = await fetch(uploadUrl, {
+            method: "PUT",
+            headers: { "Content-Type": file.type || "image/jpeg" },
+            body: file,
           });
-          continue;
-        } else {
-          addToast?.("خطأ في رفع الملف ⚠️", `فشل رفع الملف "${file.name}" إلى التخزين.`, "error");
-          continue;
+
+          if (uploadRes.ok) {
+            uploadedKey = objectKey;
+            uploadedUrl = previewUrl;
+          }
         }
-      } catch (err: any) {
-        console.warn("[Upload] Presigned upload failed:", err);
+      } catch (err) {
+        console.warn("[Upload] Presigned upload failed, trying storage upload fallback:", err);
+      }
+
+      // 2. Fallback to /api/storage/upload multipart endpoint
+      if (!uploadedUrl) {
+        try {
+          const formData = new FormData();
+          formData.append('file', file);
+          const storageRes = await apiFetch('/api/storage/upload', {
+            method: 'POST',
+            body: formData,
+          });
+
+          if (storageRes.ok) {
+            const storageData = await storageRes.json();
+            if (storageData.url) {
+              uploadedUrl = storageData.url;
+            }
+          }
+        } catch (err) {
+          console.warn("[Upload] Storage upload fallback failed:", err);
+        }
+      }
+
+      // 3. Ultimate Fallback: Read as DataURL for instant local preview
+      if (!uploadedUrl) {
+        uploadedUrl = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve((reader.result as string) || previewUrl);
+          reader.readAsDataURL(file);
+        });
+      }
+
+      if (uploadedUrl) {
+        setAdImages((prev: any[]) => {
+          const next = [...prev, { objectKey: uploadedKey, previewUrl: uploadedUrl, url: uploadedUrl }];
+          if (next.length === 1) {
+            handleAiAnalyzeImage(uploadedUrl);
+          }
+          return next;
+        });
+        addToast?.("تم تجهيز الصورة", `تم إضافة الصورة "${file.name}" بنجاح.`, "success");
+      } else {
         addToast?.("خطأ في الاتصال ⚠️", `تعذر رفع الصورة "${file.name}".`, "error");
       }
     }

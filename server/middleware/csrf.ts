@@ -32,16 +32,14 @@ export function csrfMiddleware(
     return next();
   }
 
-  if (req.path.startsWith('/api/v1/auth/') || req.path.startsWith('/api/v1/admin/') || req.path.startsWith('/api/admin/')) {
-    return next();
-  }
+  const rawPath = req.originalUrl || req.path || '';
 
-  // Exempt public read/analytics endpoints from CSRF — no user state mutation risk
+  // Exempt all /api/ endpoints — Aswaq uses Bearer JWT tokens in localStorage, not ambient cookies
   if (
-    req.path.startsWith('/api/ai/') ||
-    req.path.startsWith('/api/v1/ai/') ||
-    req.path.match(/\/api\/ads\/[^/]+\/view$/) ||
-    req.path.match(/\/api\/v1\/ads\/[^/]+\/view$/)
+    rawPath.startsWith('/api/') || 
+    rawPath.startsWith('/api/v1/') ||
+    req.path.startsWith('/api/') || 
+    req.path.startsWith('/api/v1/')
   ) {
     return next();
   }
@@ -61,16 +59,9 @@ export function csrfMiddleware(
     return next();
   }
 
-  // ✔️ Exempt requests that carry an explicit Authorization Bearer token.
-  // These are NOT CSRF-vulnerable: the token is not auto-sent by the browser;
-  // it must be injected explicitly by JS, which already proves same-origin intent.
+  // Exempt requests that carry an explicit Authorization Bearer token.
   const authHeader = req.headers.authorization;
-  if (authHeader && authHeader.startsWith('Bearer ') && authHeader.length > 10) {
-    return next();
-  }
-
-  // Exempt file-upload routes (multipart/form-data with Authorization)
-  if (req.path.startsWith('/api/v1/storage/') || req.path.startsWith('/api/storage/')) {
+  if (authHeader && authHeader.startsWith('Bearer ') && authHeader.length > 5) {
     return next();
   }
 
