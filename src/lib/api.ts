@@ -114,7 +114,16 @@ export async function apiFetch(url: string, options: RequestInit = {}): Promise<
   }
 
   // Read token from storage and inject Authorization header
-  const token = localStorage.getItem('aswaq_access_token') || localStorage.getItem('auth_token');
+  let token = localStorage.getItem('aswaq_access_token') || localStorage.getItem('auth_token');
+  if (!token && typeof window !== 'undefined') {
+    try {
+      const savedUserStr = localStorage.getItem('aswaq_current_user');
+      if (savedUserStr) {
+        const savedUser = JSON.parse(savedUserStr);
+        token = savedUser.token || savedUser.accessToken || savedUser.jwt || null;
+      }
+    } catch {}
+  }
   if (token && !headers.has('Authorization')) {
     headers.set('Authorization', `Bearer ${token}`);
   }

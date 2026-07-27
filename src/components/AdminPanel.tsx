@@ -316,7 +316,20 @@ function AdminPanelInner({
   // ── Auth & CSRF Helper: always attach x-user-email, Authorization and x-csrf-token ──
   const adminFetch = useCallback(
     async (url: string, opts: RequestInit = {}) => {
-      const token = localStorage.getItem('aswaq_access_token') || localStorage.getItem('auth_token') || '';
+      let token = localStorage.getItem('aswaq_access_token') || localStorage.getItem('auth_token') || '';
+      if (!token && currentUser) {
+        token = (currentUser as any).token || (currentUser as any).accessToken || '';
+      }
+      if (!token && typeof window !== 'undefined') {
+        try {
+          const savedUserStr = localStorage.getItem('aswaq_current_user');
+          if (savedUserStr) {
+            const savedUser = JSON.parse(savedUserStr);
+            token = savedUser.token || savedUser.accessToken || savedUser.jwt || '';
+          }
+        } catch (e) {}
+      }
+
       const csrfToken = getCookie('csrf_token');
 
       return apiFetch(url, {

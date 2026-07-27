@@ -1,4 +1,4 @@
-const CACHE_NAME = 'aswaq-pwa-cache-v14-clean-db-purge';
+const CACHE_NAME = 'aswaq-pwa-cache-v15-admin-auth-fix';
 const ASSETS_TO_CACHE = [
   '/aswaq-icon.png',
   '/aswaq-icon-192.png',
