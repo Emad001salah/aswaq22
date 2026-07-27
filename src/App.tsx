@@ -2099,7 +2099,9 @@ useEffect(() => {
             });
             if (res.ok) {
               const resData = await res.json();
-              finalData.avatar = resData.url;
+              if (resData.url && (resData.url.includes('r2.dev') || resData.url.includes('amazonaws.com') || resData.url.includes('cloudfront.net'))) {
+                finalData.avatar = resData.url;
+              }
             }
           } catch (err) {
             console.error('Failed to auto-upload avatar:', err);
@@ -2119,7 +2121,9 @@ useEffect(() => {
             });
             if (res.ok) {
               const resData = await res.json();
-              finalData.coverPhoto = resData.url;
+              if (resData.url && (resData.url.includes('r2.dev') || resData.url.includes('amazonaws.com') || resData.url.includes('cloudfront.net'))) {
+                finalData.coverPhoto = resData.url;
+              }
             }
           } catch (err) {
             console.error('Failed to auto-upload cover:', err);
@@ -2135,7 +2139,10 @@ useEffect(() => {
       if (response.ok) {
         const updatedUser = await response.json();
         const formattedUser = {
+          ...currentUser,
           ...updatedUser,
+          avatar: finalData.avatar || updatedUser.avatar || currentUser.avatar,
+          coverPhoto: finalData.coverPhoto || updatedUser.coverPhoto || currentUser.coverPhoto,
           role: updatedUser.role ? updatedUser.role.toLowerCase() : currentUser.role
         };
         setCurrentUser(formattedUser);
