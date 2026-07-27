@@ -1757,7 +1757,7 @@ useEffect(() => {
           name: platformSettings.siteName || "أسواق - منصة الإعلانات والخدمات التجارية الأولى",
           short_name: "أسواق",
           description: platformSettings.siteDescription || "منصة الإعلانات وتبادل الخدمات والوظائف المبوبة الشاملة",
-          start_url: "/",
+          start_url: typeof window !== 'undefined' ? `${window.location.origin}/` : "/",
           display: "standalone",
           background_color: "#090d16",
           theme_color: "#10b981",
