@@ -201,14 +201,17 @@ export const UsersController = () => {
             const mimeType = matches[1];
             const buffer = Buffer.from(matches[2], 'base64');
             const ext = mimeType.split('/')[1] || 'jpg';
-            coverUrl = await storageService.uploadFile({
+            const uploadedUrl = await storageService.uploadFile({
               buffer,
               originalname: `cover-${Date.now()}.${ext}`,
               mimetype: mimeType
-            }, `uploads/${userIdToUpdate}`);
+            }, `uploads/covers/${userIdToUpdate}`);
+            if (uploadedUrl && (uploadedUrl.includes('r2.dev') || uploadedUrl.includes('amazonaws.com') || uploadedUrl.includes('cloudfront.net'))) {
+              coverUrl = uploadedUrl;
+            }
           }
         } catch (err) {
-          console.error('Failed to upload base64 cover to storage:', err);
+          console.error('Failed to upload base64 cover to storage (retaining persistent base64 fallback):', err);
         }
       }
 

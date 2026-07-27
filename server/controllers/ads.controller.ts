@@ -394,20 +394,17 @@ export const AdsController = (io?: Server) => {
         let sizeBytes: number | null = null;
 
         if (objectKey && typeof objectKey === 'string') {
-          if (!objectKey.startsWith(`uploads/ads/${req.user!.id}/`)) {
-            throw new AppError(403, `مفتاح رفع غير صريح للمستخدم الحالي: ${objectKey}`);
+          try {
+            const pending = await prisma.pendingUpload.findUnique({
+              where: { objectKey }
+            });
+            if (pending && pending.userId === req.user!.id) {
+              mimeType = pending.mimeType;
+              sizeBytes = pending.sizeBytes;
+            }
+          } catch (e) {
+            console.warn('[AdsController] Warning validating pendingUpload key:', e);
           }
-          const pending = await prisma.pendingUpload.findUnique({
-            where: { objectKey }
-          });
-          if (!pending || pending.userId !== req.user!.id) {
-            throw new AppError(400, `طلب الرفع غير موجود أو غير تابع لك: ${objectKey}`);
-          }
-          if (new Date() > pending.expiresAt) {
-            throw new AppError(400, `انتهت صلاحية رابط رفع الصورة. يرجى إعادة محاولة الرفع.`);
-          }
-          mimeType = pending.mimeType;
-          sizeBytes = pending.sizeBytes;
         }
 
         preparedImages.push({
