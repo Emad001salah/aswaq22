@@ -28,7 +28,10 @@ export function getPublicLogoUrl(url?: string | null): string {
   if (!trimmed) return '/aswaq-icon.png';
 
   if (trimmed.includes('/uploads/')) {
-    trimmed = trimmed.replace(/^https?:\/\/(www\.)?aswaq22\.com\/uploads\//i, `${API_ORIGIN}/uploads/`);
+    trimmed = trimmed.replace(/^https?:\/\/(www\.|media\.)?aswaq22\.com\/uploads\//i, `${API_ORIGIN}/uploads/`);
+  }
+  if (trimmed.startsWith('https://media.aswaq22.com') || trimmed.startsWith('http://media.aswaq22.com')) {
+    trimmed = trimmed.replace(/^https?:\/\/media\.aswaq22\.com/i, API_ORIGIN);
   }
 
   if (trimmed.startsWith('data:') || trimmed.startsWith('blob:')) {
@@ -50,7 +53,10 @@ export function resolveMediaUrl(url?: string | null): string {
   if (!trimmed) return '';
 
   if (trimmed.includes('/uploads/')) {
-    trimmed = trimmed.replace(/^https?:\/\/(www\.)?aswaq22\.com\/uploads\//i, `${API_ORIGIN}/uploads/`);
+    trimmed = trimmed.replace(/^https?:\/\/(www\.|media\.)?aswaq22\.com\/uploads\//i, `${API_ORIGIN}/uploads/`);
+  }
+  if (trimmed.startsWith('https://media.aswaq22.com') || trimmed.startsWith('http://media.aswaq22.com')) {
+    trimmed = trimmed.replace(/^https?:\/\/media\.aswaq22\.com/i, API_ORIGIN);
   }
 
   if (trimmed.startsWith('data:') || trimmed.startsWith('blob:')) {

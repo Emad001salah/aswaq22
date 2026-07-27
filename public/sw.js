@@ -1,4 +1,4 @@
-const CACHE_NAME = 'aswaq-pwa-cache-v20-avatar-media-url-fix';
+const CACHE_NAME = 'aswaq-pwa-cache-v21-import-resolvemediaurl-userprofile';
 const ASSETS_TO_CACHE = [
   '/aswaq-icon.png',
   '/aswaq-icon-192.png',

@@ -185,7 +185,7 @@ export class S3StorageStrategy implements StorageStrategy {
     await upload.done();
     logger.info(`[Storage] File uploaded to S3/R2: ${key}`);
 
-    const publicDomain = this.publicUrl || process.env.R2_PUBLIC_URL || process.env.MEDIA_PUBLIC_BASE_URL || process.env.S3_PUBLIC_URL || 'https://media.aswaq22.com';
+    const publicDomain = this.publicUrl || process.env.R2_PUBLIC_URL || process.env.MEDIA_PUBLIC_BASE_URL || process.env.S3_PUBLIC_URL || 'https://api.aswaq22.com';
     const base = publicDomain.endsWith('/') ? publicDomain.slice(0, -1) : publicDomain;
     return `${base}/${key}`;
   }

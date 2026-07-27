@@ -9,6 +9,7 @@ import { User, Ad, UserRole } from '../types.ts';
 import { CITIES } from '../data.ts';
 import { Avatar } from './Avatar.tsx';
 import { apiFetch } from '../lib/api';
+import { resolveMediaUrl } from '../lib/config';
 
 interface UserProfileModalProps {
   user: User;
