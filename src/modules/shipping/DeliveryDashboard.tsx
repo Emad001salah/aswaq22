@@ -17,7 +17,8 @@ import {
   Share2,
   Settings,
   Activity,
-  Trash2
+  Trash2,
+  UploadCloud
 } from 'lucide-react';
 import AdMap from '../maps/AdMap.tsx';
 import LocationMapPicker from '../maps/LocationMapPicker.tsx';
@@ -104,6 +105,8 @@ export default function DeliveryDashboard({
   const [shipWeight, setShipWeight] = useState<number>(5);
   const [isManualPrice, setIsManualPrice] = useState(false);
   const [customPrice, setCustomPrice] = useState('');
+  const [shipImage, setShipImage] = useState<string>('');
+  const [uploadingImage, setUploadingImage] = useState<boolean>(false);
 
   // Map Picker State
   const [pickupCoords, setPickupCoords] = useState<{ lat: number, lng: number } | null>(null);
@@ -301,6 +304,47 @@ export default function DeliveryDashboard({
 
   const finalPrice = isManualPrice && customPrice ? Number(customPrice) : autoCalculatedCost;
 
+  const handleParcelImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingImage(true);
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch('/api/storage/upload', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData,
+      });
+
+      const data = await response.json();
+      if (data.success && data.url) {
+        setShipImage(data.url);
+        addToast(
+          isRtl ? "تم رفع الصورة بنجاح!" : "Photo uploaded successfully!",
+          isRtl ? "تم إرفاق صورة الطرد بطلب التوصيل." : "Parcel photo attached to your delivery request.",
+          "success"
+        );
+      } else {
+        throw new Error(data.message || "Failed to upload");
+      }
+    } catch (err: any) {
+      console.error(err);
+      addToast(
+        isRtl ? "فشل رفع الصورة" : "Upload Failed",
+        err.message || (isRtl ? "حدث خطأ أثناء رفع الصورة" : "Error uploading photo"),
+        "error"
+      );
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
   // Handles publishing a new order via the backend shipment creation
   const handlePublishOrder = async () => {
     if (!currentUser) {
@@ -336,7 +380,7 @@ export default function DeliveryDashboard({
         city: shipFrom,
         latitude: pickupCoords?.lat || currentMarket.cityCoordinates[shipFrom]?.lat || currentMarket.center.lat,
         longitude: pickupCoords?.lng || currentMarket.cityCoordinates[shipFrom]?.lng || currentMarket.center.lng,
-        images: [],
+        images: shipImage ? [shipImage] : [],
         createdAt: new Date().toISOString(),
         userId: currentUser.id,
         userName: currentUser.name,
@@ -360,6 +404,7 @@ export default function DeliveryDashboard({
       
       // Auto-advance to Dispatch/Tracking view step
       setWizardStep(3);
+      setShipImage('');
       fetchShipments();
 
     } catch (err: any) {
@@ -722,6 +767,43 @@ export default function DeliveryDashboard({
                           className="w-full h-1.5 bg-[#080b12] rounded-full appearance-none cursor-pointer accent-cyan-500"
                         />
                       </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] text-slate-400 font-bold mb-1.5">{isRtl ? 'صورة الطرد / الشحنة (اختياري):' : 'Parcel Photo (Optional):'}</label>
+                      
+                      {shipImage ? (
+                        <div className="relative rounded-2xl overflow-hidden border border-white/10 aspect-video group max-w-xs">
+                          <img src={shipImage} alt="Parcel" className="w-full h-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => setShipImage('')}
+                            className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white p-1.5 rounded-full shadow-lg transition-all"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="relative border border-dashed border-white/10 rounded-2xl p-5 text-center bg-[#080b12] hover:border-cyan-500/50 transition-all group cursor-pointer max-w-xs">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleParcelImageUpload}
+                            className="absolute inset-0 opacity-0 cursor-pointer"
+                            disabled={uploadingImage}
+                          />
+                          <div className="flex flex-col items-center justify-center space-y-1">
+                            <UploadCloud className={`w-8 h-8 ${uploadingImage ? 'animate-bounce text-cyan-400' : 'text-slate-500 group-hover:text-cyan-400'} transition-all`} />
+                            <span className="text-[10px] font-bold text-slate-400 group-hover:text-slate-300">
+                              {uploadingImage 
+                                ? (isRtl ? 'جاري رفع الصورة...' : 'Uploading photo...') 
+                                : (isRtl ? 'اضغط لرفع صورة الطرد' : 'Click to upload parcel photo')
+                              }
+                            </span>
+                            <span className="text-[8px] text-slate-600">{isRtl ? 'الحد الأقصى 10 ميجا بايت' : 'Max 10MB'}</span>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
