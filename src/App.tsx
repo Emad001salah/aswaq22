@@ -2124,9 +2124,14 @@ useEffect(() => {
         };
         setCurrentUser(formattedUser);
         localStorage.setItem('aswaq_current_user', JSON.stringify(formattedUser));
-        if (selectedUserPreview && selectedUserPreview.id === formattedUser.id) {
-          setSelectedUserPreview(formattedUser);
-        }
+        setSelectedUserPreview((prev) => prev ? { ...prev, ...formattedUser } : formattedUser);
+        setAds((prevAds) => 
+          prevAds.map((ad) => 
+            (ad.userId === formattedUser.id || (currentUser && ad.userId === currentUser.id))
+              ? { ...ad, userAvatar: formattedUser.avatar || ad.userAvatar, userName: formattedUser.name || ad.userName } 
+              : ad
+          )
+        );
         addToast("تم التحديث", "تم تحديث بيانات ملفك الشخصي بنجاح", "success");
       } else {
         const responseText = await response.text();
