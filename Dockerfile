@@ -37,23 +37,13 @@ ENV NODE_ENV=production
 # System deps required at runtime
 RUN apt-get update && apt-get install -y libvips wget && rm -rf /var/lib/apt/lists/*
 
-# Copy only production node_modules from builder
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/dist         ./dist
-COPY --from=builder /app/prisma       ./prisma
-COPY --from=builder /app/server       ./server
-COPY --from=builder /app/src          ./src
-COPY --from=builder /app/shared       ./shared
-COPY --from=builder /app/server.ts    ./server.ts
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/tsconfig.json ./tsconfig.json
-COPY --from=builder /app/scripts/start-prod.sh /app/scripts/start-prod.sh
-COPY --from=builder /app/scripts/start-worker.sh /app/scripts/start-worker.sh
+# Copy all built assets and app code from builder in a single layer
+COPY --from=builder /app /app
 
 # Create non-root user for security
-RUN chmod +x /app/scripts/start-prod.sh /app/scripts/start-worker.sh
-RUN groupadd -r aswaq && useradd -r -g aswaq aswaq
-RUN mkdir -p uploads logs && chown -R aswaq:aswaq uploads logs
+RUN chmod +x /app/scripts/start-prod.sh /app/scripts/start-worker.sh 2>/dev/null || true
+RUN groupadd -r aswaq 2>/dev/null || true; useradd -r -g aswaq aswaq 2>/dev/null || true
+RUN mkdir -p /app/uploads /app/logs && chown -R aswaq:aswaq /app
 USER aswaq
 
 EXPOSE 3000

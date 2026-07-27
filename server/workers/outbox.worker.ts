@@ -178,9 +178,16 @@ export function isOutboxWorkerRunning(): boolean {
   return running;
 }
 
-// Auto-start worker if run directly from the command line
-if (process.argv[1]?.includes('outbox.worker.ts')) {
-  startOutboxWorker();
-}
+// Auto-start worker when executed directly as a process (supports .ts and compiled .js)
+startOutboxWorker();
+
+// Keep worker process resilient to uncaught errors or transient db disconnections
+process.on('uncaughtException', (err) => {
+  logger.error({ message: '[Outbox Worker] Uncaught exception:', error: err.message });
+});
+
+process.on('unhandledRejection', (reason) => {
+  logger.error({ message: '[Outbox Worker] Unhandled rejection:', reason });
+});
 
 
