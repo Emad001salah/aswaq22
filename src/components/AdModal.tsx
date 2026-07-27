@@ -428,7 +428,7 @@ const sessionViewedAdsSet = new Set<string>();
 
   // Reset active image and video mode when the ad changes
   useEffect(() => {
-    const uploaded = safeImages?.find(img => img && img.startsWith('/uploads/'));
+    const uploaded = safeImages?.find(img => img && typeof img === 'string' && img.startsWith('/uploads/'));
     setActiveImage(uploaded || safeImages?.[0] || '');
     setViewingVideo(false);
     setHideContactNumber(!ad.contactNumber || !!ad.hideContactNumber);
@@ -1593,9 +1593,12 @@ const sessionViewedAdsSet = new Set<string>();
               </h4>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {similarAds.map((similarAd) => {
-                  const firstImage = similarAd.images && similarAd.images.length > 0 
-                    ? (Array.isArray(similarAd.images) ? similarAd.images[0] : JSON.parse(similarAd.images as any)[0])
-                    : 'https://www.aswaq22.com/aswaq-icon-512.png';
+                  const rawImg = similarAd.images && similarAd.images.length > 0 
+                    ? (Array.isArray(similarAd.images) ? similarAd.images[0] : (() => { try { return JSON.parse(similarAd.images as any)[0]; } catch(e) { return null; } })())
+                    : null;
+                  
+                  const rawImgUrl = typeof rawImg === 'object' && rawImg !== null ? (rawImg.url || rawImg.thumbUrl) : rawImg;
+                  const firstImageUrl = resolveMediaUrl(rawImgUrl) || '/aswaq-icon-512.png';
                   
                   const targetUrl = (() => {
                     const countryCode = currentMarket?.countryCode?.toLowerCase() || 'jo';
@@ -1613,7 +1616,7 @@ const sessionViewedAdsSet = new Set<string>();
                     >
                       <div className="relative aspect-video rounded-lg overflow-hidden bg-slate-200 dark:bg-slate-900 mb-2">
                         <img 
-                          src={firstImage.startsWith('http') ? firstImage : `https://www.aswaq22.com${firstImage}`} 
+                          src={firstImageUrl} 
                           alt={similarAd.title}
                           className="w-full h-full object-cover transition-transform group-hover:scale-105"
                           loading="lazy"
