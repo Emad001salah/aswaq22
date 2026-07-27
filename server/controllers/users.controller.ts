@@ -184,7 +184,7 @@ export const UsersController = () => {
               buffer,
               originalname: `avatar-${Date.now()}.${ext}`,
               mimetype: mimeType
-            }, `avatars/${userIdToUpdate}`);
+            }, `uploads/avatars/${userIdToUpdate}`);
           }
         } catch (err) {
           console.error('Failed to upload base64 avatar to storage:', err);
