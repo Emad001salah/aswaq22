@@ -383,6 +383,21 @@ export class App {
         res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
       }
     }));
+    this.app.use('/avatars', (req, res, next) => {
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+      res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+      next();
+    }, express.static(path.join(process.cwd(), 'uploads', 'avatars'), {
+      maxAge: '7d',
+      etag: true,
+      lastModified: true,
+      setHeaders: (res) => {
+        res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+      }
+    }));
     this.app.use('/status',  express.static(path.join(process.cwd(), 'public', 'status')));
 
 

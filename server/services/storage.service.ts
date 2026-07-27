@@ -39,16 +39,13 @@ export class LocalStorageStrategy implements StorageStrategy {
   }
 
   private resolveKeyToPath(key: string): string {
-    // If key has folder structure like uploads/ads/..., put it inside process.cwd()
-    if (key.startsWith('uploads/')) {
-      const fullPath = path.join(process.cwd(), key);
-      const dir = path.dirname(fullPath);
-      if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
-      }
-      return fullPath;
+    const normalizedKey = key.startsWith('uploads/') ? key : `uploads/${key}`.replace(/\/+/g, '/');
+    const fullPath = path.join(process.cwd(), normalizedKey);
+    const dir = path.dirname(fullPath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
     }
-    return path.join(this.uploadDir, path.basename(key));
+    return fullPath;
   }
 
   async uploadFile(file: FileData, customFolder?: string): Promise<string> {
@@ -56,7 +53,8 @@ export class LocalStorageStrategy implements StorageStrategy {
     const ext = path.extname(file.originalname) || (file.mimetype === 'image/webp' ? '.webp' : '.jpg');
     const folder = customFolder || 'uploads';
     const filename = `${uniqueUuid}${ext}`;
-    const key = `${folder}/${filename}`.replace(/\/+/g, '/');
+    const rawKey = `${folder}/${filename}`.replace(/\/+/g, '/');
+    const key = rawKey.startsWith('uploads/') ? rawKey : `uploads/${rawKey}`;
     const filePath = this.resolveKeyToPath(key);
 
     await fs.promises.writeFile(filePath, file.buffer);

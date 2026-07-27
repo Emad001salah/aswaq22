@@ -36,7 +36,7 @@ export const StorageController = () => {
 
     try {
       const isAvatar = req.body?.type === 'avatar' || req.query?.type === 'avatar';
-      const customFolder = isAvatar ? `avatars/${userId}` : `uploads/${userId}`;
+      const customFolder = isAvatar ? `uploads/avatars/${userId}` : `uploads/${userId}`;
 
       const fileUrl = await storageService.uploadFile({
         buffer: req.file.buffer,
