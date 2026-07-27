@@ -327,14 +327,18 @@ export default function SettingsTab({
                       const res = await apiFetch('/api/storage/upload', { method: 'POST', body: formData });
                       if (res.ok) {
                         const data = await res.json();
-                        if (data.url && (data.url.startsWith('http://') || data.url.startsWith('https://'))) {
-                          targetUrl = data.url;
-                          setProfileAvatar(data.url);
+                        if (data.url && typeof data.url === 'string') {
+                          const isExternalCdn = data.url.includes('r2.dev') || data.url.includes('amazonaws.com') || data.url.includes('cloudfront.net');
+                          if (isExternalCdn) {
+                            targetUrl = data.url;
+                          }
                         }
                       }
                     } catch (uploadErr) {
-                      console.warn('Cloud storage upload failed, using persistent base64:', uploadErr);
+                      console.warn('Storage upload error, using persistent base64:', uploadErr);
                     }
+
+                    setProfileAvatar(targetUrl);
 
                     // 3. Persist to User Profile DB
                     const saveRes = await apiFetch(`/api/v1/users/me`, {
@@ -345,7 +349,7 @@ export default function SettingsTab({
 
                     if (saveRes.ok) {
                       const updatedUser = await saveRes.json();
-                      const mergedUser = { ...currentUser, ...updatedUser, avatar: targetUrl || updatedUser.avatar };
+                      const mergedUser = { ...currentUser, ...updatedUser, avatar: targetUrl };
                       localStorage.setItem('aswaq_current_user', JSON.stringify(mergedUser));
                       onUpdateUser?.(mergedUser);
                       addToast?.('تم رفع الصورة', 'تم تحديث صورتك الشخصية وحفظها بنجاح', 'success');

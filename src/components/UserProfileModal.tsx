@@ -137,9 +137,12 @@ export default function UserProfileModal({
         const res = await apiFetch('/api/storage/upload', { method: 'POST', body: formData });
         if (res.ok) {
           const data = await res.json();
-          if (data.url && (data.url.startsWith('http://') || data.url.startsWith('https://'))) {
-            targetUrl = data.url;
-            setEditForm(prev => ({ ...prev, [fieldKey]: data.url }));
+          if (data.url && typeof data.url === 'string') {
+            const isExternalCdn = data.url.includes('r2.dev') || data.url.includes('amazonaws.com') || data.url.includes('cloudfront.net');
+            if (isExternalCdn) {
+              targetUrl = data.url;
+              setEditForm(prev => ({ ...prev, [fieldKey]: data.url }));
+            }
           }
         }
       } catch (uploadErr) {
