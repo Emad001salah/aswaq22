@@ -2618,14 +2618,34 @@ Sitemap: ${BASE_URL}/sitemap.xml
           logger.warn(`Sharp resizing for logo failed: ${(sharpErr as any)?.message}`);
         }
 
-        // Always save to disk as platform-logo.png for static reference
+        // Save as platform-logo.png and update all PWA icons across public/ and dist/
         const logoFileName = `platform-logo.png`;
         const logoPath = path.join(uploadsDir, logoFileName);
         fs.writeFileSync(logoPath, bufferToSave);
 
+        try {
+          const sharp = (await import('sharp')).default;
+          const icon192 = await sharp(bufferToSave).resize(192, 192, { fit: 'cover' }).png().toBuffer();
+          const icon512 = await sharp(bufferToSave).resize(512, 512, { fit: 'cover' }).png().toBuffer();
+
+          const dirs = [path.join(process.cwd(), 'public'), path.join(process.cwd(), 'dist')];
+          for (const d of dirs) {
+            if (fs.existsSync(d)) {
+              fs.writeFileSync(path.join(d, 'aswaq-icon-192.png'), icon192);
+              fs.writeFileSync(path.join(d, 'aswaq-icon-maskable-192.png'), icon192);
+              fs.writeFileSync(path.join(d, 'aswaq-icon-512.png'), icon512);
+              fs.writeFileSync(path.join(d, 'aswaq-icon-maskable-512.png'), icon512);
+              fs.writeFileSync(path.join(d, 'aswaq-icon.png'), icon512);
+              fs.writeFileSync(path.join(d, 'custom-admin-logo.png'), bufferToSave);
+            }
+          }
+        } catch (iconErr) {
+          logger.warn(`PWA icon resizing failed: ${(iconErr as any)?.message}`);
+        }
+
         // Store optimized Base64 Data URI in database for 100% reliability across restarts & domains
         const logoUrl = `data:image/png;base64,${bufferToSave.toString('base64')}`;
-        logger.info({ message: `settings/logo saved successfully (Optimized Size: ${bufferToSave.length} bytes)` });
+        logger.info({ message: `settings/logo saved & PWA icons updated successfully (${bufferToSave.length} bytes)` });
 
         const currentSettings = await getPlatformSettings();
         currentSettings.logoUrl = logoUrl;
