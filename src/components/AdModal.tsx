@@ -379,10 +379,16 @@ const sessionViewedAdsSet = new Set<string>();
   const fetchAiInsights = async () => {
     if (!ad) return;
     setLoadingTrust(true);
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
+
     try {
-      const trustPromise = apiFetch("/api/ai/trust-check", {
+      // Non-blocking fetch for trust check
+      apiFetch("/api/ai/trust-check", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
         body: JSON.stringify({
           adTitle: ad.title,
           adDescription: ad.description,
@@ -391,25 +397,32 @@ const sessionViewedAdsSet = new Set<string>();
           userName: ad.userName,
           userVerified: ad.userVerified
         })
+      }).then(async (res) => {
+        if (res.ok) setTrustData(await res.json());
+      }).catch(() => {
+        // Quietly handle AI timeout or network error without blocking UI
       });
 
-      const pricePromise = apiFetch("/api/ai/price-insights", {
+      // Non-blocking fetch for price insights
+      apiFetch("/api/ai/price-insights", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
         body: JSON.stringify({
           adTitle: ad.title,
           adPrice: ad.price,
           adCurrency: ad.currency,
           adCategory: ad.category
         })
+      }).then(async (res) => {
+        if (res.ok) setPriceInsights(await res.json());
+      }).catch(() => {
+        // Quietly handle AI timeout or network error without blocking UI
       });
-
-      const [trustRes, priceRes] = await Promise.all([trustPromise, pricePromise]);
-      if (trustRes.ok) setTrustData(await trustRes.json());
-      if (priceRes.ok) setPriceInsights(await priceRes.json());
     } catch (e) {
-      console.error("AI insights failed", e);
+      // Quietly handle errors
     } finally {
+      clearTimeout(timeoutId);
       setLoadingTrust(false);
     }
   };
@@ -419,12 +432,20 @@ const sessionViewedAdsSet = new Set<string>();
   const cityName = cityObj ? cityObj.nameAr : (ad?.city || '');
   const districtName = ad?.district;
 
-  // Load chat logs for this ad from Database
+  // Load chat logs for this ad from Database and defer AI insights for instant 0ms modal open
   useEffect(() => {
-    fetchChats();
-    fetchAiInsights();
+    if (currentUser) {
+      fetchChats();
+    }
     fetchUsers();
-  }, [ad.id]);
+
+    // Defer AI background checks by 600ms so modal renders INSTANTLY (0ms) on click
+    const timer = setTimeout(() => {
+      fetchAiInsights();
+    }, 600);
+
+    return () => clearTimeout(timer);
+  }, [ad.id, currentUser]);
 
   // Reset active image and video mode when the ad changes
   useEffect(() => {
