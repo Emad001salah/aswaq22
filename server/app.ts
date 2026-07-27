@@ -1639,13 +1639,9 @@ export class App {
             },
             bio: true,
             uploadedMedia: {
-              where: {
-                type: 'VERIFICATION_DOC'
-              },
               select: {
                 id: true,
-                url: true,
-                type: true,
+                objectKey: true,
                 createdAt: true
               }
             },
@@ -1657,6 +1653,11 @@ export class App {
         
         const mappedUsers = users.map(u => ({
           ...u,
+          uploadedMedia: u.uploadedMedia.map(m => ({
+            id: m.id,
+            url: m.objectKey.startsWith('http') ? m.objectKey : `https://api.aswaq22.com/${m.objectKey}`,
+            createdAt: m.createdAt
+          })),
           active: u.deletedAt === null
         }));
 
@@ -1693,11 +1694,14 @@ export class App {
 
         // Save documents in MediaObject relation
         await prisma.mediaObject.createMany({
-          data: documents.map((url: string) => ({
-            url,
-            type: 'VERIFICATION_DOC',
-            uploadedBy: userId,
-          }))
+          data: documents.map((url: string) => {
+            const objectKey = url.replace(/https?:\/\/[^\/]+\//, '');
+            return {
+              objectKey,
+              uploadedBy: userId,
+              status: 'READY'
+            };
+          })
         });
 
         // Upsert deliveryAgent if role is driver
