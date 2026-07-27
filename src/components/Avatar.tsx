@@ -67,14 +67,22 @@ import { resolveMediaUrl } from '../lib/config.ts';
 
 export const Avatar: React.FC<AvatarProps> = ({ src, name, className = '', sizeClassName = 'w-10 h-10' }) => {
   const [imgError, setImgError] = React.useState(false);
+  const lastValidSrcRef = React.useRef<string>('');
 
-  // Reset image error state whenever src prop updates
+  const resolvedSrc = resolveMediaUrl(src);
+
+  // Track last valid data or blob URL for instant fallback if remote image fails
+  if (resolvedSrc && (resolvedSrc.startsWith('data:') || resolvedSrc.startsWith('blob:'))) {
+    lastValidSrcRef.current = resolvedSrc;
+  }
+
   React.useEffect(() => {
     setImgError(false);
   }, [src]);
 
-  const resolvedSrc = resolveMediaUrl(src);
-  const hasAvatar = !isPlaceholder(resolvedSrc) && !!resolvedSrc && !imgError;
+  // Use current resolvedSrc if no error, otherwise fallback to last known valid data URL
+  const activeSrc = (!imgError && resolvedSrc) ? resolvedSrc : lastValidSrcRef.current;
+  const hasAvatar = !isPlaceholder(activeSrc) && !!activeSrc;
   const cleanName = sanitizeName(name);
   const initials = getInitials(cleanName);
   const gradientColor = getAvatarColor(cleanName);
@@ -88,7 +96,7 @@ export const Avatar: React.FC<AvatarProps> = ({ src, name, className = '', sizeC
   if (hasAvatar) {
     return (
       <img
-        src={resolvedSrc}
+        src={activeSrc}
         alt={name}
         className={`object-cover ${sizeClassName} ${
           className.includes('rounded-') ? '' : 'rounded-2xl'
