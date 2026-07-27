@@ -298,7 +298,26 @@ export default function SettingsTab({
                       const data = await res.json();
                       if (data.url) {
                         setProfileAvatar(data.url);
-                        addToast?.('تم رفع الصورة', 'تم رفع الصورة الشخصية سحابياً بنجاح', 'success');
+                        // حفظ الـ avatar فوراً في قاعدة البيانات بدون انتظار زر "حفظ"
+                        try {
+                          const saveRes = await apiFetch(`/api/v1/users/me`, {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ avatar: data.url }),
+                          });
+                          if (saveRes.ok) {
+                            const updatedUser = await saveRes.json();
+                            const mergedUser = { ...currentUser, ...updatedUser };
+                            localStorage.setItem('aswaq_current_user', JSON.stringify(mergedUser));
+                            onUpdateUser?.(mergedUser);
+                            addToast?.('تم رفع الصورة', 'تم رفع الصورة الشخصية وحفظها بنجاح', 'success');
+                          } else {
+                            addToast?.('تم رفع الصورة', 'تم رفع الصورة. اضغط "حفظ" لتطبيق التغيير.', 'info');
+                          }
+                        } catch (saveErr) {
+                          console.error('Failed to save avatar to DB:', saveErr);
+                          addToast?.('تم رفع الصورة', 'تم رفع الصورة. اضغط "حفظ" لتطبيق التغيير.', 'info');
+                        }
                       }
                     } else {
                       // Fallback to Base64 preview if cloud upload returns non-ok
