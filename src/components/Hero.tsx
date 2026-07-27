@@ -44,6 +44,7 @@ import {
 import { CITIES, CATEGORIES, DISTRICTS } from "../data.ts";
 import { Category, City, Ad } from "../types.ts";
 import { Market, getCurrencyAr } from "../markets.ts";
+import { resolveMediaUrl } from "../lib/config.ts";
 
 const CATEGORY_ICONS: Record<
   string,
@@ -523,7 +524,7 @@ export default function Hero({
                     : typeof ad.images === 'string'
                       ? (() => { try { return JSON.parse(ad.images); } catch (e) { return []; } })()
                       : [];
-                  const displayImg = safeImgs[0] || 'https://images.unsplash.com/photo-1496181130204-755241544e35?auto=format&fit=crop&w=800&q=80';
+                  const displayImg = safeImgs[0] ? resolveMediaUrl(safeImgs[0]) : 'https://images.unsplash.com/photo-1496181130204-755241544e35?auto=format&fit=crop&w=800&q=80';
 
                   const cityObj = currentMarket.cities.find((c) => c.id === ad.city);
                   const cityName = cityObj ? (isRtl ? cityObj.nameAr : cityObj.nameEn) : ad.city;
