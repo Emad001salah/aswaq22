@@ -1,4 +1,4 @@
-const CACHE_NAME = 'aswaq-pwa-cache-v18-apk-download-added';
+const CACHE_NAME = 'aswaq-pwa-cache-v19-native-pwa-install';
 const ASSETS_TO_CACHE = [
   '/aswaq-icon.png',
   '/aswaq-icon-192.png',
