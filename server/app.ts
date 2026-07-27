@@ -2668,25 +2668,7 @@ Sitemap: ${BASE_URL}/sitemap.xml
         const logoPath = path.join(uploadsDir, logoFileName);
         fs.writeFileSync(logoPath, bufferToSave);
 
-        try {
-          const sharp = (await import('sharp')).default;
-          const icon192 = await sharp(bufferToSave).resize(192, 192, { fit: 'cover' }).png().toBuffer();
-          const icon512 = await sharp(bufferToSave).resize(512, 512, { fit: 'cover' }).png().toBuffer();
-
-          const dirs = [path.join(process.cwd(), 'public'), path.join(process.cwd(), 'dist')];
-          for (const d of dirs) {
-            if (fs.existsSync(d)) {
-              fs.writeFileSync(path.join(d, 'aswaq-icon-192.png'), icon192);
-              fs.writeFileSync(path.join(d, 'aswaq-icon-maskable-192.png'), icon192);
-              fs.writeFileSync(path.join(d, 'aswaq-icon-512.png'), icon512);
-              fs.writeFileSync(path.join(d, 'aswaq-icon-maskable-512.png'), icon512);
-              fs.writeFileSync(path.join(d, 'aswaq-icon.png'), icon512);
-              fs.writeFileSync(path.join(d, 'custom-admin-logo.png'), bufferToSave);
-            }
-          }
-        } catch (iconErr) {
-          logger.warn(`PWA icon resizing failed: ${(iconErr as any)?.message}`);
-        }
+        await this.regeneratePwaIcons(bufferToSave);
 
         // Store optimized Base64 Data URI in database for 100% reliability across restarts & domains
         const logoUrl = `data:image/png;base64,${bufferToSave.toString('base64')}`;
@@ -2707,6 +2689,35 @@ Sitemap: ${BASE_URL}/sitemap.xml
         res.status(500).json({ error: 'Failed uploading logo', message: err.message });
       }
     });
+  }
+
+  private async regeneratePwaIcons(logoBuffer: Buffer): Promise<void> {
+    try {
+      const fs = await import('fs');
+      const path = await import('path');
+      const sharp = (await import('sharp')).default;
+
+      const icon48 = await sharp(logoBuffer).resize(48, 48, { fit: 'cover' }).png().toBuffer();
+      const icon192 = await sharp(logoBuffer).resize(192, 192, { fit: 'cover' }).png().toBuffer();
+      const icon512 = await sharp(logoBuffer).resize(512, 512, { fit: 'cover' }).png().toBuffer();
+
+      const dirs = [path.join(process.cwd(), 'public'), path.join(process.cwd(), 'dist')];
+      for (const d of dirs) {
+        if (fs.existsSync(d)) {
+          fs.writeFileSync(path.join(d, 'aswaq-icon-192.png'), icon192);
+          fs.writeFileSync(path.join(d, 'aswaq-icon-maskable-192.png'), icon192);
+          fs.writeFileSync(path.join(d, 'aswaq-icon-512.png'), icon512);
+          fs.writeFileSync(path.join(d, 'aswaq-icon-maskable-512.png'), icon512);
+          fs.writeFileSync(path.join(d, 'aswaq-icon.png'), icon512);
+          fs.writeFileSync(path.join(d, 'aswaq-icon-48.png'), icon48);
+          fs.writeFileSync(path.join(d, 'favicon.ico'), icon48);
+          fs.writeFileSync(path.join(d, 'custom-admin-logo.png'), logoBuffer);
+        }
+      }
+      logger.info('[PWA Icons] Successfully regenerated all size variants (48, 192, 512, favicon.ico) across public/ and dist/');
+    } catch (iconErr: any) {
+      logger.warn(`PWA icon resizing failed: ${iconErr.message}`);
+    }
   }
 
 
@@ -3224,6 +3235,20 @@ Sitemap: ${BASE_URL}/sitemap.xml
           await cacheService.invalidateFeedCaches();
         } catch (cleanErr) {
           logger.warn(`AdImage DB cleanup note: ${(cleanErr as any)?.message}`);
+        }
+
+        // Synchronize and update PWA icons from uploads/platform-logo.png on startup
+        try {
+          const fs = await import('fs');
+          const path = await import('path');
+          const logoPath = path.join(process.cwd(), 'uploads', 'platform-logo.png');
+          if (fs.existsSync(logoPath)) {
+            const logoBuffer = fs.readFileSync(logoPath);
+            await this.regeneratePwaIcons(logoBuffer);
+            logger.info('[Startup] Successfully synchronized and updated PWA icons from uploads/platform-logo.png');
+          }
+        } catch (startupIconErr: any) {
+          logger.warn(`[Startup] PWA icons sync note: ${startupIconErr.message}`);
         }
       })();
     });
