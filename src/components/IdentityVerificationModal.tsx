@@ -15,6 +15,7 @@ import {
   CreditCard
 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
+import { useTranslation } from 'react-i18next';
 
 interface IdentityVerificationModalProps {
   isOpen: boolean;
