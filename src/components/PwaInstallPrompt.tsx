@@ -181,25 +181,42 @@ export default function PwaInstallPrompt({ isDark, isRtl, logoUrl }: PwaInstallP
                 </div>
               </div>
 
-              <div className="flex gap-2 mt-2">
-                <button
-                  onClick={handleInstallClick}
-                  className="flex-1 py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold text-xs hover:from-emerald-600 hover:to-teal-700 active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 cursor-pointer"
-                  id="pwa-install-action"
-                >
-                  <Download className="w-4 h-4" />
-                  <span>{isRtl ? 'تثبيت التطبيق الآن' : 'Install App Now'}</span>
-                </button>
+              <div className="flex flex-col gap-2 mt-2">
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleInstallClick}
+                    className="flex-1 py-2.5 px-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold text-xs hover:from-emerald-600 hover:to-teal-700 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-500/20 cursor-pointer"
+                    id="pwa-install-action"
+                  >
+                    <Smartphone className="w-4 h-4" />
+                    <span>{isRtl ? 'إضافة للشاشة الرئيسية' : 'Add to Home Screen'}</span>
+                  </button>
+                  
+                  <a
+                    href="/aswaq-v1.0-release.apk"
+                    download="aswaq22-app.apk"
+                    onClick={() => {
+                      localStorage.setItem('aswaq_pwa_dismissed', 'true');
+                      setShowPrompt(false);
+                    }}
+                    className="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-emerald-500/30 font-bold text-xs active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
+                    id="pwa-apk-download-action"
+                  >
+                    <Download className="w-4 h-4 text-emerald-400" />
+                    <span>{isRtl ? 'تحميل APK' : 'Download APK'}</span>
+                  </a>
+                </div>
+
                 <button
                   onClick={handleDismiss}
-                  className={`px-3 py-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                  className={`w-full py-1.5 rounded-xl text-[11px] font-bold transition-all cursor-pointer ${
                     isDark 
-                      ? 'border-slate-800 text-slate-400 hover:bg-slate-900 hover:text-white' 
-                      : 'border-slate-200 text-slate-500 hover:bg-slate-50'
+                      ? 'text-slate-400 hover:text-white' 
+                      : 'text-slate-500 hover:text-slate-900'
                   }`}
                   id="pwa-cancel-action"
                 >
-                  {isRtl ? 'لاحقاً' : 'Later'}
+                  {isRtl ? 'إغلاق ومتابعة التصفح' : 'Dismiss'}
                 </button>
               </div>
             </div>
@@ -208,7 +225,7 @@ export default function PwaInstallPrompt({ isDark, isRtl, logoUrl }: PwaInstallP
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-black text-emerald-500 flex items-center gap-1.5">
                   <Info className="w-3.5 h-3.5" />
-                  {isRtl ? 'طريقة تثبيت التطبيق' : 'How to install Aswaq'}
+                  {isRtl ? 'طريقة تثبيت تطبيق أسواق' : 'How to install Aswaq'}
                 </h3>
                 <button 
                   onClick={() => setInstallStep('intro')}
@@ -263,13 +280,23 @@ export default function PwaInstallPrompt({ isDark, isRtl, logoUrl }: PwaInstallP
                   </div>
                 </div>
               ) : (
-                // Generic/Android steps instructions
-                <div className="flex flex-col gap-3.5 my-1">
+                // Generic/Android steps instructions & APK fallback
+                <div className="flex flex-col gap-3 my-1">
                   <p className={`text-[11px] leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
                     {isRtl 
-                      ? 'اضغط على زر الخيارات (النقاط الثلاث) في الزاوية العلوية للمتصفح، ثم اختر "تثبيت التطبيق" أو "إضافة إلى الشاشة الرئيسية".'
-                      : 'Tap the drawer options button (three dots) from browser corner, then select "Install app" or "Add to home screen".'}
+                      ? 'اضغط على قائمة المتصفح (النقاط الثلاث) ثم اختر "تثبيت التطبيق" أو قم بتنزيل ملف الـ APK المباشر للهاتف.'
+                      : 'Tap browser options (three dots) and choose "Install app" or download the APK directly.'}
                   </p>
+                  
+                  <a
+                    href="/aswaq-v1.0-release.apk"
+                    download="aswaq22-app.apk"
+                    onClick={handleDismiss}
+                    className="w-full py-2 px-4 rounded-xl bg-emerald-600 text-white font-bold text-xs hover:bg-emerald-500 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>{isRtl ? 'تحميل ملف التطبيق المباشر (APK)' : 'Download Direct APK File'}</span>
+                  </a>
                 </div>
               )}
 

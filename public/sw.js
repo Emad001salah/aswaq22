@@ -1,4 +1,4 @@
-const CACHE_NAME = 'aswaq-pwa-cache-v17-mobile-prompt-only';
+const CACHE_NAME = 'aswaq-pwa-cache-v18-apk-download-added';
 const ASSETS_TO_CACHE = [
   '/aswaq-icon.png',
   '/aswaq-icon-192.png',
