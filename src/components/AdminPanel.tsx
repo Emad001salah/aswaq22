@@ -2745,18 +2745,7 @@ function AdminPanelInner({
                 <div className="space-y-4 animate-in fade-in duration-300">
                   <SectionHeader title="ريلز المنصة الترويجية" subtitle={`${reels.length} مقطع ترويجي`} />
 
-                  {/* ─── بانر إدارة أسواق ─── */}
-                  <div className="flex items-center gap-3 p-4 rounded-2xl bg-gradient-to-r from-amber-500/10 to-yellow-500/5 border border-amber-500/30 backdrop-blur-md">
-                    <img src="/aswaq-admin-avatar.png" alt="Admin" className="w-12 h-12 rounded-full border-2 border-amber-400 shadow-lg shadow-amber-400/20 object-cover" />
-                    <div>
-                      <p className="text-amber-300 font-black text-sm">إدارة أسواق</p>
-                      <p className="text-slate-400 text-xs mt-0.5">المنصة الرقمية الأولى — ريلز ترويجية رسمية</p>
-                    </div>
-                    <div className="mr-auto flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/30 px-3 py-1.5 rounded-full">
-                      <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
-                      <span className="text-amber-300 text-[10px] font-black">حساب موثّق</span>
-                    </div>
-                  </div>
+
 
                   {reels.length === 0 ? (
                     <div className="text-center py-20 text-slate-500">
@@ -2809,14 +2798,13 @@ function AdminPanelInner({
                             <p className="text-xs font-black text-white line-clamp-1">{reel.title || 'ريل ترويجي'}</p>
                             {/* منشئ الريل */}
                             <div className="flex items-center gap-1.5 mt-1.5">
-                              <img
-                                src={reel.user?.avatar || '/aswaq-admin-avatar.png'}
-                                alt={reel.user?.name || 'مستخدم'}
-                                className="w-4 h-4 rounded-full border border-white/20 object-cover"
-                                onError={(e: any) => { e.target.src = '/aswaq-admin-avatar.png'; }}
+                              <Avatar
+                                src={reel.user?.avatar || reel.userAvatar}
+                                name={reel.user?.name || reel.userName || 'عضو أسواق'}
+                                sizeClassName="w-4 h-4"
                               />
                               <span className="text-[10px] text-slate-300 font-bold">
-                                {reel.user?.name || 'مستخدم'}
+                                {reel.user?.name || reel.userName || 'عضو أسواق'}
                               </span>
                             </div>
                             <div className="flex items-center justify-between mt-2">
