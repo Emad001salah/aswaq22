@@ -1,4 +1,4 @@
-const CACHE_NAME = 'aswaq-pwa-cache-v12-dynamic-logo-install';
+const CACHE_NAME = 'aswaq-pwa-cache-v13-fix-resolvemediaurl-app';
 const ASSETS_TO_CACHE = [
   '/aswaq-icon.png',
   '/aswaq-icon-192.png',

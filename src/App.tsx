@@ -57,7 +57,7 @@ import {
 import PwaInstallPrompt from "./components/PwaInstallPrompt.tsx";
 
 import { User, Ad, ChatMessage, AppNotification, UserRole } from "./types.ts";
-import { getPublicLogoUrl } from "./lib/config.ts";
+import { getPublicLogoUrl, resolveMediaUrl } from "./lib/config.ts";
 import { CITIES, CATEGORIES, INITIAL_USERS, DISTRICTS, SUB_CATEGORIES, buildAdSeoUrl, getAdReferenceCode } from "./data.ts";
 import { useTheme } from "./context/ThemeContext.tsx";
 import { useMarket } from "./context/MarketContext.tsx";
