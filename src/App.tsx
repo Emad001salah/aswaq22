@@ -1751,7 +1751,11 @@ useEffect(() => {
         document.head.appendChild(link);
       });
 
-      // Update dynamic web app manifest so PWA install uses admin logo
+      const icon192Url = typeof window !== 'undefined' ? `${window.location.origin}/aswaq-icon-192.png` : '/aswaq-icon-192.png';
+      const icon512Url = typeof window !== 'undefined' ? `${window.location.origin}/aswaq-icon-512.png` : '/aswaq-icon-512.png';
+      const logoIconUrl = (href && href.startsWith('http')) ? href : icon192Url;
+
+      // Update dynamic web app manifest so PWA install uses valid logo
       try {
         const manifestObj = {
           name: platformSettings.siteName || "أسواق - منصة الإعلانات والخدمات التجارية الأولى",
@@ -1766,16 +1770,28 @@ useEffect(() => {
           lang: "ar",
           icons: [
             {
-              src: href,
+              src: logoIconUrl,
               sizes: "192x192",
               type: "image/png",
-              purpose: "any maskable"
+              purpose: "any"
             },
             {
-              src: href,
+              src: icon512Url,
               sizes: "512x512",
               type: "image/png",
-              purpose: "any maskable"
+              purpose: "any"
+            },
+            {
+              src: logoIconUrl,
+              sizes: "192x192",
+              type: "image/png",
+              purpose: "maskable"
+            },
+            {
+              src: icon512Url,
+              sizes: "512x512",
+              type: "image/png",
+              purpose: "maskable"
             }
           ]
         };

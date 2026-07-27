@@ -1,4 +1,4 @@
-const CACHE_NAME = 'aswaq-pwa-cache-v22-profile-avatar-live-sync';
+const CACHE_NAME = 'aswaq-pwa-cache-v23-manifest-icon-fix';
 const ASSETS_TO_CACHE = [
   '/aswaq-icon.png',
   '/aswaq-icon-192.png',
