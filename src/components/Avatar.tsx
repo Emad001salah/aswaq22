@@ -74,14 +74,23 @@ export const Avatar: React.FC<AvatarProps> = ({ src, name, className = '', sizeC
   // Track last valid data or blob URL for instant fallback if remote image fails
   if (resolvedSrc && (resolvedSrc.startsWith('data:') || resolvedSrc.startsWith('blob:'))) {
     lastValidSrcRef.current = resolvedSrc;
+    try {
+      if (name) localStorage.setItem(`aswaq_avatar_backup_${name}`, resolvedSrc);
+    } catch (e) {}
   }
 
   React.useEffect(() => {
     setImgError(false);
   }, [src]);
 
-  // Use current resolvedSrc if no error, otherwise fallback to last known valid data URL
-  const activeSrc = (!imgError && resolvedSrc) ? resolvedSrc : lastValidSrcRef.current;
+  const backupSrc = React.useMemo(() => {
+    try {
+      return name ? localStorage.getItem(`aswaq_avatar_backup_${name}`) || '' : '';
+    } catch (e) { return ''; }
+  }, [name]);
+
+  // Use current resolvedSrc if no error, otherwise fallback to last known valid data URL or localStorage backup
+  const activeSrc = (!imgError && resolvedSrc) ? resolvedSrc : (lastValidSrcRef.current || backupSrc);
   const hasAvatar = !isPlaceholder(activeSrc) && !!activeSrc;
   const cleanName = sanitizeName(name);
   const initials = getInitials(cleanName);
