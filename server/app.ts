@@ -1637,6 +1637,18 @@ export class App {
                 rating: true,
               }
             },
+            bio: true,
+            uploadedMedia: {
+              where: {
+                type: 'VERIFICATION_DOC'
+              },
+              select: {
+                id: true,
+                url: true,
+                type: true,
+                createdAt: true
+              }
+            },
             _count: {
               select: { ads: true }
             }
@@ -1661,7 +1673,19 @@ export class App {
         const userId = (req as any).user?.id || (req as any).user?.userId;
         if (!userId) return res.status(401).json({ error: 'غير مصرح' });
 
-        const { role, documents, vehicleType, licensePlate } = req.body;
+        const { 
+          role, 
+          documents, 
+          vehicleType, 
+          licensePlate, 
+          vehicleModel, 
+          phone, 
+          notes, 
+          storeName, 
+          businessType, 
+          licenseNumber, 
+          storeAddress 
+        } = req.body;
 
         if (!Array.isArray(documents) || documents.length === 0) {
           return res.status(400).json({ error: 'يرجى إرفاق وثيقة واحدة على الأقل' });
@@ -1678,29 +1702,46 @@ export class App {
 
         // Upsert deliveryAgent if role is driver
         if (role === 'driver' || role === 'AGENT') {
+          const finalLicense = vehicleModel 
+            ? `${licensePlate || 'قيد التدقيق'} (موديل: ${vehicleModel})`
+            : (licensePlate || 'قيد التدقيق');
+
           await prisma.deliveryAgent.upsert({
             where: { userId },
             create: {
               userId,
               vehicleType: vehicleType || 'motorcycle',
-              licensePlate: licensePlate || 'قيد التدقيق',
-              status: 'PENDING',
+              licensePlate: finalLicense,
+              status: 'OFFLINE',
             },
             update: {
               vehicleType: vehicleType || 'motorcycle',
-              licensePlate: licensePlate || 'قيد التدقيق',
-              status: 'PENDING',
+              licensePlate: finalLicense,
+              status: 'OFFLINE',
             }
           });
         }
 
-        // Update user status to pending verification
+        // Update user status and bio/metadata to pending verification
+        let updateData: any = {
+          role: role === 'merchant' ? 'MERCHANT' : role === 'driver' ? 'AGENT' : undefined,
+          isVerified: 'pending',
+        };
+
+        if (phone) {
+          updateData.phone = phone;
+        }
+
+        if (role === 'merchant') {
+          if (storeName) updateData.name = storeName;
+          updateData.bio = `نوع النشاط: ${businessType || 'عام'} | سجل تجاري: ${licenseNumber || 'لا يوجد'} | المقر: ${storeAddress || 'غير محدد'} | ملاحظات: ${notes || 'لا يوجد'}`;
+        } else if (role === 'driver') {
+          updateData.bio = notes || 'ملاحظات وسجل السائق';
+        }
+
         const updatedUser = await prisma.user.update({
           where: { id: userId },
-          data: {
-            role: role === 'merchant' ? 'MERCHANT' : role === 'driver' ? 'AGENT' : undefined,
-            isVerified: 'pending',
-          },
+          data: updateData,
           include: {
             deliveryAgent: true,
             uploadedMedia: true,

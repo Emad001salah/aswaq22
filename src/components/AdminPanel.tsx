@@ -1843,6 +1843,11 @@ function AdminPanelInner({
                                       <Hash className="w-3 h-3" /> رقم اللوحة: {user.deliveryAgent.licensePlate}
                                     </span>
                                   )}
+                                  {user.bio && (
+                                    <div className="mt-2 text-[11px] bg-slate-900/40 border border-white/5 p-2.5 rounded-xl text-slate-300 leading-relaxed font-bold max-w-lg text-right">
+                                      📝 {user.bio}
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             </div>
@@ -1857,7 +1862,7 @@ function AdminPanelInner({
                                   className="px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-white transition-all text-xs font-bold flex items-center gap-1 border border-emerald-500/20"
                                 >
                                   <Phone className="w-3.5 h-3.5" />
-                                  <span>واتساب السائق</span>
+                                  <span>{user.role === 'MERCHANT' ? 'واتساب التاجر' : user.role === 'AGENT' || user.deliveryAgent ? 'واتساب السائق' : 'واتساب العضو'}</span>
                                 </a>
                               )}
 
@@ -1872,12 +1877,12 @@ function AdminPanelInner({
                                 </button>
                               ) : (
                                 <button
-                                  onClick={() => handleUserAction(user.id, 'verify')}
+                                  onClick={() => handleUserAction(user.id, user.role === 'MERCHANT' ? 'verify_merchant' : (user.role === 'AGENT' || user.deliveryAgent ? 'verify_driver' : 'verify'))}
                                   disabled={actionLoading === `${user.id}_verify`}
                                   className="px-4 py-2 rounded-xl bg-emerald-500 text-slate-950 font-black hover:bg-emerald-400 transition-all text-xs shadow-lg shadow-emerald-500/20 flex items-center gap-1.5"
                                 >
                                   <ShieldCheck className="w-4 h-4" />
-                                  <span>توثيق وقبول السائق ✓</span>
+                                  <span>{user.role === 'MERCHANT' ? 'توثيق وقبول التاجر ✓' : user.role === 'AGENT' || user.deliveryAgent ? 'توثيق وقبول السائق ✓' : 'توثيق وقبول العضو ✓'}</span>
                                 </button>
                               )}
                             </div>

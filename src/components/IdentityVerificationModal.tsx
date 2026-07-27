@@ -20,7 +20,7 @@ import { useTranslation } from 'react-i18next';
 interface IdentityVerificationModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: (docs: string[]) => void;
+  onSuccess: (docs: string[], extraData: any) => void;
   isDark?: boolean;
   targetRole: 'merchant' | 'driver' | 'subscriber';
 }
@@ -37,6 +37,23 @@ export default function IdentityVerificationModal({
   const [step, setStep] = useState(1);
   const [files, setFiles] = useState<{ id: string; name: string; url: string; type: string }[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+
+  // Form states
+  const [vehicleType, setVehicleType] = useState('motorcycle');
+  const [licensePlate, setLicensePlate] = useState('');
+  const [vehicleModel, setVehicleModel] = useState('');
+  const [phone, setPhone] = useState('');
+  const [notes, setNotes] = useState('');
+
+  // Merchant details
+  const [storeName, setStoreName] = useState('');
+  const [businessType, setBusinessType] = useState('');
+  const [licenseNumber, setLicenseNumber] = useState('');
+  const [storeAddress, setStoreAddress] = useState('');
+
+  // Subscriber/General details
+  const [fullName, setFullName] = useState('');
+  const [idNumber, setIdNumber] = useState('');
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = e.target.files;
@@ -91,8 +108,20 @@ export default function IdentityVerificationModal({
   };
 
   const handleComplete = () => {
-    onSuccess(files.map(f => f.url));
-    setStep(3);
+    onSuccess(files.map(f => f.url), {
+      vehicleType,
+      licensePlate,
+      vehicleModel,
+      phone,
+      notes,
+      storeName,
+      businessType,
+      licenseNumber,
+      storeAddress,
+      fullName,
+      idNumber
+    });
+    setStep(4);
   };
 
   if (!isOpen) return null;
@@ -283,16 +312,202 @@ export default function IdentityVerificationModal({
                 </button>
                 <button 
                   disabled={files.length === 0 || isUploading}
-                  onClick={handleComplete}
+                  onClick={() => setStep(3)}
                   className="flex-[2] h-16 rounded-2xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 text-slate-950 font-black text-sm flex items-center justify-center gap-2 shadow-xl shadow-emerald-500/20 transition-all active:scale-95"
                 >
-                  <span>إرسال للتدقيق</span>
+                  <span>التالي: إدخال البيانات</span>
+                  <ArrowRight className={`w-5 h-5 ${isRtl ? 'rotate-180' : ''}`} />
                 </button>
               </div>
             </div>
           )}
 
           {step === 3 && (
+            <div className="p-5 sm:p-8 md:p-12">
+              <div className="mb-6">
+                <h3 className={`text-xl font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                  {targetRole === 'driver' ? 'بيانات مركبة التوصيل' : 
+                   targetRole === 'merchant' ? 'بيانات المتجر والنشاط' : 'البيانات الشخصية العامة'}
+                </h3>
+                <p className="text-xs text-slate-500 font-bold mt-1">يرجى ملء البيانات أدناه لمطابقتها مع وثائق التثبت</p>
+              </div>
+
+              <div className="space-y-4">
+                {targetRole === 'driver' ? (
+                  <>
+                    <div className="space-y-1.5 text-right">
+                      <label className="text-xs font-black text-slate-400">نوع وسيلة النقل</label>
+                      <select
+                        value={vehicleType}
+                        onChange={(e) => setVehicleType(e.target.value)}
+                        className={`w-full h-14 border rounded-2xl px-4 text-xs font-bold outline-none focus:border-emerald-500 transition-all ${
+                          isDark ? 'bg-slate-950 border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-950'
+                        }`}
+                      >
+                        <option value="motorcycle">دراجة نارية / دباب 🏍️</option>
+                        <option value="car">سيارة صغيرة 🚗</option>
+                        <option value="truck">سيارة نقل / شاحنة 🚚</option>
+                        <option value="bicycle">دراجة هوائية / سكوتر 🚲</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1.5 text-right">
+                      <label className="text-xs font-black text-slate-400">رقم لوحة المركبة</label>
+                      <input
+                        type="text"
+                        placeholder="مثال: أ ب ج 1 2 3 4"
+                        value={licensePlate}
+                        onChange={(e) => setLicensePlate(e.target.value)}
+                        className={`w-full h-14 border rounded-2xl px-4 text-xs font-bold outline-none focus:border-emerald-500 transition-all ${
+                          isDark ? 'bg-slate-950 border-white/5 text-white placeholder-slate-700' : 'bg-slate-50 border-slate-200 text-slate-950 placeholder-slate-400'
+                        }`}
+                      />
+                    </div>
+
+                    <div className="space-y-1.5 text-right">
+                      <label className="text-xs font-black text-slate-400">نوع المركبة وموديلها</label>
+                      <input
+                        type="text"
+                        placeholder="مثال: تويوتا هيلوكس 2024"
+                        value={vehicleModel}
+                        onChange={(e) => setVehicleModel(e.target.value)}
+                        className={`w-full h-14 border rounded-2xl px-4 text-xs font-bold outline-none focus:border-emerald-500 transition-all ${
+                          isDark ? 'bg-slate-950 border-white/5 text-white placeholder-slate-700' : 'bg-slate-50 border-slate-200 text-slate-950 placeholder-slate-400'
+                        }`}
+                      />
+                    </div>
+                  </>
+                ) : targetRole === 'merchant' ? (
+                  <>
+                    <div className="space-y-1.5 text-right">
+                      <label className="text-xs font-black text-slate-400">اسم المتجر / النشاط التجاري</label>
+                      <input
+                        type="text"
+                        placeholder="مثال: بوتيك الأناقة"
+                        value={storeName}
+                        onChange={(e) => setStoreName(e.target.value)}
+                        className={`w-full h-14 border rounded-2xl px-4 text-xs font-bold outline-none focus:border-emerald-500 transition-all ${
+                          isDark ? 'bg-slate-950 border-white/5 text-white placeholder-slate-700' : 'bg-slate-50 border-slate-200 text-slate-950 placeholder-slate-400'
+                        }`}
+                      />
+                    </div>
+
+                    <div className="space-y-1.5 text-right">
+                      <label className="text-xs font-black text-slate-400">تصنيف النشاط</label>
+                      <input
+                        type="text"
+                        placeholder="مثال: ملابس جاهزة، إلكترونيات، مطعم..."
+                        value={businessType}
+                        onChange={(e) => setBusinessType(e.target.value)}
+                        className={`w-full h-14 border rounded-2xl px-4 text-xs font-bold outline-none focus:border-emerald-500 transition-all ${
+                          isDark ? 'bg-slate-950 border-white/5 text-white placeholder-slate-700' : 'bg-slate-50 border-slate-200 text-slate-950 placeholder-slate-400'
+                        }`}
+                      />
+                    </div>
+
+                    <div className="space-y-1.5 text-right">
+                      <label className="text-xs font-black text-slate-400">رقم السجل التجاري أو رخصة البلدية</label>
+                      <input
+                        type="text"
+                        placeholder="مثال: 1010XXXXXX"
+                        value={licenseNumber}
+                        onChange={(e) => setLicenseNumber(e.target.value)}
+                        className={`w-full h-14 border rounded-2xl px-4 text-xs font-bold outline-none focus:border-emerald-500 transition-all ${
+                          isDark ? 'bg-slate-950 border-white/5 text-white placeholder-slate-700' : 'bg-slate-50 border-slate-200 text-slate-950 placeholder-slate-400'
+                        }`}
+                      />
+                    </div>
+
+                    <div className="space-y-1.5 text-right">
+                      <label className="text-xs font-black text-slate-400">عنوان المقر / المحل</label>
+                      <input
+                        type="text"
+                        placeholder="مثال: الرياض، حي الياسمين، شارع العليا"
+                        value={storeAddress}
+                        onChange={(e) => setStoreAddress(e.target.value)}
+                        className={`w-full h-14 border rounded-2xl px-4 text-xs font-bold outline-none focus:border-emerald-500 transition-all ${
+                          isDark ? 'bg-slate-950 border-white/5 text-white placeholder-slate-700' : 'bg-slate-50 border-slate-200 text-slate-950 placeholder-slate-400'
+                        }`}
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="space-y-1.5 text-right">
+                      <label className="text-xs font-black text-slate-400">الاسم الكامل (مطابق للهوية)</label>
+                      <input
+                        type="text"
+                        placeholder="مثال: أحمد عبد الله العتيبي"
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
+                        className={`w-full h-14 border rounded-2xl px-4 text-xs font-bold outline-none focus:border-emerald-500 transition-all ${
+                          isDark ? 'bg-slate-950 border-white/5 text-white placeholder-slate-700' : 'bg-slate-50 border-slate-200 text-slate-950 placeholder-slate-400'
+                        }`}
+                      />
+                    </div>
+
+                    <div className="space-y-1.5 text-right">
+                      <label className="text-xs font-black text-slate-400">رقم الهوية الوطنية / جواز السفر</label>
+                      <input
+                        type="text"
+                        placeholder="مثال: 10XXXXXXXX"
+                        value={idNumber}
+                        onChange={(e) => setIdNumber(e.target.value)}
+                        className={`w-full h-14 border rounded-2xl px-4 text-xs font-bold outline-none focus:border-emerald-500 transition-all ${
+                          isDark ? 'bg-slate-950 border-white/5 text-white placeholder-slate-700' : 'bg-slate-50 border-slate-200 text-slate-950 placeholder-slate-400'
+                        }`}
+                      />
+                    </div>
+                  </>
+                )}
+
+                <div className="space-y-1.5 text-right">
+                  <label className="text-xs font-black text-slate-400">رقم الهاتف للتواصل الفوري</label>
+                  <input
+                    type="tel"
+                    placeholder="مثال: 05XXXXXXXX"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className={`w-full h-14 border rounded-2xl px-4 text-xs font-bold outline-none focus:border-emerald-500 transition-all ${
+                      isDark ? 'bg-slate-950 border-white/5 text-white placeholder-slate-700' : 'bg-slate-50 border-slate-200 text-slate-950 placeholder-slate-400'
+                    }`}
+                  />
+                </div>
+
+                <div className="space-y-1.5 text-right">
+                  <label className="text-xs font-black text-slate-400">ملاحظات عامة / بيانات إضافية</label>
+                  <textarea
+                    rows={2}
+                    placeholder="أي تفاصيل أو بيانات تود إعلام الإدارة بها..."
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    className={`w-full p-4 border rounded-2xl text-xs font-bold outline-none focus:border-emerald-500 transition-all resize-none ${
+                      isDark ? 'bg-slate-950 border-white/5 text-white placeholder-slate-700' : 'bg-slate-50 border-slate-200 text-slate-950 placeholder-slate-400'
+                    }`}
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-4 mt-8">
+                <button 
+                  onClick={() => setStep(2)}
+                  className={`flex-1 h-16 rounded-2xl font-bold text-xs transition-colors ${
+                    isDark ? 'bg-white/5 text-slate-400 hover:bg-white/10' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  تراجع
+                </button>
+                <button 
+                  onClick={handleComplete}
+                  className="flex-[2] h-16 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-sm flex items-center justify-center gap-2 shadow-xl shadow-emerald-500/20 transition-all active:scale-95"
+                >
+                  <span>إرسال للتدقيق ✓</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {step === 4 && (
             <div className="p-5 sm:p-8 md:p-12 text-center flex flex-col items-center">
               <div className="w-24 h-24 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center mb-8 shadow-2xl shadow-emerald-500/30">
                 <CheckCircle2 className="w-12 h-12" />

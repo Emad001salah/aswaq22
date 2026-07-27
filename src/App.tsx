@@ -1305,7 +1305,7 @@ useEffect(() => {
     );
   };
 
-  const handleIdentityVerifyFinish = async (docs: string[]) => {
+  const handleIdentityVerifyFinish = async (docs: string[], extraData?: any) => {
     if (currentUser) {
       try {
         await apiFetch('/api/users/verify-documents', {
@@ -1314,8 +1314,15 @@ useEffect(() => {
           body: JSON.stringify({
             role: targetUpgradeRole,
             documents: docs,
-            vehicleType: 'motorcycle',
-            licensePlate: 'قيد التدقيق',
+            vehicleType: extraData?.vehicleType || 'motorcycle',
+            licensePlate: extraData?.licensePlate || 'قيد التدقيق',
+            vehicleModel: extraData?.vehicleModel || '',
+            phone: extraData?.phone || '',
+            notes: extraData?.notes || '',
+            storeName: extraData?.storeName || '',
+            businessType: extraData?.businessType || '',
+            licenseNumber: extraData?.licenseNumber || '',
+            storeAddress: extraData?.storeAddress || '',
           }),
         });
       } catch (err) {
