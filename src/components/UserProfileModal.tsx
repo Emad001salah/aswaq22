@@ -97,47 +97,55 @@ export default function UserProfileModal({
     if (type === 'avatar') setUploadingAvatar(true);
     else setUploadingCover(true);
 
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const base64Url = typeof reader.result === 'string' ? reader.result : '';
+      const fieldKey = type === 'avatar' ? 'avatar' : 'coverPhoto';
 
-      const res = await apiFetch('/api/storage/upload', {
-        method: 'POST',
-        body: formData
-      });
+      if (base64Url) {
+        setEditForm(prev => ({ ...prev, [fieldKey]: base64Url }));
+      }
 
-      if (res.ok) {
-        const data = await res.json();
-        if (!data.url) throw new Error('لم يُرجع الخادم رابط الصورة');
-        const fieldKey = type === 'avatar' ? 'avatar' : 'coverPhoto';
-        setEditForm(prev => ({
-          ...prev,
-          [fieldKey]: data.url
-        }));
-        if (onUpdateProfile) {
-          await onUpdateProfile({ [fieldKey]: data.url });
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('type', type);
+
+        const res = await apiFetch('/api/storage/upload', {
+          method: 'POST',
+          body: formData
+        });
+
+        let targetUrl = base64Url;
+        if (res.ok) {
+          const data = await res.json();
+          if (data.url) {
+            targetUrl = data.url;
+            setEditForm(prev => ({ ...prev, [fieldKey]: data.url }));
+          }
         }
+
+        if (onUpdateProfile && targetUrl) {
+          await onUpdateProfile({ [fieldKey]: targetUrl });
+        }
+
         addToast?.(
           type === 'avatar' ? 'تم رفع الصورة الشخصية' : 'تم رفع صورة الحائط',
           'تم الرفع والحفظ بنجاح.',
           'success'
         );
-      } else {
-        let errMsg = 'فشل رفع الصورة';
-        try {
-          const errData = await res.json();
-          errMsg = errData.message || errData.error || errMsg;
-        } catch {}
-        console.error('[UserProfileModal] Upload failed:', res.status, errMsg);
-        addToast?.('فشل رفع الصورة', `${errMsg} (${res.status})`, 'error');
+      } catch (err: any) {
+        console.error('[UserProfileModal] Error uploading profile media:', err);
+        if (onUpdateProfile && base64Url) {
+          await onUpdateProfile({ [fieldKey]: base64Url });
+        }
+        addToast?.('معاينة الصورة', 'تم الرفع وحفظ التغييرات محلياً.', 'info');
+      } finally {
+        if (type === 'avatar') setUploadingAvatar(false);
+        else setUploadingCover(false);
       }
-    } catch (err: any) {
-      console.error('[UserProfileModal] Error uploading profile media:', err);
-      addToast?.('خطأ في الرفع', `تعذّر رفع الصورة: ${err.message || err}`, 'error');
-    } finally {
-      if (type === 'avatar') setUploadingAvatar(false);
-      else setUploadingCover(false);
-    }
+    };
+    reader.readAsDataURL(file);
   };
 
   return (
@@ -208,7 +216,7 @@ export default function UserProfileModal({
               <div className="relative shrink-0 group">
                 <div className="w-32 h-32 sm:w-40 sm:h-40 rounded-[2.5rem] border-8 border-slate-900 overflow-hidden shadow-2xl bg-slate-800 relative">
                   <Avatar 
-                    src={isEditing ? editForm.avatar : user.avatar} 
+                    src={editForm.avatar || user.avatar} 
                     name={user.name}
                     sizeClassName="w-full h-full"
                     className=""

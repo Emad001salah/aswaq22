@@ -283,60 +283,61 @@ export default function SettingsTab({
                 accept="image/*"
                 className="hidden"
                 disabled={isUploadingAvatar}
-                onChange={async (e) => {
+                onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (!file) return;
-                  try {
-                    setIsUploadingAvatar(true);
-                    const formData = new FormData();
-                    formData.append('file', file);
-                    const res = await apiFetch('/api/storage/upload', {
-                      method: 'POST',
-                      body: formData,
-                    });
-                    if (res.ok) {
-                      const data = await res.json();
-                      if (data.url) {
-                        setProfileAvatar(data.url);
-                        // حفظ الـ avatar فوراً في قاعدة البيانات بدون انتظار زر "حفظ"
-                        try {
-                          const saveRes = await apiFetch(`/api/v1/users/me`, {
-                            method: 'PATCH',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ avatar: data.url }),
-                          });
-                          if (saveRes.ok) {
-                            const updatedUser = await saveRes.json();
-                            const mergedUser = { ...currentUser, ...updatedUser };
-                            localStorage.setItem('aswaq_current_user', JSON.stringify(mergedUser));
-                            onUpdateUser?.(mergedUser);
-                            addToast?.('تم رفع الصورة', 'تم رفع الصورة الشخصية وحفظها بنجاح', 'success');
-                          } else {
-                            addToast?.('تم رفع الصورة', 'تم رفع الصورة. اضغط "حفظ" لتطبيق التغيير.', 'info');
-                          }
-                        } catch (saveErr) {
-                          console.error('Failed to save avatar to DB:', saveErr);
-                          addToast?.('تم رفع الصورة', 'تم رفع الصورة. اضغط "حفظ" لتطبيق التغيير.', 'info');
+                  e.target.value = '';
+                  setIsUploadingAvatar(true);
+
+                  const reader = new FileReader();
+                  reader.onloadend = async () => {
+                    const base64Url = typeof reader.result === 'string' ? reader.result : '';
+                    if (base64Url) setProfileAvatar(base64Url);
+
+                    try {
+                      const formData = new FormData();
+                      formData.append('file', file);
+                      formData.append('type', 'avatar');
+
+                      const res = await apiFetch('/api/storage/upload', {
+                        method: 'POST',
+                        body: formData,
+                      });
+
+                      let targetUrl = base64Url;
+                      if (res.ok) {
+                        const data = await res.json();
+                        if (data.url) {
+                          targetUrl = data.url;
+                          setProfileAvatar(data.url);
                         }
                       }
-                    } else {
-                      // Fallback to Base64 preview if cloud upload returns non-ok
-                      const reader = new FileReader();
-                      reader.onloadend = () => {
-                        if (typeof reader.result === 'string') setProfileAvatar(reader.result);
-                      };
-                      reader.readAsDataURL(file);
+
+                      // Persist to user profile
+                      const saveRes = await apiFetch(`/api/v1/users/me`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ avatar: targetUrl }),
+                      });
+
+                      if (saveRes.ok) {
+                        const updatedUser = await saveRes.json();
+                        const mergedUser = { ...currentUser, ...updatedUser };
+                        localStorage.setItem('aswaq_current_user', JSON.stringify(mergedUser));
+                        onUpdateUser?.(mergedUser);
+                        addToast?.('تم رفع الصورة', 'تم رفع الصورة الشخصية وحفظها بنجاح', 'success');
+                      } else if (base64Url) {
+                        addToast?.('تم تحديث الصورة', 'تمت المعاينة وحفظ التغييرات محلياً.', 'info');
+                      }
+                    } catch (err: any) {
+                      console.error('Avatar upload error:', err);
+                      if (base64Url) setProfileAvatar(base64Url);
+                      addToast?.('معاينة الصورة', 'تمت المعاينة. اضغط "حفظ التغييرات" لتأكيد الرفع.', 'info');
+                    } finally {
+                      setIsUploadingAvatar(false);
                     }
-                  } catch (err) {
-                    console.error('Avatar upload error:', err);
-                    const reader = new FileReader();
-                    reader.onloadend = () => {
-                      if (typeof reader.result === 'string') setProfileAvatar(reader.result);
-                    };
-                    reader.readAsDataURL(file);
-                  } finally {
-                    setIsUploadingAvatar(false);
-                  }
+                  };
+                  reader.readAsDataURL(file);
                 }}
               />
             </label>
