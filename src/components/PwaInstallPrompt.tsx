@@ -13,19 +13,23 @@ import {
   Info 
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { resolveMediaUrl } from '../lib/config.ts';
 
 interface PwaInstallPromptProps {
   isDark: boolean;
   isRtl: boolean;
+  logoUrl?: string;
 }
 
-export default function PwaInstallPrompt({ isDark, isRtl }: PwaInstallPromptProps) {
+export default function PwaInstallPrompt({ isDark, isRtl, logoUrl }: PwaInstallPromptProps) {
   const { t } = useTranslation();
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showPrompt, setShowPrompt] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
   const [installStep, setInstallStep] = useState<'intro' | 'guide'>('intro');
+
+  const displayLogo = logoUrl ? resolveMediaUrl(logoUrl) : null;
 
   useEffect(() => {
     // Check if the app is already running in standalone (installed) mode
@@ -108,7 +112,7 @@ export default function PwaInstallPrompt({ isDark, isRtl }: PwaInstallPromptProp
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-x-0 bottom-0 z-[1000] p-4 pointer-events-none md:max-w-md md:left-auto md:right-4 md:bottom-4">
+      <div className="fixed inset-x-0 bottom-[72px] sm:bottom-20 md:bottom-4 md:right-4 md:left-auto md:max-w-md z-[1000] p-4 pointer-events-none">
         <motion.div
           initial={{ y: 100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -138,8 +142,12 @@ export default function PwaInstallPrompt({ isDark, isRtl }: PwaInstallPromptProp
           {installStep === 'intro' ? (
             <div className="flex flex-col gap-4">
               <div className="flex items-start gap-3">
-                <div className="p-3 bg-gradient-to-br from-emerald-500 to-indigo-600 rounded-xl text-white shadow-lg shrink-0">
-                  <Smartphone className="w-6 h-6" />
+                <div className="w-12 h-12 rounded-xl overflow-hidden shadow-lg border border-emerald-500/20 shrink-0 bg-slate-900 flex items-center justify-center">
+                  {displayLogo ? (
+                    <img src={displayLogo} alt="App Logo" className="w-full h-full object-cover" />
+                  ) : (
+                    <Smartphone className="w-6 h-6 text-emerald-400" />
+                  )}
                 </div>
                 <div className="flex-1 min-w-0 pr-2">
                   <h3 className="text-sm font-black flex items-center gap-1.5 text-emerald-500">

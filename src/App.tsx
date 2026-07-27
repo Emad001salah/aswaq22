@@ -1955,28 +1955,73 @@ useEffect(() => {
     fetchPlatformSettings();
   }, []);
 
-  // 1.1. Dynamic Favicon update when logoUrl changes
+  // 1.1. Dynamic Favicon & PWA App Icon update when platformSettings.logoUrl changes
   useEffect(() => {
     if (platformSettings?.logoUrl) {
+      const resolvedLogo = resolveMediaUrl(platformSettings.logoUrl);
+      if (!resolvedLogo) return;
+
       // Remove any existing icon links
       document.querySelectorAll("link[rel*='icon']").forEach(el => el.parentNode?.removeChild(el));
 
-      const isBase64 = platformSettings.logoUrl.startsWith('data:');
-      // Only add cache-busting for real URLs, not Base64 data URIs
-      const href = isBase64
-        ? platformSettings.logoUrl
-        : `${platformSettings.logoUrl}?v=${Date.now()}`;
+      const isBase64 = resolvedLogo.startsWith('data:');
+      const href = isBase64 ? resolvedLogo : `${resolvedLogo}?v=${Date.now()}`;
 
-      // Add both rel types for maximum browser compatibility
-      ['icon', 'shortcut icon'].forEach(rel => {
+      // Add rel types for maximum browser & PWA compatibility (Chrome, iOS Safari, Android, Windows)
+      ['icon', 'shortcut icon', 'apple-touch-icon', 'apple-touch-icon-precomposed'].forEach(rel => {
         const link = document.createElement('link');
         link.type = 'image/png';
         link.rel = rel;
         link.href = href;
+        if (rel.includes('apple-touch-icon')) {
+          link.setAttribute('sizes', '180x180');
+        }
         document.head.appendChild(link);
       });
+
+      // Update dynamic web app manifest so PWA install uses admin logo
+      try {
+        const manifestObj = {
+          name: platformSettings.siteName || "أسواق - منصة الإعلانات والخدمات التجارية الأولى",
+          short_name: "أسواق",
+          description: platformSettings.siteDescription || "منصة الإعلانات وتبادل الخدمات والوظائف المبوبة الشاملة",
+          start_url: "/",
+          display: "standalone",
+          background_color: "#090d16",
+          theme_color: "#10b981",
+          orientation: "portrait-primary",
+          dir: "rtl",
+          lang: "ar",
+          icons: [
+            {
+              src: href,
+              sizes: "192x192",
+              type: "image/png",
+              purpose: "any maskable"
+            },
+            {
+              src: href,
+              sizes: "512x512",
+              type: "image/png",
+              purpose: "any maskable"
+            }
+          ]
+        };
+        const blob = new Blob([JSON.stringify(manifestObj)], { type: 'application/json' });
+        const manifestUrl = URL.createObjectURL(blob);
+
+        let manifestLink = document.querySelector("link[rel='manifest']") as HTMLLinkElement;
+        if (!manifestLink) {
+          manifestLink = document.createElement('link');
+          manifestLink.rel = 'manifest';
+          document.head.appendChild(manifestLink);
+        }
+        manifestLink.href = manifestUrl;
+      } catch (e) {
+        console.error("Failed to update dynamic manifest", e);
+      }
     }
-  }, [platformSettings?.logoUrl]);
+  }, [platformSettings?.logoUrl, platformSettings?.siteName]);
 
   const fetchPromoVideos = async () => {
     try {
@@ -2986,7 +3031,7 @@ useEffect(() => {
         onClose={(id) => setToasts((prev) => prev.filter((t) => t.id !== id))}
       />
 
-      <PwaInstallPrompt isDark={theme === 'dark'} isRtl={isRtl} />
+      <PwaInstallPrompt isDark={theme === 'dark'} isRtl={isRtl} logoUrl={platformSettings?.logoUrl} />
 
       {/* Unified Intelligent Context Banner — hidden when WelcomeFlow is open */}
       {!showWelcomeFlow && (
