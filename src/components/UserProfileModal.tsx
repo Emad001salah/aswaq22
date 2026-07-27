@@ -150,7 +150,7 @@ export default function UserProfileModal({
           <div className="h-44 sm:h-52 relative shrink-0 overflow-hidden">
             {editForm.coverPhoto || user.coverPhoto ? (
               <img 
-                src={isEditing ? (editForm.coverPhoto || user.coverPhoto) : user.coverPhoto} 
+                src={resolveMediaUrl(isEditing ? (editForm.coverPhoto || user.coverPhoto) : user.coverPhoto)} 
                 className="w-full h-full object-cover"
                 alt="Cover"
               />

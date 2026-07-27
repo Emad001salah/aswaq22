@@ -63,9 +63,18 @@ const getTextSize = (size?: string) => {
   return 'text-sm';
 };
 
+import { resolveMediaUrl } from '../lib/config.ts';
+
 export const Avatar: React.FC<AvatarProps> = ({ src, name, className = '', sizeClassName = 'w-10 h-10' }) => {
   const [imgError, setImgError] = React.useState(false);
-  const hasAvatar = !isPlaceholder(src) && src && !imgError;
+
+  // Reset image error state whenever src prop updates
+  React.useEffect(() => {
+    setImgError(false);
+  }, [src]);
+
+  const resolvedSrc = resolveMediaUrl(src);
+  const hasAvatar = !isPlaceholder(resolvedSrc) && !!resolvedSrc && !imgError;
   const cleanName = sanitizeName(name);
   const initials = getInitials(cleanName);
   const gradientColor = getAvatarColor(cleanName);
@@ -79,7 +88,7 @@ export const Avatar: React.FC<AvatarProps> = ({ src, name, className = '', sizeC
   if (hasAvatar) {
     return (
       <img
-        src={src!}
+        src={resolvedSrc}
         alt={name}
         className={`object-cover ${sizeClassName} ${
           className.includes('rounded-') ? '' : 'rounded-2xl'
