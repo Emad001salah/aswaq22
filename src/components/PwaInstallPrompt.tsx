@@ -31,7 +31,21 @@ export default function PwaInstallPrompt({ isDark, isRtl, logoUrl }: PwaInstallP
 
   const displayLogo = logoUrl ? resolveMediaUrl(logoUrl) : null;
 
+  const [isMobileDevice, setIsMobileDevice] = useState(false);
+
   useEffect(() => {
+    // Detect Mobile/Tablet devices only
+    const checkMobile = () => {
+      const userAgent = (navigator.userAgent || navigator.vendor || (window as any).opera || '').toLowerCase();
+      const mobileUA = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile/i.test(userAgent);
+      const isSmallScreen = window.innerWidth <= 1024;
+      const isTouchMobile = mobileUA || isSmallScreen;
+      setIsMobileDevice(isTouchMobile);
+      return isTouchMobile;
+    };
+
+    const isMobile = checkMobile();
+
     // Check if the app is already running in standalone (installed) mode
     const checkStandalone = () => {
       const isStandaloneMode = window.matchMedia('(display-mode: standalone)').matches 
@@ -41,7 +55,9 @@ export default function PwaInstallPrompt({ isDark, isRtl, logoUrl }: PwaInstallP
       return !!isStandaloneMode;
     };
 
-    checkStandalone();
+    if (!isMobile || checkStandalone()) {
+      return;
+    }
 
     // Detect iOS devices
     const detectIOS = () => {
@@ -69,12 +85,12 @@ export default function PwaInstallPrompt({ isDark, isRtl, logoUrl }: PwaInstallP
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
-    // If it's iOS and not standalone, show prompt to iOS users after some delay
-    const hasDismissedIOS = localStorage.getItem('aswaq_pwa_dismissed');
-    if (detectIOS() && !checkStandalone() && !hasDismissedIOS) {
+    // If it's iOS/Android Mobile and not standalone, show prompt to mobile users after delay
+    const hasDismissed = localStorage.getItem('aswaq_pwa_dismissed');
+    if (!hasDismissed) {
       setTimeout(() => {
         setShowPrompt(true);
-      }, 5000);
+      }, 4000);
     }
 
     return () => {
@@ -105,8 +121,8 @@ export default function PwaInstallPrompt({ isDark, isRtl, logoUrl }: PwaInstallP
     localStorage.setItem('aswaq_pwa_dismissed', 'true');
   };
 
-  // If already installed or shouldn't show, render nothing
-  if (isStandalone || (!deferredPrompt && !isIOS && installStep === 'intro') || !showPrompt) {
+  // If Desktop PC, already installed, or shouldn't show, render nothing
+  if (!isMobileDevice || isStandalone || !showPrompt) {
     return null;
   }
 
