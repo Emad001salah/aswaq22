@@ -65,6 +65,7 @@ import {
   Truck,
 } from 'lucide-react';
 import DeliveryDashboard from '../modules/shipping/DeliveryDashboard';
+import { Avatar } from './Avatar';
 import { User, Ad } from '../types.ts';
 import { MARKETS, getCurrencyAr } from '../markets.ts';
 import { getPublicLogoUrl } from '../lib/config.ts';
