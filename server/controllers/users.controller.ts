@@ -180,14 +180,17 @@ export const UsersController = () => {
             const mimeType = matches[1];
             const buffer = Buffer.from(matches[2], 'base64');
             const ext = mimeType.split('/')[1] || 'jpg';
-            avatarUrl = await storageService.uploadFile({
+            const uploadedUrl = await storageService.uploadFile({
               buffer,
               originalname: `avatar-${Date.now()}.${ext}`,
               mimetype: mimeType
             }, `uploads/avatars/${userIdToUpdate}`);
+            if (uploadedUrl && (uploadedUrl.startsWith('http://') || uploadedUrl.startsWith('https://'))) {
+              avatarUrl = uploadedUrl;
+            }
           }
         } catch (err) {
-          console.error('Failed to upload base64 avatar to storage:', err);
+          console.error('Failed to upload base64 avatar to storage (retaining persistent base64 fallback):', err);
         }
       }
 

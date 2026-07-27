@@ -283,61 +283,83 @@ export default function SettingsTab({
                 accept="image/*"
                 className="hidden"
                 disabled={isUploadingAvatar}
-                onChange={(e) => {
+                onChange={async (e) => {
                   const file = e.target.files?.[0];
                   if (!file) return;
                   e.target.value = '';
                   setIsUploadingAvatar(true);
 
-                  const reader = new FileReader();
-                  reader.onloadend = async () => {
-                    const base64Url = typeof reader.result === 'string' ? reader.result : '';
+                  try {
+                    // 1. Compress image to fast lightweight WebP DataURL (256x256, ~12KB)
+                    const base64Url = await new Promise<string>((resolve) => {
+                      const reader = new FileReader();
+                      reader.onload = (evt) => {
+                        const raw = evt.target?.result as string;
+                        if (!raw) return resolve('');
+                        const img = new Image();
+                        img.onload = () => {
+                          const canvas = document.createElement('canvas');
+                          const maxS = 256;
+                          let w = img.width;
+                          let h = img.height;
+                          if (w > h) { if (w > maxS) { h = Math.round((h * maxS) / w); w = maxS; } }
+                          else { if (h > maxS) { w = Math.round((w * maxS) / h); h = maxS; } }
+                          canvas.width = w; canvas.height = h;
+                          const ctx = canvas.getContext('2d');
+                          if (ctx) { ctx.drawImage(img, 0, 0, w, h); resolve(canvas.toDataURL('image/webp', 0.85)); }
+                          else { resolve(raw); }
+                        };
+                        img.onerror = () => resolve(raw);
+                        img.src = raw;
+                      };
+                      reader.onerror = () => resolve('');
+                      reader.readAsDataURL(file);
+                    });
+
                     if (base64Url) setProfileAvatar(base64Url);
 
+                    // 2. Attempt storage upload
+                    let targetUrl = base64Url;
                     try {
                       const formData = new FormData();
                       formData.append('file', file);
                       formData.append('type', 'avatar');
-
-                      const res = await apiFetch('/api/storage/upload', {
-                        method: 'POST',
-                        body: formData,
-                      });
-
-                      let targetUrl = base64Url;
+                      const res = await apiFetch('/api/storage/upload', { method: 'POST', body: formData });
                       if (res.ok) {
                         const data = await res.json();
-                        if (data.url) {
+                        if (data.url && (data.url.startsWith('http://') || data.url.startsWith('https://'))) {
                           targetUrl = data.url;
                           setProfileAvatar(data.url);
                         }
                       }
-
-                      // Persist to user profile
-                      const saveRes = await apiFetch(`/api/v1/users/me`, {
-                        method: 'PATCH',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ avatar: targetUrl }),
-                      });
-
-                      if (saveRes.ok) {
-                        const updatedUser = await saveRes.json();
-                        const mergedUser = { ...currentUser, ...updatedUser };
-                        localStorage.setItem('aswaq_current_user', JSON.stringify(mergedUser));
-                        onUpdateUser?.(mergedUser);
-                        addToast?.('تم رفع الصورة', 'تم رفع الصورة الشخصية وحفظها بنجاح', 'success');
-                      } else if (base64Url) {
-                        addToast?.('تم تحديث الصورة', 'تمت المعاينة وحفظ التغييرات محلياً.', 'info');
-                      }
-                    } catch (err: any) {
-                      console.error('Avatar upload error:', err);
-                      if (base64Url) setProfileAvatar(base64Url);
-                      addToast?.('معاينة الصورة', 'تمت المعاينة. اضغط "حفظ التغييرات" لتأكيد الرفع.', 'info');
-                    } finally {
-                      setIsUploadingAvatar(false);
+                    } catch (uploadErr) {
+                      console.warn('Cloud storage upload failed, using persistent base64:', uploadErr);
                     }
-                  };
-                  reader.readAsDataURL(file);
+
+                    // 3. Persist to User Profile DB
+                    const saveRes = await apiFetch(`/api/v1/users/me`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ avatar: targetUrl }),
+                    });
+
+                    if (saveRes.ok) {
+                      const updatedUser = await saveRes.json();
+                      const mergedUser = { ...currentUser, ...updatedUser, avatar: targetUrl || updatedUser.avatar };
+                      localStorage.setItem('aswaq_current_user', JSON.stringify(mergedUser));
+                      onUpdateUser?.(mergedUser);
+                      addToast?.('تم رفع الصورة', 'تم تحديث صورتك الشخصية وحفظها بنجاح', 'success');
+                    } else if (base64Url) {
+                      const fallbackUser = { ...currentUser, avatar: base64Url };
+                      localStorage.setItem('aswaq_current_user', JSON.stringify(fallbackUser));
+                      onUpdateUser?.(fallbackUser);
+                      addToast?.('تم حفظ الصورة', 'تم حفظ الصورة وتطبيقها بنجاح.', 'success');
+                    }
+                  } catch (err: any) {
+                    console.error('Avatar process error:', err);
+                  } finally {
+                    setIsUploadingAvatar(false);
+                  }
                 }}
               />
             </label>

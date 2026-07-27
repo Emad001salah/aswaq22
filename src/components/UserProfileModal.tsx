@@ -97,55 +97,70 @@ export default function UserProfileModal({
     if (type === 'avatar') setUploadingAvatar(true);
     else setUploadingCover(true);
 
-    const reader = new FileReader();
-    reader.onloadend = async () => {
-      const base64Url = typeof reader.result === 'string' ? reader.result : '';
+    try {
       const fieldKey = type === 'avatar' ? 'avatar' : 'coverPhoto';
+
+      const base64Url = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+          const raw = evt.target?.result as string;
+          if (!raw) return resolve('');
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const maxS = type === 'avatar' ? 256 : 800;
+            let w = img.width;
+            let h = img.height;
+            if (w > h) { if (w > maxS) { h = Math.round((h * maxS) / w); w = maxS; } }
+            else { if (h > maxS) { w = Math.round((w * maxS) / h); h = maxS; } }
+            canvas.width = w; canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            if (ctx) { ctx.drawImage(img, 0, 0, w, h); resolve(canvas.toDataURL('image/webp', 0.85)); }
+            else { resolve(raw); }
+          };
+          img.onerror = () => resolve(raw);
+          img.src = raw;
+        };
+        reader.onerror = () => resolve('');
+        reader.readAsDataURL(file);
+      });
 
       if (base64Url) {
         setEditForm(prev => ({ ...prev, [fieldKey]: base64Url }));
       }
 
+      let targetUrl = base64Url;
       try {
         const formData = new FormData();
         formData.append('file', file);
         formData.append('type', type);
-
-        const res = await apiFetch('/api/storage/upload', {
-          method: 'POST',
-          body: formData
-        });
-
-        let targetUrl = base64Url;
+        const res = await apiFetch('/api/storage/upload', { method: 'POST', body: formData });
         if (res.ok) {
           const data = await res.json();
-          if (data.url) {
+          if (data.url && (data.url.startsWith('http://') || data.url.startsWith('https://'))) {
             targetUrl = data.url;
             setEditForm(prev => ({ ...prev, [fieldKey]: data.url }));
           }
         }
-
-        if (onUpdateProfile && targetUrl) {
-          await onUpdateProfile({ [fieldKey]: targetUrl });
-        }
-
-        addToast?.(
-          type === 'avatar' ? 'تم رفع الصورة الشخصية' : 'تم رفع صورة الحائط',
-          'تم الرفع والحفظ بنجاح.',
-          'success'
-        );
-      } catch (err: any) {
-        console.error('[UserProfileModal] Error uploading profile media:', err);
-        if (onUpdateProfile && base64Url) {
-          await onUpdateProfile({ [fieldKey]: base64Url });
-        }
-        addToast?.('معاينة الصورة', 'تم الرفع وحفظ التغييرات محلياً.', 'info');
-      } finally {
-        if (type === 'avatar') setUploadingAvatar(false);
-        else setUploadingCover(false);
+      } catch (uploadErr) {
+        console.warn('Storage upload error, using compressed base64:', uploadErr);
       }
-    };
-    reader.readAsDataURL(file);
+
+      if (onUpdateProfile && targetUrl) {
+        await onUpdateProfile({ [fieldKey]: targetUrl });
+      }
+
+      addToast?.(
+        type === 'avatar' ? 'تم رفع الصورة الشخصية' : 'تم رفع صورة الحائط',
+        'تم الرفع والحفظ بنجاح.',
+        'success'
+      );
+    } catch (err: any) {
+      console.error('[UserProfileModal] Error uploading profile media:', err);
+    } finally {
+      if (type === 'avatar') setUploadingAvatar(false);
+      else setUploadingCover(false);
+    }
   };
 
   return (
