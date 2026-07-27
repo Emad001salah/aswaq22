@@ -267,9 +267,7 @@ useEffect(() => {
       if (storedUser && storedToken) {
         try {
           // Verify token with backend
-          const res = await fetch('/api/users/me', {
-            headers: { Authorization: `Bearer ${storedToken}` },
-          });
+          const res = await apiFetch('/api/v1/users/me');
           if (res.ok) {
             const data = await res.json();
             const user = data.user ?? data;
@@ -298,9 +296,7 @@ useEffect(() => {
                     localStorage.setItem('aswaq_refresh_token', newTokens.refreshToken);
                   }
                   // Retry /me with new access token
-                  const retryRes = await fetch('/api/users/me', {
-                    headers: { Authorization: `Bearer ${newTokens.accessToken}` },
-                  });
+                  const retryRes = await apiFetch('/api/v1/users/me');
                   if (retryRes.ok) {
                     const retryData = await retryRes.json();
                     const retryUser = retryData.user ?? retryData;
