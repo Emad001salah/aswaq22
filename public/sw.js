@@ -1,4 +1,4 @@
-const CACHE_NAME = 'aswaq-pwa-cache-v13-fix-resolvemediaurl-app';
+const CACHE_NAME = 'aswaq-pwa-cache-v14-clean-db-purge';
 const ASSETS_TO_CACHE = [
   '/aswaq-icon.png',
   '/aswaq-icon-192.png',
