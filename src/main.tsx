@@ -176,6 +176,18 @@ if (import.meta.env.VITE_MAINTENANCE_MODE !== 'true' && 'serviceWorker' in navig
     navigator.serviceWorker.register('/sw.js')
       .then((registration) => {
         console.log('Aswaq ServiceWorker registered successfully with scope: ', registration.scope);
+        registration.update().catch(() => {});
+        registration.onupdatefound = () => {
+          const installingWorker = registration.installing;
+          if (installingWorker) {
+            installingWorker.onstatechange = () => {
+              if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                console.log('[SW] New version available, purging stale cache and reloading page...');
+                window.location.reload();
+              }
+            };
+          }
+        };
       })
       .catch((error) => {
         console.error('Aswaq ServiceWorker registration failed: ', error);
