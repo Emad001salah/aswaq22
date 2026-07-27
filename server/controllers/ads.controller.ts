@@ -713,18 +713,7 @@ export const AdsController = (io?: Server) => {
       }
 
       if (!uuidRegex.test(adId)) {
-        return res.status(201).json({
-          id: `c_mock_${Date.now()}`,
-          text,
-          adId,
-          authorId,
-          author: {
-            id: authorId,
-            name: req.user!.name,
-            avatar: req.user!.avatar
-          },
-          createdAt: new Date().toISOString()
-        });
+        return res.status(400).json({ error: 'الرقم المعرف للإعلان غير صالحة' });
       }
 
       // Check if ad exists
