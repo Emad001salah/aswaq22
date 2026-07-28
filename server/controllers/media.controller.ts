@@ -33,8 +33,18 @@ router.post('/presign', authMiddleware, async (req: AuthenticatedRequest, res: R
     throw new AppError(400, 'اسم الملف مطلوب');
   }
 
-  if (!mimeType || typeof mimeType !== 'string' || !ALLOWED_IMAGE_MIMES.has(mimeType.toLowerCase())) {
-    throw new AppError(400, `نوع الملف غير مدعوم: ${mimeType}. الأنواع المسموحة هي: ${Array.from(ALLOWED_IMAGE_MIMES).join(', ')}`);
+  // 0. Auto-cleanup expired pending uploads so they don't block rate limits
+  await prisma.pendingUpload.deleteMany({
+    where: {
+      userId,
+      expiresAt: { lt: new Date() },
+    },
+  }).catch(() => {});
+
+  // 1. Accept any image MIME type flexibly
+  const isImageMime = mimeType && (mimeType.toLowerCase().startsWith('image/') || ALLOWED_IMAGE_MIMES.has(mimeType.toLowerCase()));
+  if (!isImageMime) {
+    throw new AppError(400, `نوع الملف غير مدعوم: ${mimeType}. الأنواع المسموحة هي الصور بكافة صيغها.`);
   }
 
   if (!sizeBytes || typeof sizeBytes !== 'number' || sizeBytes <= 0 || sizeBytes > MAX_IMAGE_SIZE_BYTES) {
@@ -42,7 +52,7 @@ router.post('/presign', authMiddleware, async (req: AuthenticatedRequest, res: R
     throw new AppError(400, `حجم الملف غير صالح. الحد الأقصى هو ${maxMb} ميجابايت`);
   }
 
-  // 1. Rate limiting checks
+  // 2. Rate limiting checks (only unexpired active uploads)
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
   const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
@@ -52,6 +62,7 @@ router.post('/presign', authMiddleware, async (req: AuthenticatedRequest, res: R
         userId,
         status: 'pending',
         createdAt: { gte: oneHourAgo },
+        expiresAt: { gte: new Date() },
       },
     }),
     prisma.pendingUpload.count({
