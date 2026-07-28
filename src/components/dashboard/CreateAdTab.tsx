@@ -670,6 +670,16 @@ const readAsCompressedDataUrl = (file: File): Promise<string> => {
       if (response.ok && contentType && contentType.includes("application/json")) {
         const savedAdData = await response.json();
         const finalAd = savedAdData.ad || savedAdData;
+
+        // Preserve working client image URLs (Blob/DataURL) so 404 URLs from un-updated server never break saved ad view
+        const workingImages = adImages
+          .map((img: any) => (typeof img === "object" && img !== null ? (img.previewUrl || img.url) : String(img || "")))
+          .filter((u: string) => u && u.trim() !== "");
+
+        if (workingImages.length > 0) {
+          finalAd.images = workingImages.map((u: string) => ({ url: u }));
+        }
+
         if (editingAd) {
           onAdUpdated(finalAd);
           addToast?.("نجاح", "تم تحديث الإعلان وتعديله بنجاح.", "success");
