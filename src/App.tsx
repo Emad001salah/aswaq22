@@ -1741,27 +1741,31 @@ useEffect(() => {
       const resolvedLogo = resolveMediaUrl(platformSettings.logoUrl);
       if (!resolvedLogo) return;
 
-      // Remove any existing icon links
-      document.querySelectorAll("link[rel*='icon']").forEach(el => el.parentNode?.removeChild(el));
-
       const isBase64 = resolvedLogo.startsWith('data:');
-      const href = isBase64 ? resolvedLogo : `${resolvedLogo}?v=${Date.now()}`;
+      const isCdnUrl = resolvedLogo.startsWith('http://') || resolvedLogo.startsWith('https://');
+      const isLocalPath = resolvedLogo.includes('/uploads/') && !isBase64 && !resolvedLogo.includes('r2.dev') && !resolvedLogo.includes('cloudfront.net');
 
-      // Add rel types for maximum browser & PWA compatibility (Chrome, iOS Safari, Android, Windows)
-      ['icon', 'shortcut icon', 'apple-touch-icon', 'apple-touch-icon-precomposed'].forEach(rel => {
-        const link = document.createElement('link');
-        link.type = 'image/png';
-        link.rel = rel;
-        link.href = href;
-        if (rel.includes('apple-touch-icon')) {
-          link.setAttribute('sizes', '180x180');
-        }
-        document.head.appendChild(link);
-      });
+      // Only update icon DOM links if logo is a valid DataURL or CDN URL, to avoid wiping static favicon with 404 URL
+      if (!isLocalPath && (isBase64 || isCdnUrl)) {
+        document.querySelectorAll("link[rel*='icon']").forEach(el => el.parentNode?.removeChild(el));
+
+        const href = isBase64 ? resolvedLogo : `${resolvedLogo}?v=${Date.now()}`;
+
+        ['icon', 'shortcut icon', 'apple-touch-icon', 'apple-touch-icon-precomposed'].forEach(rel => {
+          const link = document.createElement('link');
+          link.type = 'image/png';
+          link.rel = rel;
+          link.href = href;
+          if (rel.includes('apple-touch-icon')) {
+            link.setAttribute('sizes', '180x180');
+          }
+          document.head.appendChild(link);
+        });
+      }
 
       const icon192Url = typeof window !== 'undefined' ? `${window.location.origin}/aswaq-icon-192.png` : '/aswaq-icon-192.png';
       const icon512Url = typeof window !== 'undefined' ? `${window.location.origin}/aswaq-icon-512.png` : '/aswaq-icon-512.png';
-      const logoIconUrl = (href && href.startsWith('http')) ? href : icon192Url;
+      const logoIconUrl = (!isLocalPath && resolvedLogo && (resolvedLogo.startsWith('http') || resolvedLogo.startsWith('data:'))) ? resolvedLogo : icon192Url;
 
       // Update dynamic web app manifest so PWA install uses valid logo
       try {
