@@ -185,7 +185,7 @@ export const UsersController = () => {
               originalname: `avatar-${Date.now()}.${ext}`,
               mimetype: mimeType
             }, `uploads/avatars/${userIdToUpdate}`);
-            if (uploadedUrl && (uploadedUrl.startsWith('http://') || uploadedUrl.startsWith('https://'))) {
+            if (uploadedUrl && (uploadedUrl.includes('r2.dev') || uploadedUrl.includes('r2.cloudflarestorage.com') || uploadedUrl.includes('cloudfront.net'))) {
               avatarUrl = uploadedUrl;
             }
           }
@@ -206,7 +206,7 @@ export const UsersController = () => {
               originalname: `cover-${Date.now()}.${ext}`,
               mimetype: mimeType
             }, `uploads/covers/${userIdToUpdate}`);
-            if (uploadedUrl && (uploadedUrl.includes('r2.dev') || uploadedUrl.includes('amazonaws.com') || uploadedUrl.includes('cloudfront.net'))) {
+            if (uploadedUrl && (uploadedUrl.includes('r2.dev') || uploadedUrl.includes('r2.cloudflarestorage.com') || uploadedUrl.includes('cloudfront.net'))) {
               coverUrl = uploadedUrl;
             }
           }
