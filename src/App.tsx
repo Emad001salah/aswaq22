@@ -1113,7 +1113,7 @@ useEffect(() => {
         navigate(`/${countryCode}/${cat}`);
       } else {
         const countryPath = `/${countryCode}`;
-        if (location.pathname !== countryPath && location.pathname !== '/' && !['/profile', '/messages', '/notifications', '/my-ads', '/analytics'].includes(location.pathname)) {
+        if (location.pathname !== countryPath && location.pathname !== '/') {
           navigate(countryPath);
         }
       }
