@@ -67,46 +67,24 @@ import { resolveMediaUrl } from '../lib/config.ts';
 
 export const Avatar: React.FC<AvatarProps> = ({ src, name, className = '', sizeClassName = 'w-10 h-10' }) => {
   const [imgError, setImgError] = React.useState(false);
-  const lastValidSrcRef = React.useRef<string>('');
-
   const resolvedSrc = resolveMediaUrl(src);
 
-  // Track last valid data or blob URL for instant fallback if remote image fails
-  if (resolvedSrc && (resolvedSrc.startsWith('data:') || resolvedSrc.startsWith('blob:'))) {
-    lastValidSrcRef.current = resolvedSrc;
-    try {
-      if (name) localStorage.setItem(`aswaq_avatar_backup_${name}`, resolvedSrc);
-    } catch (e) {}
-  }
-
-  React.useEffect(() => {
-    setImgError(false);
-  }, [src]);
-
-  const backupSrc = React.useMemo(() => {
-    try {
-      return name ? localStorage.getItem(`aswaq_avatar_backup_${name}`) || '' : '';
-    } catch (e) { return ''; }
-  }, [name]);
-
-  // Use current resolvedSrc if no error, otherwise fallback to last known valid data URL or localStorage backup
-  const activeSrc = (!imgError && resolvedSrc) ? resolvedSrc : (lastValidSrcRef.current || backupSrc);
-  const hasAvatar = !isPlaceholder(activeSrc) && !!activeSrc;
   const cleanName = sanitizeName(name);
   const initials = getInitials(cleanName);
   const gradientColor = getAvatarColor(cleanName);
   const textSize = getTextSize(sizeClassName);
 
-  // Combine classes. If rounded class is not specified, default to rounded-2xl to match design
+  const activeSrc = (!imgError && resolvedSrc && resolvedSrc.trim() !== '') ? resolvedSrc : '';
+
   const baseClasses = `flex items-center justify-center font-black select-none shrink-0 ${sizeClassName} ${
     className.includes('rounded-') ? '' : 'rounded-2xl'
   } ${className}`;
 
-  if (hasAvatar) {
+  if (activeSrc) {
     return (
       <img
         src={activeSrc}
-        alt={name}
+        alt={name || 'Avatar'}
         className={`object-cover ${sizeClassName} ${
           className.includes('rounded-') ? '' : 'rounded-2xl'
         } ${className}`}
