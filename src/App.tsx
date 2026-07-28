@@ -1784,7 +1784,7 @@ useEffect(() => {
               purpose: "any"
             },
             {
-              src: icon512Url,
+              src: logoIconUrl,
               sizes: "512x512",
               type: "image/png",
               purpose: "any"
@@ -1796,7 +1796,7 @@ useEffect(() => {
               purpose: "maskable"
             },
             {
-              src: icon512Url,
+              src: logoIconUrl,
               sizes: "512x512",
               type: "image/png",
               purpose: "maskable"

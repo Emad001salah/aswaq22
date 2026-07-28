@@ -70,6 +70,7 @@
   ],
   "rewrites": [
     { "source": "/__/auth/(.*)", "destination": "https://aswaq-48f3f.firebaseapp.com/__/auth/$1" },
+    { "source": "/manifest.json", "destination": "https://api.aswaq22.com/manifest.json" },
     { "source": "/api/(.*)", "destination": "https://api.aswaq22.com/api/$1" },
     { "source": "/uploads/(.*)", "destination": "https://api.aswaq22.com/uploads/$1" },
     { "source": "/sitemap.xml(.*)", "destination": "https://api.aswaq22.com/sitemap.xml" },

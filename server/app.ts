@@ -2104,6 +2104,95 @@ Sitemap: ${BASE_URL}/sitemap.xml
 `);
     });
 
+    // ── manifest.json (Dynamic PWA Manifest to serve custom admin logo) ────
+    this.app.get(['/manifest.json', '/manifest.json/'], async (req, res) => {
+      try {
+        const settings = await prisma.platformSettings.findFirst();
+        const appName = settings?.appName || 'أَسْوَاق';
+        const siteDescription = settings?.siteDescription || 'منصة الإعلانات والخدمات التجارية الأولى';
+        
+        // Resolve custom logo URL or fallback to standard icons
+        let logoUrl = '';
+        if (settings?.logoUrl) {
+          if (settings.logoUrl.startsWith('http') || settings.logoUrl.startsWith('data:')) {
+            logoUrl = settings.logoUrl;
+          } else {
+            // Resolve media URL from backend domain
+            const mediaBase = process.env.MEDIA_PUBLIC_BASE_URL || process.env.R2_PUBLIC_URL || process.env.API_URL || 'https://api.aswaq22.com';
+            logoUrl = `${mediaBase.replace(/\/$/, '')}/${settings.logoUrl.replace(/^\//, '')}`;
+          }
+        }
+
+        const icon192 = logoUrl || `${BASE_URL}/aswaq-icon-192.png`;
+        const icon512 = logoUrl || `${BASE_URL}/aswaq-icon-512.png`;
+        const iconMask192 = logoUrl || `${BASE_URL}/aswaq-icon-maskable-192.png`;
+        const iconMask512 = logoUrl || `${BASE_URL}/aswaq-icon-maskable-512.png`;
+
+        const manifestObj = {
+          name: `${appName} | Aswaq Marketplace`,
+          short_name: appName,
+          description: siteDescription,
+          start_url: `${BASE_URL}/`,
+          display: "standalone",
+          background_color: "#090d16",
+          theme_color: "#090d16",
+          orientation: "portrait-primary",
+          categories: ["shopping", "social", "business"],
+          lang: "ar",
+          dir: "rtl",
+          icons: [
+            {
+              src: icon192,
+              sizes: "192x192",
+              type: "image/png",
+              purpose: "any"
+            },
+            {
+              src: iconMask192,
+              sizes: "192x192",
+              type: "image/png",
+              purpose: "maskable"
+            },
+            {
+              src: icon512,
+              sizes: "512x512",
+              type: "image/png",
+              purpose: "any"
+            },
+            {
+              src: iconMask512,
+              sizes: "512x512",
+              type: "image/png",
+              purpose: "maskable"
+            }
+          ],
+          shortcuts: [
+            {
+              name: "الرئيسية",
+              short_name: "الرئيسية",
+              description: "تصفح آخر الإعلانات المميزة في أسواق",
+              url: "/?tab=home",
+              icons: [{ src: icon192, sizes: "192x192", type: "image/png" }]
+            },
+            {
+              name: "أضف إعلان",
+              short_name: "نشاط جديد",
+              description: "أضف عرضك أو خدماتك الآن مجاناً",
+              url: "/?tab=create-ad",
+              icons: [{ src: icon192, sizes: "192x192", type: "image/png" }]
+            }
+          ],
+          prefer_related_applications: false
+        };
+
+        res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        res.setHeader('Cache-Control', 'public, max-age=3600, stale-while-revalidate=600');
+        res.json(manifestObj);
+      } catch (e: any) {
+        res.status(500).json({ error: 'Failed to build dynamic manifest', message: e.message });
+      }
+    });
+
     // ── MAIN SITEMAP INDEX (Dynamic — lists ad pages based on count) ─────
     this.app.get(['/sitemap.xml', '/sitemap.xml/'], async (req, res) => {
       try {
