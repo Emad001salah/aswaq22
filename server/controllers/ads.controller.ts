@@ -799,31 +799,42 @@ export const AdsController = (io?: Server) => {
       // Validate category exists before accepting update
       if (req.body.category) {
         const catRaw = req.body.category as string;
-        const catUuid = uuidRegex.test(catRaw) ? catRaw : getDeterministicUuid(catRaw.toLowerCase().trim());
-        const cat = await prisma.category.findUnique({ where: { id: catUuid } });
-        if (!cat) {
-          return res.status(400).json({
-            success: false,
-            error: `القسم المحدد غير موجود: "${catRaw}". يرجى اختيار قسم صحيح.`,
-            details: ['INVALID_CATEGORY'],
-          });
+        const catSlug = slugify(catRaw);
+        const catUuid = uuidRegex.test(catRaw) ? catRaw : getDeterministicUuid(catSlug || catRaw.toLowerCase().trim());
+        const cat = await prisma.category.findFirst({
+          where: {
+            OR: [
+              { id: catUuid },
+              { nameEn: { equals: catRaw, mode: 'insensitive' } },
+              { nameAr: { equals: catRaw, mode: 'insensitive' } },
+              { slug: catSlug }
+            ]
+          }
+        });
+        if (cat) {
+          dataUpdate.categoryId = cat.id;
         }
-        dataUpdate.categoryId = cat.id;
       }
+
       if (req.body.subCategory) {
         const subRaw = req.body.subCategory as string;
-        const subUuid = uuidRegex.test(subRaw) ? subRaw : getDeterministicUuid(subRaw.toLowerCase().trim());
+        const subSlug = slugify(subRaw);
+        const subUuid = uuidRegex.test(subRaw) ? subRaw : getDeterministicUuid(subSlug || subRaw.toLowerCase().trim());
+        const targetCatId = dataUpdate.categoryId || ad.categoryId;
         const sub = await prisma.subCategory.findFirst({
-          where: { id: subUuid, categoryId: dataUpdate.categoryId || ad.categoryId }
+          where: {
+            OR: [
+              { id: subUuid },
+              { nameEn: { equals: subRaw, mode: 'insensitive' } },
+              { nameAr: { equals: subRaw, mode: 'insensitive' } },
+              { slug: subSlug }
+            ],
+            ...(targetCatId ? { categoryId: targetCatId } : {})
+          }
         });
-        if (!sub) {
-          return res.status(400).json({
-            success: false,
-            error: `القسم الفرعي "${subRaw}" غير موجود أو لا يتبع القسم الرئيسي المحدد.`,
-            details: ['INVALID_SUBCATEGORY'],
-          });
+        if (sub) {
+          dataUpdate.subCategoryId = sub.id;
         }
-        dataUpdate.subCategoryId = sub.id;
       }
 
       const imageUpdateResult = await prisma.$transaction(async (tx) => {
