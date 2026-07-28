@@ -501,7 +501,7 @@ export const AdsController = (io?: Server) => {
               adId: ad.id,
               mediaId: img.mediaId,
               objectKey: img.objectKey,
-              url: img.objectKey ? null : img.url,
+              url: img.url || null,
               mimeType: img.mimeType,
               sizeBytes: img.sizeBytes,
               blurHash: img.blurHash,
@@ -884,6 +884,7 @@ export const AdsController = (io?: Server) => {
                 await tx.adImage.update({
                   where: { id: existing.id },
                   data: {
+                    url: existing.url || url || undefined,
                     sortOrder: idx,
                     isPrimary: idx === 0
                   }
@@ -904,7 +905,7 @@ export const AdsController = (io?: Server) => {
                   data: {
                     adId: req.params.id,
                     objectKey,
-                    url: null,
+                    url: url || null,
                     mimeType,
                     sizeBytes,
                     sortOrder: idx,

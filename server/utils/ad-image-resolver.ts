@@ -29,7 +29,21 @@ export function resolveAdImageUrls(img: {
     };
   }
 
-  // Fallback: If variants are not generated yet but original objectKey is present, use it
+  // 2. Direct Base64 or URL fallback (preferred when R2 worker hasn't generated keys)
+  if (img.url) {
+    let legacyUrl: string = img.url;
+    if (!legacyUrl.startsWith('data:image/') && !legacyUrl.startsWith('blob:') && !legacyUrl.startsWith('http://') && !legacyUrl.startsWith('https://')) {
+      legacyUrl = `${base}/${legacyUrl.replace(/^\//, '')}`;
+    }
+    const thumbFallback = img.blurHash && img.blurHash.startsWith('data:image/') ? img.blurHash : legacyUrl;
+    return {
+      thumbUrl: thumbFallback,
+      cardUrl: legacyUrl,
+      detailUrl: legacyUrl,
+    };
+  }
+
+  // 3. Fallback: If variants/url are not generated yet but original objectKey is present
   if (img.objectKey) {
     const origUrl = `${base}/${img.objectKey.replace(/^\//, '')}`;
     return {
@@ -39,21 +53,9 @@ export function resolveAdImageUrls(img: {
     };
   }
 
-  // 2. Legacy Base64 or direct URL backward compatibility
-  let legacyUrl: string | null = null;
-  if (img.url) {
-    if (img.url.startsWith('data:image/') || img.url.startsWith('http://') || img.url.startsWith('https://')) {
-      legacyUrl = img.url;
-    } else {
-      legacyUrl = `${base}/${img.url.replace(/^\//, '')}`;
-    }
-  }
-
-  const thumbFallback = img.blurHash && img.blurHash.startsWith('data:image/') ? img.blurHash : legacyUrl;
-
   return {
-    thumbUrl: thumbFallback,
-    cardUrl: legacyUrl,
-    detailUrl: legacyUrl,
+    thumbUrl: null,
+    cardUrl: null,
+    detailUrl: null,
   };
 }

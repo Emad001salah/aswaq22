@@ -589,13 +589,15 @@ const readAsCompressedDataUrl = (file: File): Promise<string> => {
     }
 
     const imageList = adImages.map((img: any, idx) => {
-      if (typeof img === "object" && img !== null && img.objectKey) {
-        return { objectKey: img.objectKey, sortOrder: idx };
+      if (typeof img === "object" && img !== null) {
+        const rawUrl = (img.url || img.previewUrl || img.detailUrl || img.cardUrl || img.thumbUrl || "").trim();
+        return {
+          objectKey: img.objectKey || undefined,
+          url: rawUrl || undefined,
+          sortOrder: idx
+        };
       }
-      const rawUrl = typeof img === "object" && img !== null
-        ? (img.url || img.detailUrl || img.cardUrl || img.thumbUrl || "")
-        : String(img || "");
-      return { url: rawUrl.trim(), sortOrder: idx };
+      return { url: String(img || "").trim(), sortOrder: idx };
     }).filter((img: any) => img.objectKey || (img.url && img.url !== ""));
 
     const finalCategory = category === "other" && customCategoryName.trim() ? customCategoryName.trim() : category;
