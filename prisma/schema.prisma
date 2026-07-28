@@ -17,10 +17,10 @@ model User {
   name             String
   phone            String?
   password         String
-  avatar           String?
+  avatar           String?             @db.Text
   role             UserRole            @default(USER)
   bio              String?
-  coverPhoto       String?
+  coverPhoto       String?             @db.Text
   isVerified       VerificationStatus? @default(none) @map("is_verified")
   countryId        String?             @default("ye")
   city             String?
@@ -146,7 +146,7 @@ model AdImage {
   thumbKey  String?      @map("thumb_key")
   cardKey   String?      @map("card_key")
   detailKey String?      @map("detail_key")
-  url       String?
+  url       String?      @db.Text
   sortOrder Int          @default(0) @map("sort_order")
   width     Int?
   height    Int?
