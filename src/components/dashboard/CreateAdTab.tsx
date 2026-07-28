@@ -363,7 +363,7 @@ export default function CreateAdTab({
 
           if (uploadRes.ok) {
             uploadedKey = objectKey;
-            uploadedUrl = previewUrl;
+            uploadedUrl = resolveMediaUrl(objectKey);
           }
         }
       } catch (err) {
@@ -2153,9 +2153,10 @@ export default function CreateAdTab({
 
                   <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
                     {adImages.map((img: any, idx) => {
-                      const imgSrc = typeof img === "object" && img !== null
+                      const rawSrc = typeof img === "object" && img !== null
                         ? (img.previewUrl || img.thumbUrl || img.cardUrl || img.detailUrl || img.url)
                         : img;
+                      const imgSrc = resolveMediaUrl(rawSrc);
                       return (
                         <div key={idx} className={`relative group rounded-2xl aspect-square overflow-hidden border-2 flex items-center justify-center transition-all ${isDark ? "bg-slate-950 border-slate-800 shadow-xl shadow-black/20" : "bg-slate-100 border-slate-200 shadow-sm"}`}>
                           <img src={imgSrc} alt={`Ad img ${idx}`} className="w-full h-full object-cover" />
