@@ -90,37 +90,28 @@ export function validateUploadedFile(
     return { valid: false, reason: `نوع الملف "${mime}" غير مسموح. المسموح: JPEG, PNG, WebP, AVIF` };
   }
 
-  // ── 3. Magic Bytes ────────────────────────────────────────────────────
-  if (mime === 'image/avif' || mime === 'image/heic' || mime === 'image/heif') {
-    // ISOBMFF containers: يبحث عن "ftyp" في bytes 4-7
-    const ftypStr = buffer.slice(4, 8).toString('ascii');
-    if (!ftypStr.includes('ftyp')) {
-      // بعض ملفات HEIC قد تختلف — نمررها إذا كان الامتداد صحيحاً
-      if (mime === 'image/avif') {
-        return { valid: false, reason: 'ملف AVIF غير صالح (magic bytes)' };
-      }
-      // HEIC/HEIF: نكتفي بفحص MIME ولا نحظرها
+  // ── 3. Relaxed Magic Bytes Check ──────────────────────────────────────
+  if (mime === 'image/jpeg' || mime === 'image/jpg') {
+    // Every valid JPEG starts with SOI marker 0xFF 0xD8
+    if (buffer[0] !== 0xFF || buffer[1] !== 0xD8) {
+      return { valid: false, reason: 'ملف JPG/JPEG غير صالح (magic bytes)' };
     }
-  } else {
-    const signatures = MAGIC_SIGNATURES[mime];
-    if (signatures) {
-      const matchesMagic = signatures.some(sig =>
-        sig.every((byte, i) => buffer[i] === byte)
-      );
-      if (!matchesMagic) {
-        return {
-          valid: false,
-          reason: `محتوى الملف لا يطابق نوعه المُعلن (${mime}). قد يكون الملف تالفاً أو مزيفاً.`,
-        };
-      }
+  } else if (mime === 'image/png') {
+    // Every PNG starts with 0x89, 'P', 'N', 'G'
+    if (buffer[0] !== 0x89 || buffer[1] !== 0x50 || buffer[2] !== 0x4E || buffer[3] !== 0x47) {
+      return { valid: false, reason: 'ملف PNG غير صالح (magic bytes)' };
     }
-
-    // تحقق إضافي لـ WebP: bytes 8-11 يجب أن تكون "WEBP"
-    if (mime === 'image/webp') {
-      const webpStr = buffer.slice(8, 12).toString('ascii');
-      if (webpStr !== 'WEBP') {
-        return { valid: false, reason: 'ملف WebP غير صالح (RIFF header موجود لكن WEBP signature مفقودة)' };
-      }
+  } else if (mime === 'image/webp') {
+    // WebP must contain "RIFF" and "WEBP"
+    const isRiff = buffer.slice(0, 4).toString('ascii') === 'RIFF';
+    const isWebp = buffer.slice(8, 12).toString('ascii') === 'WEBP';
+    if (!isRiff || !isWebp) {
+      return { valid: false, reason: 'ملف WebP غير صالح (magic bytes)' };
+    }
+  } else if (mime === 'image/gif') {
+    // Every GIF starts with 'GIF'
+    if (buffer.slice(0, 3).toString('ascii') !== 'GIF') {
+      return { valid: false, reason: 'ملف GIF غير صالح (magic bytes)' };
     }
   }
 
