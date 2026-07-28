@@ -29,6 +29,16 @@ export function resolveAdImageUrls(img: {
     };
   }
 
+  // Fallback: If variants are not generated yet but original objectKey is present, use it
+  if (img.objectKey) {
+    const origUrl = `${base}/${img.objectKey.replace(/^\//, '')}`;
+    return {
+      thumbUrl: origUrl,
+      cardUrl: origUrl,
+      detailUrl: origUrl,
+    };
+  }
+
   // 2. Legacy Base64 or direct URL backward compatibility
   let legacyUrl: string | null = null;
   if (img.url) {
