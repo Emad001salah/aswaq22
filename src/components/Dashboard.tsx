@@ -549,8 +549,19 @@ export default function Dashboard({
               isDark={isDark}
               onTabChange={onTabChange}
               onSelectAd={onSelectAd}
-              handleStartEditAd={(ad) => {
-                setEditingAd(ad);
+              handleStartEditAd={async (ad) => {
+                try {
+                  const res = await fetch(`/api/ads/${ad.id}`);
+                  if (res.ok) {
+                    const fullAd = await res.json();
+                    setEditingAd(fullAd);
+                  } else {
+                    setEditingAd(ad);
+                  }
+                } catch (e) {
+                  console.error("Failed to fetch full ad for editing:", e);
+                  setEditingAd(ad);
+                }
                 onTabChange("create-ad");
               }}
               onDeleteAdRequest={(adId, adTitle) => {

@@ -121,7 +121,7 @@ export default function MyAdsTab({
                     <img
                       src={
                         (ad.images?.[0] && typeof ad.images[0] === 'object'
-                          ? (ad.images[0] as any).url
+                          ? ((ad.images[0] as any).url || (ad.images[0] as any).thumbUrl || (ad.images[0] as any).cardUrl || (ad.images[0] as any).detailUrl)
                           : (ad.images?.[0] as string)) ||
                         "https://images.unsplash.com/photo-1496181130204-755241544e35?auto=format&fit=crop&w=400&q=80"
                       }

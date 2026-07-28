@@ -826,11 +826,131 @@ export const AdsController = (io?: Server) => {
         dataUpdate.subCategoryId = sub.id;
       }
 
+      const imageUpdateResult = await prisma.$transaction(async (tx) => {
+        // Update images if provided
+        if (req.body.images && Array.isArray(req.body.images)) {
+          const incomingImages = req.body.images;
+          const existingImages = await tx.adImage.findMany({
+            where: { adId: req.params.id }
+          });
+
+          const incomingKeys = incomingImages.map(img => img.objectKey).filter(Boolean);
+          const incomingUrls = incomingImages.map(img => img.url).filter(Boolean);
+
+          // 1. Delete images that are no longer in the updated set
+          await tx.adImage.deleteMany({
+            where: {
+              adId: req.params.id,
+              AND: [
+                {
+                  OR: [
+                    { objectKey: { notIn: incomingKeys } },
+                    { objectKey: null }
+                  ]
+                },
+                {
+                  OR: [
+                    { url: { notIn: incomingUrls } },
+                    { url: null }
+                  ]
+                }
+              ]
+            }
+          });
+
+          // 2. Create or update remaining images
+          const jobsToEnqueue = [];
+
+          for (let idx = 0; idx < incomingImages.length; idx++) {
+            const img = incomingImages[idx];
+            const objectKey = img.objectKey || null;
+            const url = img.url || null;
+
+            if (objectKey) {
+              const existing = existingImages.find(x => x.objectKey === objectKey);
+              if (existing) {
+                // Update existing record's order
+                await tx.adImage.update({
+                  where: { id: existing.id },
+                  data: {
+                    sortOrder: idx,
+                    isPrimary: idx === 0
+                  }
+                });
+              } else {
+                // Find if there's any pending upload details
+                let mimeType = null;
+                let sizeBytes = null;
+                try {
+                  const pending = await tx.pendingUpload.findUnique({ where: { objectKey } });
+                  if (pending) {
+                    mimeType = pending.mimeType;
+                    sizeBytes = pending.sizeBytes;
+                  }
+                } catch (_) {}
+
+                const newImg = await tx.adImage.create({
+                  data: {
+                    adId: req.params.id,
+                    objectKey,
+                    url: null,
+                    mimeType,
+                    sizeBytes,
+                    sortOrder: idx,
+                    isPrimary: idx === 0,
+                    status: 'pending',
+                    uploadedBy: req.user!.id,
+                  }
+                });
+                jobsToEnqueue.push({
+                  adImageId: newImg.id,
+                  objectKey: newImg.objectKey,
+                  userId: req.user!.id,
+                });
+              }
+            } else if (url) {
+              const existing = existingImages.find(x => x.url === url);
+              if (existing) {
+                await tx.adImage.update({
+                  where: { id: existing.id },
+                  data: {
+                    sortOrder: idx,
+                    isPrimary: idx === 0
+                  }
+                });
+              } else {
+                await tx.adImage.create({
+                  data: {
+                    adId: req.params.id,
+                    objectKey: null,
+                    url,
+                    sortOrder: idx,
+                    isPrimary: idx === 0,
+                    status: 'ready',
+                    uploadedBy: req.user!.id,
+                  }
+                });
+              }
+            }
+          }
+
+          return { jobsToEnqueue };
+        }
+        return { jobsToEnqueue: [] };
+      }, { maxWait: 15000, timeout: 30000 });
+
+      // Enqueue background processing jobs for new images
+      for (const job of imageUpdateResult.jobsToEnqueue) {
+        if (job.objectKey) {
+          await enqueueAdImageJob(job);
+        }
+      }
+
       const updated = await prisma.ad.update({
         where: { id: req.params.id },
         data: dataUpdate,
         include: {
-          images: true,
+          images: { orderBy: { sortOrder: 'asc' } },
           user: { select: { id: true, name: true, avatar: true, isVerified: true } }
         }
       });

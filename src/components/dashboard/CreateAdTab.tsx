@@ -550,7 +550,9 @@ export default function CreateAdTab({
       if (typeof img === "object" && img !== null && img.objectKey) {
         return { objectKey: img.objectKey, sortOrder: idx };
       }
-      const rawUrl = typeof img === "object" && img !== null ? img.url : String(img || "");
+      const rawUrl = typeof img === "object" && img !== null
+        ? (img.url || img.detailUrl || img.cardUrl || img.thumbUrl || "")
+        : String(img || "");
       return { url: rawUrl.trim(), sortOrder: idx };
     }).filter((img: any) => img.objectKey || (img.url && img.url !== ""));
 
@@ -2151,7 +2153,9 @@ export default function CreateAdTab({
 
                   <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
                     {adImages.map((img: any, idx) => {
-                      const imgSrc = typeof img === "object" && img !== null ? (img.previewUrl || img.url) : img;
+                      const imgSrc = typeof img === "object" && img !== null
+                        ? (img.previewUrl || img.thumbUrl || img.cardUrl || img.detailUrl || img.url)
+                        : img;
                       return (
                         <div key={idx} className={`relative group rounded-2xl aspect-square overflow-hidden border-2 flex items-center justify-center transition-all ${isDark ? "bg-slate-950 border-slate-800 shadow-xl shadow-black/20" : "bg-slate-100 border-slate-200 shadow-sm"}`}>
                           <img src={imgSrc} alt={`Ad img ${idx}`} className="w-full h-full object-cover" />
