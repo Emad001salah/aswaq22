@@ -66,6 +66,15 @@ services:
       - TWILIO_PHONE_NUMBER=${TWILIO_PHONE_NUMBER:-}
       # Domain
       - DOMAIN=${DOMAIN}
+      # Storage Strategy (R2 / Local)
+      - STORAGE_PROVIDER=${STORAGE_PROVIDER:-local}
+      - R2_ACCOUNT_ID=${R2_ACCOUNT_ID:-}
+      - R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID:-}
+      - R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY:-}
+      - R2_BUCKET_NAME=${R2_BUCKET_NAME:-}
+      - R2_PUBLIC_URL=${R2_PUBLIC_URL:-}
+    volumes:
+      - uploads_data:/app/uploads
     networks:
       - aswaq_internal
     depends_on:
@@ -155,6 +164,34 @@ services:
       - aswaq_internal
     restart: unless-stopped
 
+  # 6b. Image Resizing Background Worker
+  image_worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: aswaq_image_worker
+    command: npm run worker:image
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://aswaq:aswaq_secure_pass@postgres:5432/aswaq_db
+      - REDIS_URL=redis://redis:6379
+      - STORAGE_PROVIDER=${STORAGE_PROVIDER:-local}
+      - R2_ACCOUNT_ID=${R2_ACCOUNT_ID:-}
+      - R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID:-}
+      - R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY:-}
+      - R2_BUCKET_NAME=${R2_BUCKET_NAME:-}
+      - R2_PUBLIC_URL=${R2_PUBLIC_URL:-}
+    volumes:
+      - uploads_data:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - aswaq_internal
+    restart: unless-stopped
+
   # 7. Prometheus Monitoring (Internal Only)
   prometheus:
     image: prom/prometheus:latest
@@ -225,3 +262,4 @@ volumes:
   meilidata:
   promdata:
   grafanadata:
+  uploads_data:
