@@ -84,13 +84,14 @@ export const AiController = (db: any) => {
   // POST /api/ai/price-insights - Smart Price Valuation Engine
   router.post('/price-insights', async (req, res) => {
     try {
-      const { category = 'cars', price = 0, currency = 'YER' } = req.body;
+      const { category = 'cars', price = 0, currency = 'JOD', countryCode = 'jo' } = req.body;
       const p = Number(price) || 0;
 
       let status = '⚖️ سعر عادل ومناسب';
       let score = 88;
       let advice = 'السعر يطابق متوسط قيم السلع المشابهة بنفس الموصفات والإقليم الجغرافي.';
-      const marketAverage = `${Math.round(p * 0.95).toLocaleString()} - ${Math.round(p * 1.05).toLocaleString()} ${currency}`;
+      const currLabel = currency && currency.trim() !== '' ? currency.trim() : (countryCode === 'jo' ? 'JOD' : 'JOD');
+      const marketAverage = `${Math.round(p * 0.95).toLocaleString()} - ${Math.round(p * 1.05).toLocaleString()} ${currLabel}`;
 
       if (p > 0) {
         const seed = p % 3;

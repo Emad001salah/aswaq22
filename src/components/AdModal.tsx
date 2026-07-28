@@ -404,6 +404,7 @@ const sessionViewedAdsSet = new Set<string>();
       });
 
       // Non-blocking fetch for price insights
+      const effectiveCurrency = ad.currency || currentMarket?.currency || (ad.countryCode && MARKETS[ad.countryCode]?.currency) || 'JOD';
       apiFetch("/api/ai/price-insights", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -411,8 +412,10 @@ const sessionViewedAdsSet = new Set<string>();
         body: JSON.stringify({
           adTitle: ad.title,
           adPrice: ad.price,
-          adCurrency: ad.currency,
-          adCategory: ad.category
+          currency: effectiveCurrency,
+          adCurrency: effectiveCurrency,
+          adCategory: ad.category,
+          countryCode: ad.countryCode || currentMarket?.code || 'jo'
         })
       }).then(async (res) => {
         if (res.ok) setPriceInsights(await res.json());
