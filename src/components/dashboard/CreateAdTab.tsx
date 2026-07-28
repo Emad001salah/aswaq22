@@ -589,16 +589,18 @@ const readAsCompressedDataUrl = (file: File): Promise<string> => {
     }
 
     const imageList = adImages.map((img: any, idx) => {
-      if (typeof img === "object" && img !== null) {
-        const rawUrl = (img.url || img.previewUrl || img.detailUrl || img.cardUrl || img.thumbUrl || "").trim();
-        return {
-          objectKey: img.objectKey || undefined,
-          url: rawUrl || undefined,
-          sortOrder: idx
-        };
+      const rawUrl = (typeof img === "object" && img !== null
+        ? (img.url || img.previewUrl || img.detailUrl || img.cardUrl || img.thumbUrl || "")
+        : String(img || "")).trim();
+      
+      const isR2Key = img && typeof img === "object" && img.objectKey && (img.objectKey.startsWith("http://") || img.objectKey.startsWith("https://") || img.objectKey.includes("r2.dev"));
+      
+      if (isR2Key) {
+        return { objectKey: img.objectKey, url: rawUrl || undefined, sortOrder: idx };
       }
-      return { url: String(img || "").trim(), sortOrder: idx };
-    }).filter((img: any) => img.objectKey || (img.url && img.url !== ""));
+      
+      return { url: rawUrl, sortOrder: idx };
+    }).filter((img: any) => (img.url && img.url !== "") || img.objectKey);
 
     const finalCategory = category === "other" && customCategoryName.trim() ? customCategoryName.trim() : category;
 
