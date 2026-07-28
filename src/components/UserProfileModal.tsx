@@ -233,12 +233,26 @@ export default function UserProfileModal({
             <div className="flex flex-col sm:flex-row items-center sm:items-end gap-5 sm:gap-6 -mt-16 sm:-mt-20 mb-6 sm:mb-8 text-center sm:text-right">
               <div className="relative shrink-0 group">
                 <div className="w-32 h-32 sm:w-40 sm:h-40 rounded-[2.5rem] border-8 border-slate-900 overflow-hidden shadow-2xl bg-slate-800 relative">
-                  <Avatar 
-                    src={editForm.avatar || user.avatar} 
-                    name={user.name}
-                    sizeClassName="w-full h-full"
-                    className=""
-                  />
+                  {(() => {
+                    const avatarSrc = resolveMediaUrl(isEditing ? (editForm.avatar || user.avatar) : user.avatar);
+                    return avatarSrc ? (
+                      <img 
+                        src={avatarSrc} 
+                        alt={user.name || "Avatar"} 
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                        }}
+                      />
+                    ) : (
+                      <Avatar 
+                        src={null} 
+                        name={user.name}
+                        sizeClassName="w-full h-full"
+                      />
+                    );
+                  })()}
                   
                   {/* Avatar Edit Overlay */}
                   {isEditing && (
