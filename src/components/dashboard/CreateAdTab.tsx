@@ -338,10 +338,51 @@ export default function CreateAdTab({
 
       const previewUrl = URL.createObjectURL(file);
 
+// Helper to convert any image file into a compressed JPEG DataURL fallback (1200px max, 0.8 quality)
+const readAsCompressedDataUrl = (file: File): Promise<string> => {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const resultStr = (e.target?.result as string) || "";
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const canvas = document.createElement("canvas");
+          let width = img.width;
+          let height = img.height;
+          const maxDim = 1200;
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            resolve(canvas.toDataURL("image/jpeg", 0.8));
+            return;
+          }
+        } catch (err) {}
+        resolve(resultStr);
+      };
+      img.onerror = () => resolve(resultStr);
+      img.src = resultStr;
+    };
+    reader.onerror = () => resolve("");
+    reader.readAsDataURL(file);
+  });
+};
+
       let uploadedUrl = '';
       let uploadedKey = '';
 
-      // 1. Try S3 presigned upload
+      // 1. Try S3 / R2 presigned upload
       try {
         const presignRes = await apiFetch("/api/media/presign", {
           method: "POST",
@@ -363,7 +404,12 @@ export default function CreateAdTab({
 
           if (uploadRes.ok) {
             uploadedKey = objectKey;
-            uploadedUrl = resolveMediaUrl(objectKey);
+            // Use R2 CDN URL if upload was to R2, otherwise use bulletproof DataURL fallback
+            if (uploadUrl && (uploadUrl.includes("r2.cloudflarestorage.com") || uploadUrl.includes("r2.dev"))) {
+              uploadedUrl = resolveMediaUrl(objectKey);
+            } else {
+              uploadedUrl = await readAsCompressedDataUrl(file);
+            }
           }
         }
       } catch (err) {
@@ -382,7 +428,7 @@ export default function CreateAdTab({
 
           if (storageRes.ok) {
             const storageData = await storageRes.json();
-            if (storageData.url) {
+            if (storageData.url && (storageData.url.startsWith("http://") || storageData.url.startsWith("https://"))) {
               uploadedUrl = storageData.url;
             }
           }
@@ -391,13 +437,9 @@ export default function CreateAdTab({
         }
       }
 
-      // 3. Ultimate Fallback: Read as DataURL for instant local preview
+      // 3. Ultimate Fallback: Read as compressed DataURL for 100% self-contained rendering
       if (!uploadedUrl) {
-        uploadedUrl = await new Promise<string>((resolve) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve((reader.result as string) || previewUrl);
-          reader.readAsDataURL(file);
-        });
+        uploadedUrl = await readAsCompressedDataUrl(file);
       }
 
       if (uploadedUrl) {
