@@ -2683,6 +2683,10 @@ useEffect(() => {
 
   // Intercept tab changes. If trying to access protected views without login, show login instead.
   const handleTabChange = (tab: string) => {
+    // Clear preview states when switching tabs to ensure URL synchronizes back to the selected tab/market
+    setSelectedAd(null);
+    setSelectedUserPreview(null);
+
     if (tab === "map") {
       setCurrentTab("home");
       setViewMode("map");
