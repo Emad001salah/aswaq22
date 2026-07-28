@@ -1325,24 +1325,29 @@ useEffect(() => {
             storeAddress: extraData?.storeAddress || '',
           }),
         });
+
+        const updatedUser = {
+          ...currentUser,
+          role: targetUpgradeRole === 'merchant' ? UserRole.MERCHANT : (targetUpgradeRole === 'driver' ? UserRole.USER : currentUser.role),
+          identityVerified: true,
+          identityDocuments: docs,
+          verified: true
+        };
+        setCurrentUser(updatedUser);
+        setShowIdentityModal(false);
+        addToast(
+          isRtl ? "تم استلام وثائق التوثيق" : "Documents Submitted",
+          isRtl ? "جاري مراجعة وثائقك من قبل إدارة المنصة." : "Your verification documents have been uploaded and are being reviewed by the admin.",
+          "success"
+        );
       } catch (err) {
         console.error('Failed to submit verify documents API', err);
+        addToast(
+          isRtl ? "فشل إرسال طلب التوثيق ⚠️" : "Verification Submission Failed ⚠️",
+          isRtl ? "حدث خطأ أثناء إرسال طلبك للسيرفر، يرجى المحاولة مجدداً." : "Error sending request to the server, please try again.",
+          "error"
+        );
       }
-
-      const updatedUser = {
-        ...currentUser,
-        role: targetUpgradeRole === 'merchant' ? UserRole.MERCHANT : (targetUpgradeRole === 'driver' ? UserRole.USER : currentUser.role),
-        identityVerified: true,
-        identityDocuments: docs,
-        verified: true
-      };
-      setCurrentUser(updatedUser);
-      setShowIdentityModal(false);
-      addToast(
-        isRtl ? "تم استلام وثائق التوثيق" : "Documents Submitted",
-        isRtl ? "جاري مراجعة وثائقك من قبل إدارة المنصة." : "Your verification documents have been uploaded and are being reviewed by the admin.",
-        "success"
-      );
     }
   };
 
