@@ -1781,14 +1781,17 @@ export class App {
               userId: id,
               vehicleType: 'motorcycle',
               licensePlate: 'معتمد رسمياً',
-              status: 'APPROVED'
+              status: 'OFFLINE'
             },
             update: {
-              status: 'APPROVED'
+              status: 'OFFLINE'
             }
           });
         }
-        if (action === 'unverify') data.isVerified = 'unverify';
+        if (action === 'unverify') {
+          data.isVerified = 'none';
+          data.role = 'USER';
+        }
         if (action === 'ban') data.deletedAt = new Date();
         if (action === 'unban') data.deletedAt = null;
         if (action === 'make_admin') data.role = 'ADMIN';
