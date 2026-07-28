@@ -402,7 +402,7 @@ export default function CreateAdTab({
 
       if (uploadedUrl) {
         setAdImages((prev: any[]) => {
-          const next = [...prev, { objectKey: uploadedKey, previewUrl: uploadedUrl, url: uploadedUrl }];
+          const next = [...prev, { objectKey: uploadedKey, previewUrl: previewUrl, url: uploadedUrl }];
           if (next.length === 1) {
             handleAiAnalyzeImage(uploadedUrl);
           }
@@ -2699,7 +2699,16 @@ export default function CreateAdTab({
           <h4 className="text-xs font-black text-slate-400 mb-4 uppercase tracking-wider">👁️ معاينة البث والظهور المباشر</h4>
           <div className={`aspect-video w-full rounded-2xl overflow-hidden relative group border transition-colors ${isDark ? "bg-slate-950 border-slate-800" : "bg-slate-100 border-slate-200 shadow-inner"}`}>
             {adImages.length > 0 ? (
-              <img src={adImages[0]} className="w-full h-full object-cover" />
+              <img
+                src={
+                  resolveMediaUrl(
+                    typeof adImages[0] === "object" && adImages[0] !== null
+                      ? (adImages[0].previewUrl || adImages[0].thumbUrl || adImages[0].cardUrl || adImages[0].detailUrl || adImages[0].url)
+                      : adImages[0]
+                  )
+                }
+                className="w-full h-full object-cover"
+              />
             ) : (
               <div className={`w-full h-full flex flex-col items-center justify-center gap-2 ${isDark ? "text-slate-600" : "text-slate-400"}`}>
                 <Camera className="w-8 h-8" />
