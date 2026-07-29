@@ -316,7 +316,13 @@ export default function SettingsTab({
                       reader.readAsDataURL(file);
                     });
 
-                    if (base64Url) setProfileAvatar(base64Url);
+                    if (base64Url) {
+                      setProfileAvatar(base64Url);
+                      // Auto-publish avatar update to backend immediately for instant global sync
+                      if (onUpdateUser && currentUser) {
+                        onUpdateUser({ ...currentUser, avatar: base64Url });
+                      }
+                    }
 
                     // 2. Attempt storage upload
                     let targetUrl = base64Url;
