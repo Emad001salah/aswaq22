@@ -282,9 +282,13 @@ useEffect(() => {
               if (storedUser) localUser = JSON.parse(storedUser);
             } catch {}
 
-            const localAvatar = (localUser?.avatar && localUser.avatar.startsWith('data:image/')) ? localUser.avatar : null;
-            const isServer404Upload = serverUser.avatar && serverUser.avatar.includes('/uploads/') && !serverUser.avatar.includes('r2.dev') && !serverUser.avatar.includes('cloudfront');
-            const safeAvatar = (localAvatar && (isServer404Upload || !serverUser.avatar)) ? localAvatar : (serverUser.avatar || localAvatar || localUser?.avatar);
+            const backupKey = localUser?.name ? localStorage.getItem(`aswaq_avatar_backup_${localUser.name}`) : null;
+            const localAvatar = (localUser?.avatar && localUser.avatar.startsWith('data:image/')) 
+              ? localUser.avatar 
+              : (backupKey && backupKey.startsWith('data:image/') ? backupKey : null);
+
+            const isServer404Upload = !serverUser.avatar || (serverUser.avatar.includes('/uploads/') && !serverUser.avatar.includes('r2.dev') && !serverUser.avatar.includes('cloudfront'));
+            const safeAvatar = (localAvatar && isServer404Upload) ? localAvatar : (serverUser.avatar || localAvatar || localUser?.avatar);
 
             const mergedUser = {
               ...localUser,
@@ -824,9 +828,6 @@ useEffect(() => {
   // Auto-sync client avatar to backend database if user has a valid DataURL avatar for global visibility
   useEffect(() => {
     if (currentUser?.id && currentUser?.avatar && currentUser.avatar.startsWith('data:image/')) {
-      const syncKey = `aswaq_avatar_synced_${currentUser.id}_${currentUser.avatar.slice(-20)}`;
-      if (localStorage.getItem(syncKey) === 'true') return;
-
       console.log('[App] Auto-syncing profile photo to PostgreSQL for global user visibility...');
       apiFetch('/api/users/me', {
         method: 'PATCH',
@@ -834,7 +835,6 @@ useEffect(() => {
         body: JSON.stringify({ avatar: currentUser.avatar })
       }).then((res) => {
         if (res.ok) {
-          localStorage.setItem(syncKey, 'true');
           console.log('[App] Profile photo successfully synced to PostgreSQL for all users!');
         }
       }).catch((err) => console.error('[App] Background avatar sync error:', err));
