@@ -261,6 +261,9 @@ useEffect(() => {
 
     // On load: restore session from our stored JWT / user data
     const restoreSession = async () => {
+      // Warm up backend server in background to eliminate Render cold-start lag
+      apiFetch('/api/v1/health').catch(() => {});
+
       const storedUser = localStorage.getItem('aswaq_current_user');
       const storedToken = localStorage.getItem('aswaq_access_token');
 

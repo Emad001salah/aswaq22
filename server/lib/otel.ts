@@ -1,31 +1,31 @@
-import { NodeSDK } from '@opentelemetry/sdk-node';
-import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
-import { PrometheusExporter } from '@opentelemetry/exporter-prometheus';
-import { logger } from './logger.ts';
+// Dummy fallback exporter for serverless (Vercel) environment to prevent heavy bundle overhead
+export const prometheusExporter = {
+  getMetricsHTTP: async () => '# Prometheus metrics disabled on serverless\n'
+};
 
-// Setup Prometheus metrics exporter (scraped via Express route)
-export const prometheusExporter = new PrometheusExporter({
-  preventServerStart: true,
-});
+export const sdk = {
+  start: () => {},
+  shutdown: async () => {}
+};
 
-const sdk = new NodeSDK({
-  metricReader: prometheusExporter,
-  instrumentations: [
-    getNodeAutoInstrumentations({
-      '@opentelemetry/instrumentation-fs': {
-        enabled: false, // Reduce noise from local filesystem reads
-      },
-    }),
-  ],
-});
-
-if (process.env.NODE_ENV !== 'test') {
+if (process.env.NODE_ENV !== 'test' && !process.env.VERCEL) {
   try {
-    sdk.start();
+    const { NodeSDK } = require('@opentelemetry/sdk-node');
+    const { getNodeAutoInstrumentations } = require('@opentelemetry/auto-instrumentations-node');
+    const { PrometheusExporter } = require('@opentelemetry/exporter-prometheus');
+
+    const realExporter = new PrometheusExporter({ preventServerStart: true });
+    const realSdk = new NodeSDK({
+      metricReader: realExporter,
+      instrumentations: [
+        getNodeAutoInstrumentations({
+          '@opentelemetry/instrumentation-fs': { enabled: false },
+        }),
+      ],
+    });
+    realSdk.start();
     logger.info('[OTel] OpenTelemetry SDK initialized successfully.');
   } catch (error: any) {
-    logger.error('[OTel] Error starting OpenTelemetry SDK:', error.message);
+    logger.warn('[OTel] OpenTelemetry SDK skipped or not loaded:', error?.message || error);
   }
 }
-
-export { sdk };
