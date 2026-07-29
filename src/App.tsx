@@ -273,10 +273,27 @@ useEffect(() => {
           const res = await apiFetch('/api/v1/users/me');
           if (res.ok) {
             const data = await res.json();
-            const user = data.user ?? data;
-            console.log('[App] Session restored from JWT:', user.name);
-            localStorage.setItem('aswaq_current_user', JSON.stringify(user));
-            setCurrentUser(user);
+            const serverUser = data.user ?? data;
+            console.log('[App] Session verified from server:', serverUser.name);
+            
+            // Parse existing local user to preserve working DataURLs if server returns ephemeral 404 upload URL
+            let localUser: any = null;
+            try {
+              if (storedUser) localUser = JSON.parse(storedUser);
+            } catch {}
+
+            const localAvatar = (localUser?.avatar && localUser.avatar.startsWith('data:image/')) ? localUser.avatar : null;
+            const isServer404Upload = serverUser.avatar && serverUser.avatar.includes('/uploads/') && !serverUser.avatar.includes('r2.dev') && !serverUser.avatar.includes('cloudfront');
+            const safeAvatar = (localAvatar && (isServer404Upload || !serverUser.avatar)) ? localAvatar : (serverUser.avatar || localAvatar || localUser?.avatar);
+
+            const mergedUser = {
+              ...localUser,
+              ...serverUser,
+              avatar: safeAvatar
+            };
+
+            localStorage.setItem('aswaq_current_user', JSON.stringify(mergedUser));
+            setCurrentUser(mergedUser);
             return;
           }
           

@@ -69,12 +69,29 @@ export const Avatar: React.FC<AvatarProps> = ({ src, name, className = '', sizeC
   const [imgError, setImgError] = React.useState(false);
   const resolvedSrc = resolveMediaUrl(src);
 
+  // Track and store working DataURL in localStorage backup so photo never disappears on server 404
+  if (resolvedSrc && resolvedSrc.startsWith('data:image/')) {
+    try {
+      if (name) localStorage.setItem(`aswaq_avatar_backup_${name}`, resolvedSrc);
+    } catch {}
+  }
+
+  React.useEffect(() => {
+    setImgError(false);
+  }, [src]);
+
+  const backupSrc = React.useMemo(() => {
+    try {
+      return name ? localStorage.getItem(`aswaq_avatar_backup_${name}`) || '' : '';
+    } catch { return ''; }
+  }, [name]);
+
   const cleanName = sanitizeName(name);
   const initials = getInitials(cleanName);
   const gradientColor = getAvatarColor(cleanName);
   const textSize = getTextSize(sizeClassName);
 
-  const activeSrc = (!imgError && resolvedSrc && resolvedSrc.trim() !== '') ? resolvedSrc : '';
+  const activeSrc = (!imgError && resolvedSrc && resolvedSrc.trim() !== '') ? resolvedSrc : backupSrc;
 
   const baseClasses = `flex items-center justify-center font-black select-none shrink-0 ${sizeClassName} ${
     className.includes('rounded-') ? '' : 'rounded-2xl'
@@ -88,7 +105,14 @@ export const Avatar: React.FC<AvatarProps> = ({ src, name, className = '', sizeC
         className={`object-cover ${sizeClassName} ${
           className.includes('rounded-') ? '' : 'rounded-2xl'
         } ${className}`}
-        onError={() => setImgError(true)}
+        onError={(e) => {
+          const target = e.target as HTMLImageElement;
+          if (backupSrc && target.src !== backupSrc) {
+            target.src = backupSrc;
+          } else {
+            setImgError(true);
+          }
+        }}
       />
     );
   }
