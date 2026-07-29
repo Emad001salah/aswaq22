@@ -92,17 +92,26 @@ export const AdsController = (io?: Server) => {
 
     // Try Redis cache if no cursor (caching general homepage feeds)
     const cacheKey = `ads:latest:${city || 'all'}:${category || 'all'}:${take}`;
-    if (!cursor) {
+    if (!cursor && !req.query.nocache) {
       const cachedData = await redis.get(cacheKey);
       if (cachedData) {
-        const etag = `"ads-${cacheKey.length}-${cachedData.length}"`;
+        let parsed = JSON.parse(cachedData);
+        if (Array.isArray(parsed.ads)) {
+          parsed.ads = parsed.ads.map((ad: any) => ({
+            ...ad,
+            userAvatar: sanitizeAvatarUrl(ad.userAvatar || ad.user?.avatar),
+            user: ad.user ? { ...ad.user, avatar: sanitizeAvatarUrl(ad.user.avatar) } : null
+          }));
+        }
+        const payloadStr = JSON.stringify(parsed);
+        const etag = `"ads-${cacheKey.length}-${payloadStr.length}"`;
         if (req.headers['if-none-match'] === etag) {
           return res.status(304).end();
         }
         res.setHeader('ETag', etag);
         res.setHeader('X-Cache', 'HIT');
         res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=120');
-        return res.json(JSON.parse(cachedData));
+        return res.json(parsed);
       }
     }
 
