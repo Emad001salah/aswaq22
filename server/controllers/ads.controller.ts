@@ -22,13 +22,13 @@ const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}
 
 export function sanitizeAvatarUrl(url?: string | null): string | null {
   if (!url || typeof url !== 'string') return null;
-  const trimmed = url.trim();
+  let trimmed = url.trim();
   if (!trimmed) return null;
   if (trimmed.startsWith('data:image/') || trimmed.includes('r2.dev') || trimmed.includes('cloudfront') || trimmed.includes('amazonaws')) {
     return trimmed;
   }
-  if (trimmed.includes('/uploads/') || trimmed.includes('media.aswaq22.com')) {
-    return null;
+  if (trimmed.includes('media.aswaq22.com') || trimmed.includes('www.aswaq22.com')) {
+    trimmed = trimmed.replace(/^https?:\/\/(www\.|media\.)?aswaq22\.com/i, 'https://api.aswaq22.com');
   }
   return trimmed;
 }
