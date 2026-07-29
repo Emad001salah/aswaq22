@@ -26,9 +26,13 @@ const ALLOWED_MIME_TYPES = new Set([
   'image/heic',
   'image/heif',
   'image/gif',
+  'image/bmp',
+  'image/tiff',
+  'image/x-bmp',
+  'image/x-tiff',
 ]);
 
-const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
+const MAX_FILE_SIZE_BYTES = 15 * 1024 * 1024; // 15 MB
 
 /**
  * Magic Bytes الخاصة بكل نوع صورة
@@ -129,11 +133,11 @@ export function validateUploadedFile(
   // ── 5. امتداد الملف يجب أن يتطابق ───────────────────────────────────
   if (filename) {
     const ext = filename.split('.').pop()?.toLowerCase();
-    const allowedExtensions = new Set(['jpg', 'jpeg', 'png', 'webp', 'avif', 'heic', 'heif', 'gif']);
+    const allowedExtensions = new Set(['jpg', 'jpeg', 'png', 'webp', 'avif', 'heic', 'heif', 'gif', 'bmp', 'tiff', 'tif']);
     if (ext && !allowedExtensions.has(ext)) {
       return {
         valid: false,
-        reason: `امتداد الملف ".${ext}" غير مسموح`,
+        reason: `امتداد الملف ".${ext}" غير مسموح. المسموح: jpg, jpeg, png, webp, avif, heic, gif, bmp`,
       };
     }
   }

@@ -211,12 +211,17 @@ export const UsersController = () => {
               originalname: `avatar-${Date.now()}.${ext}`,
               mimetype: mimeType
             }, `uploads/avatars/${userIdToUpdate}`);
-            if (uploadedUrl && (uploadedUrl.includes('r2.dev') || uploadedUrl.includes('r2.cloudflarestorage.com') || uploadedUrl.includes('cloudfront.net'))) {
+            // Save any successful storage URL (local, R2, S3, etc.) - not just R2
+            if (uploadedUrl && (uploadedUrl.startsWith('http://') || uploadedUrl.startsWith('https://'))) {
               avatarUrl = uploadedUrl;
+            } else {
+              // Keep base64 as absolute last resort (shouldn't happen)
+              logger.warn(`[Users] Avatar upload returned unexpected URL format: ${uploadedUrl}`);
             }
           }
         } catch (err) {
-          console.error('Failed to upload base64 avatar to storage (retaining persistent base64 fallback):', err);
+          console.error('Failed to upload base64 avatar to storage:', err);
+          // Keep base64 as fallback so user doesn't lose their avatar
         }
       }
 
@@ -232,12 +237,13 @@ export const UsersController = () => {
               originalname: `cover-${Date.now()}.${ext}`,
               mimetype: mimeType
             }, `uploads/covers/${userIdToUpdate}`);
-            if (uploadedUrl && (uploadedUrl.includes('r2.dev') || uploadedUrl.includes('r2.cloudflarestorage.com') || uploadedUrl.includes('cloudfront.net'))) {
+            // Save any successful storage URL (local, R2, S3, etc.)
+            if (uploadedUrl && (uploadedUrl.startsWith('http://') || uploadedUrl.startsWith('https://'))) {
               coverUrl = uploadedUrl;
             }
           }
         } catch (err) {
-          console.error('Failed to upload base64 cover to storage (retaining persistent base64 fallback):', err);
+          console.error('Failed to upload base64 cover to storage:', err);
         }
       }
 

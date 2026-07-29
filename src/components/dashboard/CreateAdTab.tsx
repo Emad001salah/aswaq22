@@ -382,7 +382,7 @@ const readAsCompressedDataUrl = (file: File): Promise<string> => {
       let uploadedUrl = '';
       let uploadedKey = '';
 
-      // 1. Try S3 / R2 presigned upload
+      // 1. Try presign upload (works for both R2 and local storage)
       try {
         const presignRes = await apiFetch("/api/media/presign", {
           method: "POST",
@@ -404,12 +404,8 @@ const readAsCompressedDataUrl = (file: File): Promise<string> => {
 
           if (uploadRes.ok) {
             uploadedKey = objectKey;
-            // Use R2 CDN URL if upload was to R2, otherwise use bulletproof DataURL fallback
-            if (uploadUrl && (uploadUrl.includes("r2.cloudflarestorage.com") || uploadUrl.includes("r2.dev"))) {
-              uploadedUrl = resolveMediaUrl(objectKey);
-            } else {
-              uploadedUrl = await readAsCompressedDataUrl(file);
-            }
+            // Always use the resolved media URL from objectKey - works for both R2 and local storage
+            uploadedUrl = resolveMediaUrl(objectKey);
           }
         }
       } catch (err) {
@@ -428,10 +424,8 @@ const readAsCompressedDataUrl = (file: File): Promise<string> => {
 
           if (storageRes.ok) {
             const storageData = await storageRes.json();
-            if (storageData.url && (storageData.url.includes("r2.dev") || storageData.url.includes("amazonaws.com") || storageData.url.includes("cloudfront.net"))) {
+            if (storageData.url && storageData.url.startsWith('http')) {
               uploadedUrl = storageData.url;
-            } else {
-              uploadedUrl = await readAsCompressedDataUrl(file);
             }
           }
         } catch (err) {
@@ -439,8 +433,9 @@ const readAsCompressedDataUrl = (file: File): Promise<string> => {
         }
       }
 
-      // 3. Ultimate Fallback: Read as compressed DataURL for 100% self-contained rendering
+      // 3. Ultimate Fallback: compressed DataURL only if all server uploads failed
       if (!uploadedUrl) {
+        console.warn("[Upload] All server uploads failed, using DataURL fallback for preview only");
         uploadedUrl = await readAsCompressedDataUrl(file);
       }
 

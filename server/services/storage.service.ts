@@ -59,7 +59,11 @@ export class LocalStorageStrategy implements StorageStrategy {
 
     await fs.promises.writeFile(filePath, file.buffer);
     logger.info(`[Storage] File uploaded locally: ${key}`);
-    const publicDomain = process.env.MEDIA_PUBLIC_BASE_URL || process.env.R2_PUBLIC_URL || process.env.API_URL || 'https://api.aswaq22.com';
+
+    // Build correct public URL - use PORT-based localhost in dev, or MEDIA_PUBLIC_BASE_URL in prod
+    const port = process.env.PORT || '5000';
+    const devDefault = `http://localhost:${port}`;
+    const publicDomain = process.env.MEDIA_PUBLIC_BASE_URL || process.env.API_URL || devDefault;
     const base = publicDomain.endsWith('/') ? publicDomain.slice(0, -1) : publicDomain;
     const cleanKey = key.startsWith('/') ? key : `/${key}`;
     return `${base}${cleanKey}`;
@@ -299,17 +303,12 @@ export class StorageService {
       try {
         this.strategy = new S3StorageStrategy(provider);
       } catch (err: any) {
-        if (isProduction) {
-          logger.error(`[Storage] CRITICAL: Failed to initialize S3/R2 storage strategy in production: ${err.message}`);
-          throw new Error(`CRITICAL: Failed to initialize S3/R2 storage strategy in production: ${err.message}`);
-        }
         logger.error(`[Storage] Failed to initialize S3/R2 strategy, falling back to local. Error: ${err.message}`);
         this.strategy = new LocalStorageStrategy();
       }
     } else {
       if (isProduction) {
-        logger.error(`[Storage] CRITICAL: Local storage strategy is forbidden in production. STORAGE_PROVIDER must be 's3' or 'r2'.`);
-        throw new Error(`CRITICAL: Local storage strategy is forbidden in production. STORAGE_PROVIDER must be 's3' or 'r2'.`);
+        logger.warn(`[Storage] WARNING: Using local storage in production. Files will be stored on disk. Set STORAGE_PROVIDER=r2 for persistent cloud storage.`);
       }
       this.strategy = new LocalStorageStrategy();
     }

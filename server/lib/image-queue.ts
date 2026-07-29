@@ -53,7 +53,9 @@ if (process.env.NODE_ENV !== 'test') {
 }
 
 /**
- * Enqueue an ad image for processing. If BullMQ is unavailable, runs inline asynchronously.
+ * Enqueue an ad image for processing.
+ * If BullMQ/Redis is unavailable, falls back to inline async processing
+ * so images are never silently dropped regardless of environment.
  */
 export async function enqueueAdImageJob(data: AdImageJobData): Promise<void> {
   if (imageQueue) {
@@ -61,20 +63,16 @@ export async function enqueueAdImageJob(data: AdImageJobData): Promise<void> {
       await imageQueue.add('resize-image', data);
       return;
     } catch (err: any) {
-      logger.warn(`[ImageWorker] Enqueue failed: ${err.message}. Executing job inline.`);
+      logger.warn(`[ImageWorker] Enqueue failed: ${err.message}. Falling back to inline processing.`);
     }
   }
 
-  // In production, forbid inline processing to protect API event-loop & memory limits
-  if (process.env.NODE_ENV === 'production') {
-    logger.error(`[ImageWorker] CRITICAL: Redis BullMQ queue unavailable in production for job ${data.adImageId}. Image processing queued for worker when Redis recovers.`);
-    return;
-  }
-
-  // Fallback for development/testing environments: execute inline asynchronously
+  // Inline fallback — runs in background without blocking the request
+  logger.info(`[ImageWorker] Running image job inline for adImageId: ${data.adImageId}`);
   setImmediate(async () => {
     try {
       await processAdImageJob(data);
+      logger.info(`[ImageWorker] Inline processing completed for adImageId: ${data.adImageId}`);
     } catch (err: any) {
       logger.error(`[ImageWorker] Inline image processing failed for ${data.adImageId}: ${err.message}`);
     }

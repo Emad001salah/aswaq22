@@ -21,6 +21,10 @@ export const ALLOWED_IMAGE_MIMES = new Set([
   'image/webp',
   'image/heic',
   'image/heif',
+  'image/avif',
+  'image/gif',
+  'image/bmp',
+  'image/tiff',
 ]);
 
 /** Image variant sizes (px) */

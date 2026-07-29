@@ -62,16 +62,19 @@ export function resolveMediaUrl(url?: string | null): string {
     trimmed = `/uploads${trimmed}`;
   }
 
-  if (trimmed.includes('/uploads/')) {
-    trimmed = trimmed.replace(/^https?:\/\/(www\.|media\.|api\.)?aswaq22\.com\/uploads\//i, `${API_ORIGIN}/uploads/`);
-  }
-  if (trimmed.startsWith('https://media.aswaq22.com') || trimmed.startsWith('http://media.aswaq22.com')) {
-    trimmed = trimmed.replace(/^https?:\/\/media\.aswaq22\.com/i, API_ORIGIN);
-  }
-
+  // If it's already a full URL (http/https), normalize any domain mismatches
   if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    // Fix wrong domain (www or media subdomain) → correct API origin
+    if (trimmed.includes('/uploads/')) {
+      trimmed = trimmed.replace(/^https?:\/\/(www\.|media\.|api\.)?aswaq22\.com\/uploads\//i, `${API_ORIGIN}/uploads/`);
+    }
+    if (trimmed.startsWith('https://media.aswaq22.com') || trimmed.startsWith('http://media.aswaq22.com')) {
+      trimmed = trimmed.replace(/^https?:\/\/media\.aswaq22\.com/i, API_ORIGIN);
+    }
     return trimmed;
   }
+
+  // Relative path or objectKey → build full URL
   if (trimmed.startsWith('/')) {
     return `${API_ORIGIN}${trimmed}`;
   }

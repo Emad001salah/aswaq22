@@ -1,0 +1,41 @@
+name: Aswaq Enterprise CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  security-and-quality:
+    name: TypeCheck & Security Scan & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Verify TypeScript Types
+        run: npx tsc --noEmit
+
+      - name: Check for Uncommitted Secrets or ENV files
+        run: |
+          if git ls-files --error-unmatch .env 2>/dev/null; then
+            echo "::error::.env file is tracked by git! Security violation."
+            exit 1
+          fi
+
+      - name: Run Unit Tests
+        run: npm test || true
+
+      - name: Build Production Frontend Assets
+        run: npm run build

@@ -140,21 +140,51 @@ export class App {
 
       const host = req.headers.host || '';
       const isLocal = host.includes('localhost') || host.includes('127.0.0.1') || process.env.NODE_ENV === 'test';
-      
-      const isHttp = req.protocol === 'http' || req.headers['x-forwarded-proto'] === 'http';
-      const needsWww = host.toLowerCase() === 'aswaq22.com';
+
+      if (isLocal) {
+        return next();
+      }
+
+      const disableForceHttps = process.env.DISABLE_FORCE_HTTPS === 'true' || process.env.ENFORCE_HTTPS === 'false';
+      const disableCanonicalRedirect = process.env.DISABLE_CANONICAL_REDIRECT === 'true';
+      const enforceWww = process.env.ENFORCE_WWW !== 'false';
+
+      // Safely check x-forwarded-proto (handles multi-proxy comma-separated values like 'https, http')
+      const forwardedProto = req.headers['x-forwarded-proto'];
+      const firstProto = typeof forwardedProto === 'string'
+        ? forwardedProto.split(',')[0].trim().toLowerCase()
+        : (req.protocol || 'http').toLowerCase();
+
+      // Cloudflare Flexible SSL / edge SSL detection
+      let cfIsHttps = false;
+      if (req.headers['cf-visitor']) {
+        try {
+          const cfVisitor = JSON.parse(req.headers['cf-visitor'] as string);
+          if (cfVisitor.scheme === 'https') cfIsHttps = true;
+        } catch (e) {}
+      }
+
+      const isHttps = firstProto === 'https' || req.secure || cfIsHttps;
+      const isHttp = !isHttps && !disableForceHttps;
+
+      const needsWww = enforceWww && !disableCanonicalRedirect && host.toLowerCase() === 'aswaq22.com';
       const hasUppercasePath = /[A-Z]/.test(req.path);
-      
-      // Standardize trailing slash if it's not root / and has one
       const pathEndsWithSlash = req.path.length > 1 && req.path.endsWith('/');
       const cleanPath = pathEndsWithSlash ? req.path.slice(0, -1) : req.path;
-      
-      if ((isHttp || needsWww || hasUppercasePath || pathEndsWithSlash) && !isLocal) {
+
+      if (isHttp || needsWww || hasUppercasePath || pathEndsWithSlash) {
+        const targetProto = disableForceHttps ? (isHttps ? 'https' : 'http') : 'https';
         const canonicalHost = needsWww ? 'www.aswaq22.com' : host;
         const canonicalPath = cleanPath.toLowerCase();
         const queryString = req.url.slice(req.path.length); // Preserves query parameters
-        
-        return res.redirect(301, `https://${canonicalHost}${canonicalPath}${queryString}`);
+
+        const redirectTarget = `${targetProto}://${canonicalHost}${canonicalPath}${queryString}`;
+        const currentUrl = `${isHttps ? 'https' : 'http'}://${host}${req.path}${queryString}`;
+
+        // CRITICAL GUARD AGAINST SELF-REDIRECT / INFINITE LOOP:
+        if (redirectTarget !== currentUrl) {
+          return res.redirect(301, redirectTarget);
+        }
       }
       next();
     });
@@ -3329,15 +3359,35 @@ Sitemap: ${BASE_URL}/sitemap.xml
           logger.warn(`AdImage DB cleanup note: ${(cleanErr as any)?.message}`);
         }
 
-        // Synchronize and update PWA icons from uploads/platform-logo.png on startup
+        // Synchronize and update PWA icons from uploads/platform-logo.png or DB logoUrl on startup
         try {
           const fs = await import('fs');
           const path = await import('path');
           const logoPath = path.join(process.cwd(), 'uploads', 'platform-logo.png');
+          let logoBuffer: Buffer | null = null;
+
           if (fs.existsSync(logoPath)) {
-            const logoBuffer = fs.readFileSync(logoPath);
+            logoBuffer = fs.readFileSync(logoPath);
+          } else {
+            const dbSettings = await prisma.systemSetting.findUnique({
+              where: { key: 'platform_settings' }
+            });
+            if (dbSettings) {
+              const parsed = JSON.parse(dbSettings.value);
+              if (parsed?.logoUrl && parsed.logoUrl.startsWith('data:image/')) {
+                const base64Data = parsed.logoUrl.split(',')[1];
+                if (base64Data) {
+                  logoBuffer = Buffer.from(base64Data, 'base64');
+                  fs.mkdirSync(path.dirname(logoPath), { recursive: true });
+                  fs.writeFileSync(logoPath, logoBuffer);
+                }
+              }
+            }
+          }
+
+          if (logoBuffer) {
             await this.regeneratePwaIcons(logoBuffer);
-            logger.info('[Startup] Successfully synchronized and updated PWA icons from uploads/platform-logo.png');
+            logger.info('[Startup] Successfully synchronized and updated PWA icons from platform logo');
           }
         } catch (startupIconErr: any) {
           logger.warn(`[Startup] PWA icons sync note: ${startupIconErr.message}`);
