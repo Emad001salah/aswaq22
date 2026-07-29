@@ -36,6 +36,17 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 
   public componentDidCatch(error: any, errorInfo: any) {
     console.error('[Aswaq ErrorBoundary] Caught error:', error, errorInfo);
+    const errStr = String(error?.message || error || '');
+    const isChunkError = 
+      error?.name === 'ChunkLoadError' || 
+      errStr.includes('Failed to fetch dynamically imported module') ||
+      errStr.includes('Loading chunk') ||
+      errStr.includes('Importing a module script failed');
+
+    if (isChunkError) {
+      console.warn('[Aswaq] Vercel build update detected, auto-reloading with latest bundle...');
+      window.location.reload();
+    }
   }
 
   public render() {
