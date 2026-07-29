@@ -20,6 +20,19 @@ import { resolveAdImageUrls } from '../utils/ad-image-resolver.ts';
 
 const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+export function sanitizeAvatarUrl(url?: string | null): string | null {
+  if (!url || typeof url !== 'string') return null;
+  const trimmed = url.trim();
+  if (!trimmed) return null;
+  if (trimmed.startsWith('data:image/') || trimmed.includes('r2.dev') || trimmed.includes('cloudfront') || trimmed.includes('amazonaws')) {
+    return trimmed;
+  }
+  if (trimmed.includes('/uploads/') || trimmed.includes('media.aswaq22.com')) {
+    return null;
+  }
+  return trimmed;
+}
+
 export const AdsController = (io?: Server) => {
   const router = Router();
 
@@ -137,7 +150,7 @@ export const AdsController = (io?: Server) => {
           subCategory: getLegacyName(ad.subCategoryId) || null,
           likes: ad._count?.likedBy || 0,
           userName: ad.user?.name,
-          userAvatar: ad.user?.avatar,
+          userAvatar: sanitizeAvatarUrl(ad.user?.avatar),
           userVerified: ad.user?.isVerified === 'verified'
         };
       });
@@ -239,7 +252,7 @@ export const AdsController = (io?: Server) => {
             category: getLegacyName(ad.categoryId) || '',
             subCategory: getLegacyName(ad.subCategoryId) || null,
             userName: ad.user?.name,
-            userAvatar: ad.user?.avatar,
+            userAvatar: sanitizeAvatarUrl(ad.user?.avatar),
             userVerified: ad.user?.isVerified === 'verified'
           }));
           // Sort results based on Meilisearch matched order
@@ -282,7 +295,7 @@ export const AdsController = (io?: Server) => {
         category: getLegacyName(ad.categoryId) || '',
         subCategory: getLegacyName(ad.subCategoryId) || null,
         userName: ad.user?.name,
-        userAvatar: ad.user?.avatar,
+        userAvatar: sanitizeAvatarUrl(ad.user?.avatar),
         userVerified: ad.user?.isVerified === 'verified'
       }));
 
@@ -563,7 +576,7 @@ export const AdsController = (io?: Server) => {
         imageCount: preparedImages.length,
         images: feedThumbnail ? [{ url: feedThumbnail }] : [],
         userName: adWithUser.user?.name,
-        userAvatar: adWithUser.user?.avatar,
+        userAvatar: sanitizeAvatarUrl(adWithUser.user?.avatar),
         userVerified: adWithUser.user?.isVerified === 'verified'
       } : { ...result.ad, thumbnail: null, imageCount: 0, images: [] };
 
@@ -672,7 +685,7 @@ export const AdsController = (io?: Server) => {
         highestBid,
         totalBids: (ad as any).bids ? (ad as any).bids.length : 0,
         userName: ad.user?.name,
-        userAvatar: ad.user?.avatar,
+        userAvatar: sanitizeAvatarUrl(ad.user?.avatar),
         userVerified: ad.user?.isVerified === 'verified'
       };
       res.json(mappedAd);
@@ -972,7 +985,7 @@ export const AdsController = (io?: Server) => {
         category: getLegacyName(updated.categoryId) || '',
         subCategory: getLegacyName(updated.subCategoryId) || null,
         userName: updated.user?.name,
-        userAvatar: updated.user?.avatar,
+        userAvatar: sanitizeAvatarUrl(updated.user?.avatar),
         userVerified: updated.user?.isVerified === 'verified'
       };
 
