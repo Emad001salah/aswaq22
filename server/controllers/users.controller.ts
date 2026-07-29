@@ -7,6 +7,7 @@ import { storageService } from '../services/storage.service.ts';
 import { validationMiddleware } from '../middleware/validation.ts';
 import { RegisterUserDto, LoginUserDto } from '../dto/auth.dto.ts';
 import { authMiddleware, AuthenticatedRequest } from '../middleware/auth.ts';
+import { cacheService } from '../services/cache.service.ts';
 
 export const UsersController = () => {
   const router = Router();
@@ -253,6 +254,12 @@ export const UsersController = () => {
           emailVerified: true,
         }
       });
+
+      // Invalidate Redis feed caches so all users across the platform see the updated user avatar instantly
+      try {
+        await cacheService.invalidateFeedCaches();
+      } catch (cacheErr) {}
+
       res.json(updated);
     } catch (e: any) {
       if (e.code === 'P2002') {

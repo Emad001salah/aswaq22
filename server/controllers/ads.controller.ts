@@ -151,7 +151,7 @@ export const AdsController = (io?: Server) => {
         const etag = `"ads-${cacheKey.length}-${payload.length}"`;
         res.setHeader('ETag', etag);
         res.setHeader('X-Cache', 'MISS');
-        res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=120');
+        res.setHeader('Cache-Control', 'no-cache, must-revalidate');
       }
 
       res.json(responseData);
