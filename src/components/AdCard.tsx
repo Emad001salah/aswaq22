@@ -439,11 +439,13 @@ export default React.memo(function AdCard({ ad, onClick, onLikeToggle, onChatCli
           {/* User & Trust Row */}
           {(() => {
             const cleanUserDisplayName = sanitizeName(ad.userName);
+            const isOwner = !!(currentUser && (currentUser.id === ad.userId || (currentUser.name && ad.userName && currentUser.name.trim() === ad.userName.trim())));
+            const effectiveUserAvatar = (isOwner && currentUser?.avatar) ? currentUser.avatar : ad.userAvatar;
             return (
               <div className="flex items-center gap-2 pb-1.5 border-b border-slate-100 dark:border-slate-800/40">
                 <div className="relative flex items-center justify-center">
                   <Avatar 
-                    src={ad.userAvatar} 
+                    src={effectiveUserAvatar} 
                     name={cleanUserDisplayName}
                     sizeClassName="w-5 h-5 sm:w-6 sm:h-6"
                     className="rounded-full border border-slate-200 dark:border-slate-700"
