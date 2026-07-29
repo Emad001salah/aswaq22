@@ -26,7 +26,7 @@ interface UserProfileModalProps {
 
 export default function UserProfileModal({ 
   user, 
-  ads, 
+  ads = [], 
   promoVideos = [],
   onClose, 
   onViewAd, 
@@ -36,8 +36,11 @@ export default function UserProfileModal({
   onVerifyIdentity,
   addToast,
 }: UserProfileModalProps) {
-  const displayEmail = (user.email && !user.email.includes('@phone.aswaq.com')) ? user.email : '';
-  const cleanInitialName = (!user.name || /^[A-Za-z0-9_-]{20,}$/.test(user.name.trim()) || user.name.includes('@phone.aswaq.com')) ? 'مستخدم جديد' : user.name;
+  if (!user) return null;
+
+  const displayEmail = (user.email && typeof user.email === 'string' && !user.email.includes('@phone.aswaq.com')) ? user.email : '';
+  const rawName = (user.name && typeof user.name === 'string') ? user.name.trim() : '';
+  const cleanInitialName = (!rawName || /^[A-Za-z0-9_-]{20,}$/.test(rawName) || rawName.includes('@phone.aswaq.com')) ? 'مستخدم جديد' : rawName;
 
   const [isEditing, setIsEditing] = React.useState(false);
   const [editForm, setEditForm] = React.useState({
