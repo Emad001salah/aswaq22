@@ -151,7 +151,11 @@ export const AdsController = (io?: Server) => {
           likes: ad._count?.likedBy || 0,
           userName: ad.user?.name,
           userAvatar: sanitizeAvatarUrl(ad.user?.avatar),
-          userVerified: ad.user?.isVerified === 'verified'
+          userVerified: ad.user?.isVerified === 'verified',
+          user: ad.user ? {
+            ...ad.user,
+            avatar: sanitizeAvatarUrl(ad.user.avatar)
+          } : null
         };
       });
       const nextCursor = mappedAds.length === take ? mappedAds[mappedAds.length - 1].id : undefined;
@@ -686,7 +690,11 @@ export const AdsController = (io?: Server) => {
         totalBids: (ad as any).bids ? (ad as any).bids.length : 0,
         userName: ad.user?.name,
         userAvatar: sanitizeAvatarUrl(ad.user?.avatar),
-        userVerified: ad.user?.isVerified === 'verified'
+        userVerified: ad.user?.isVerified === 'verified',
+        user: ad.user ? {
+          ...ad.user,
+          avatar: sanitizeAvatarUrl(ad.user.avatar)
+        } : null
       };
       res.json(mappedAd);
     } catch (e: any) {

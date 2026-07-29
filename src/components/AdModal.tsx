@@ -151,7 +151,8 @@ export default function AdModal({
   const rawSellerName = ad?.user?.name || ad?.userName || (isRtl ? 'بائع أسواق' : 'Aswaq Seller');
   const sellerName = sanitizeName(rawSellerName);
   const isOwner = !!(currentUser && (currentUser.id === ad?.userId || (currentUser.name && ad?.userName && currentUser.name.trim() === ad.userName.trim())));
-  const sellerAvatar = (isOwner && currentUser?.avatar) ? currentUser.avatar : (ad?.user?.avatar || ad?.userAvatar);
+  const rawSellerAvatar = isOwner ? (currentUser?.avatar || ad?.userAvatar || ad?.user?.avatar) : (ad?.userAvatar || ad?.user?.avatar);
+  const sellerAvatar = resolveMediaUrl(rawSellerAvatar);
   const [showReportForm, setShowReportForm] = useState(false);
   const [reportReason, setReportReason] = useState('');
   const [reportSent, setReportSent] = useState(false);
