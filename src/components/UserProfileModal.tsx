@@ -178,15 +178,23 @@ export default function UserProfileModal({
           
           {/* Header with Cover image/gradient */}
           <div className="h-44 sm:h-52 relative shrink-0 overflow-hidden">
-            {editForm.coverPhoto || user.coverPhoto ? (
-              <img 
-                src={resolveMediaUrl(isEditing ? (editForm.coverPhoto || user.coverPhoto) : user.coverPhoto)} 
-                className="w-full h-full object-cover"
-                alt="Cover"
-              />
-            ) : (
-              <div className="w-full h-full bg-gradient-to-l from-emerald-600 to-cyan-700" />
-            )}
+            {(() => {
+              const activeCover = isOwnProfile ? (currentUser?.coverPhoto || user.coverPhoto) : user.coverPhoto;
+              const coverSrc = resolveMediaUrl(isEditing ? (editForm.coverPhoto || activeCover) : activeCover);
+              return coverSrc ? (
+                <img 
+                  src={coverSrc} 
+                  className="w-full h-full object-cover"
+                  alt="Cover"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                  }}
+                />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-l from-emerald-600 to-cyan-700" />
+              );
+            })()}
             
             {/* Decoration overlay if no cover photo */}
             {!(editForm.coverPhoto || user.coverPhoto) && (
@@ -235,24 +243,16 @@ export default function UserProfileModal({
           <div className="px-5 sm:px-8 pb-8 relative">
             <div className="flex flex-col sm:flex-row items-center sm:items-end gap-5 sm:gap-6 -mt-16 sm:-mt-20 mb-6 sm:mb-8 text-center sm:text-right">
               <div className="relative shrink-0 group">
-                <div className="w-32 h-32 sm:w-40 sm:h-40 rounded-[2.5rem] border-8 border-slate-900 overflow-hidden shadow-2xl bg-slate-800 relative">
+                <div className="w-32 h-32 sm:w-40 sm:h-40 rounded-[2.5rem] border-8 border-slate-900 overflow-hidden shadow-2xl bg-slate-800 relative flex items-center justify-center">
                   {(() => {
-                    const avatarSrc = resolveMediaUrl(isEditing ? (editForm.avatar || user.avatar) : user.avatar);
-                    return avatarSrc ? (
-                      <img 
-                        src={avatarSrc} 
-                        alt={user.name || "Avatar"} 
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.style.display = 'none';
-                        }}
-                      />
-                    ) : (
+                    const activeAvatar = isOwnProfile ? (currentUser?.avatar || user.avatar) : user.avatar;
+                    const avatarSrc = isEditing ? (editForm.avatar || activeAvatar) : activeAvatar;
+                    return (
                       <Avatar 
-                        src={null} 
+                        src={avatarSrc} 
                         name={user.name}
                         sizeClassName="w-full h-full"
+                        className="w-full h-full text-4xl sm:text-5xl"
                       />
                     );
                   })()}
@@ -500,7 +500,21 @@ export default function UserProfileModal({
                             onClick={() => onViewAd(ad)}
                             className="w-full p-3 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-emerald-500/30 transition-all flex items-center gap-4 group text-right shadow-sm"
                           >
-                            <img src={ad.images?.[0] || 'https://images.unsplash.com/photo-1496181130204-755241544e35?auto=format&fit=crop&w=300&q=80'} className="w-16 h-14 rounded-xl object-cover shrink-0" />
+                            {(() => {
+                              const rawImg = typeof ad.thumbnail === 'string' && ad.thumbnail ? ad.thumbnail : (typeof ad.images?.[0] === 'string' ? ad.images[0] : (ad.images?.[0]?.url || ''));
+                              const adImgSrc = resolveMediaUrl(rawImg) || '/aswaq-icon.png';
+                              return (
+                                <img 
+                                  src={adImgSrc} 
+                                  alt={ad.title} 
+                                  className="w-16 h-14 rounded-xl object-cover shrink-0 border border-slate-800"
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.src = '/aswaq-icon.png';
+                                  }}
+                                />
+                              );
+                            })()}
                             <div className="flex-1 min-w-0">
                               <p className="text-xs font-black text-white truncate group-hover:text-emerald-400 transition-colors">{ad.title}</p>
                               <div className="flex items-center gap-2 mt-1.5">
