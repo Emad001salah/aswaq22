@@ -821,6 +821,26 @@ useEffect(() => {
     }
   }, [currentUser]);
 
+  // Auto-sync client avatar to backend database if user has a valid DataURL avatar for global visibility
+  useEffect(() => {
+    if (currentUser?.id && currentUser?.avatar && currentUser.avatar.startsWith('data:image/')) {
+      const syncKey = `aswaq_avatar_synced_${currentUser.id}_${currentUser.avatar.slice(-20)}`;
+      if (localStorage.getItem(syncKey) === 'true') return;
+
+      console.log('[App] Auto-syncing profile photo to PostgreSQL for global user visibility...');
+      apiFetch('/api/users/me', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ avatar: currentUser.avatar })
+      }).then((res) => {
+        if (res.ok) {
+          localStorage.setItem(syncKey, 'true');
+          console.log('[App] Profile photo successfully synced to PostgreSQL for all users!');
+        }
+      }).catch((err) => console.error('[App] Background avatar sync error:', err));
+    }
+  }, [currentUser?.id, currentUser?.avatar]);
+
   // Auto-detect and switch market based on user phone prefix
   // Set initial market based on phone prefix ONLY on initial login if user hasn't explicitly chosen a market
   useEffect(() => {
