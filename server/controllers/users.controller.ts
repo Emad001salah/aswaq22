@@ -77,8 +77,20 @@ export const UsersController = () => {
         }
       });
       if (!user) return res.status(404).json({ error: 'User not found' });
+      const sanitizeAvatar = (url?: string | null) => {
+        if (!url || typeof url !== 'string') return null;
+        let trimmed = url.trim();
+        if (!trimmed) return null;
+        if (trimmed.startsWith('data:image/') || trimmed.includes('r2.dev') || trimmed.includes('cloudfront') || trimmed.includes('amazonaws')) return trimmed;
+        if (trimmed.includes('media.aswaq22.com') || trimmed.includes('www.aswaq22.com')) {
+          trimmed = trimmed.replace(/^https?:\/\/(www\.|media\.)?aswaq22\.com/i, 'https://api.aswaq22.com');
+        }
+        return trimmed;
+      };
+
       res.json({
         ...user,
+        avatar: sanitizeAvatar(user.avatar),
         role: user.role.toLowerCase()
       });
     } catch (e: any) {
@@ -106,8 +118,21 @@ export const UsersController = () => {
         }
       });
       if (!user) return res.status(404).json({ error: 'User not found' });
+
+      const sanitizeAvatar = (url?: string | null) => {
+        if (!url || typeof url !== 'string') return null;
+        let trimmed = url.trim();
+        if (!trimmed) return null;
+        if (trimmed.startsWith('data:image/') || trimmed.includes('r2.dev') || trimmed.includes('cloudfront') || trimmed.includes('amazonaws')) return trimmed;
+        if (trimmed.includes('media.aswaq22.com') || trimmed.includes('www.aswaq22.com')) {
+          trimmed = trimmed.replace(/^https?:\/\/(www\.|media\.)?aswaq22\.com/i, 'https://api.aswaq22.com');
+        }
+        return trimmed;
+      };
+
       res.json({
         ...user,
+        avatar: sanitizeAvatar(user.avatar),
         role: user.role.toLowerCase()
       });
     } catch (e: any) {
