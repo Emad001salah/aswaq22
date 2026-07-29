@@ -439,6 +439,11 @@ export default React.memo(function AdCard({ ad, onClick, onLikeToggle, onChatCli
           {/* User & Trust Row */}
           {(() => {
             const cleanUserDisplayName = sanitizeName(ad.userName);
+            let currentUser: any = null;
+            try {
+              const storedUserStr = typeof window !== 'undefined' ? localStorage.getItem('aswaq_current_user') : null;
+              if (storedUserStr) currentUser = JSON.parse(storedUserStr);
+            } catch {}
             const isOwner = !!(currentUser && (currentUser.id === ad.userId || (currentUser.name && ad.userName && currentUser.name.trim() === ad.userName.trim())));
             const effectiveUserAvatar = (isOwner && currentUser?.avatar) ? currentUser.avatar : ad.userAvatar;
             return (
