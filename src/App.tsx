@@ -283,12 +283,13 @@ useEffect(() => {
             } catch {}
 
             const backupKey = localUser?.name ? localStorage.getItem(`aswaq_avatar_backup_${localUser.name}`) : null;
-            const localAvatar = (localUser?.avatar && localUser.avatar.startsWith('data:image/')) 
-              ? localUser.avatar 
-              : (backupKey && backupKey.startsWith('data:image/') ? backupKey : null);
+            const isDataUrl = (str?: string | null) => str && str.startsWith('data:image/');
+            const is404UploadUrl = (str?: string | null) => str && str.includes('/uploads/') && !str.includes('r2.dev') && !str.includes('cloudfront.net');
 
-            const isServer404Upload = !serverUser.avatar || (serverUser.avatar.includes('/uploads/') && !serverUser.avatar.includes('r2.dev') && !serverUser.avatar.includes('cloudfront'));
-            const safeAvatar = (localAvatar && isServer404Upload) ? localAvatar : (serverUser.avatar || localAvatar || localUser?.avatar);
+            let safeAvatar = null;
+            if (isDataUrl(localUser?.avatar)) safeAvatar = localUser.avatar;
+            else if (isDataUrl(backupKey)) safeAvatar = backupKey;
+            else if (serverUser?.avatar && !is404UploadUrl(serverUser.avatar)) safeAvatar = serverUser.avatar;
 
             const mergedUser = {
               ...localUser,
