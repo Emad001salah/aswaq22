@@ -306,7 +306,7 @@ export default function SettingsTab({
                           else { if (h > maxS) { w = Math.round((w * maxS) / h); h = maxS; } }
                           canvas.width = w; canvas.height = h;
                           const ctx = canvas.getContext('2d');
-                          if (ctx) { ctx.drawImage(img, 0, 0, w, h); resolve(canvas.toDataURL('image/webp', 0.85)); }
+                          if (ctx) { ctx.drawImage(img, 0, 0, w, h); resolve(canvas.toDataURL('image/jpeg', 0.82)); }
                           else { resolve(raw); }
                         };
                         img.onerror = () => resolve(raw);
