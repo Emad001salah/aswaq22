@@ -428,8 +428,10 @@ const readAsCompressedDataUrl = (file: File): Promise<string> => {
 
           if (storageRes.ok) {
             const storageData = await storageRes.json();
-            if (storageData.url && (storageData.url.startsWith("http://") || storageData.url.startsWith("https://"))) {
+            if (storageData.url && (storageData.url.includes("r2.dev") || storageData.url.includes("amazonaws.com") || storageData.url.includes("cloudfront.net"))) {
               uploadedUrl = storageData.url;
+            } else {
+              uploadedUrl = await readAsCompressedDataUrl(file);
             }
           }
         } catch (err) {
