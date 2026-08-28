@@ -173,7 +173,12 @@ export function OAuthController() {
       }
 
       // Default Web Client redirect
-      const baseUrl = WEB_RETURN_URL || `${req.protocol}://${req.get('host')}/`;
+      let hostHeader = req.get('host') || 'www.aswaq22.com';
+      if (hostHeader.toLowerCase() === 'aswaq22.com') {
+        hostHeader = 'www.aswaq22.com';
+      }
+      const protocol = hostHeader.includes('localhost') || hostHeader.includes('127.0.0.1') ? req.protocol : 'https';
+      const baseUrl = `${protocol}://${hostHeader}/`;
       const returnUrl = `${baseUrl}?auth=success&access_token=${encodeURIComponent(
         result.accessToken
       )}&refresh_token=${encodeURIComponent(result.refreshToken)}&user=${userParam}`;

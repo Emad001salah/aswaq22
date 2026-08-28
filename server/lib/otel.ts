@@ -24,8 +24,9 @@ if (process.env.NODE_ENV !== 'test' && !process.env.VERCEL) {
       ],
     });
     realSdk.start();
-    logger.info('[OTel] OpenTelemetry SDK initialized successfully.');
+    console.info('[OTel] OpenTelemetry SDK initialized successfully.');
   } catch (error: any) {
-    logger.warn('[OTel] OpenTelemetry SDK skipped or not loaded:', error?.message || error);
+    // OTel is optional - silently skip if not available
+    console.warn('[OTel] OpenTelemetry SDK skipped:', error?.message || error);
   }
 }

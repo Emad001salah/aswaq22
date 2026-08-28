@@ -9,7 +9,6 @@ import './index.css';
 import { ThemeProvider } from './context/ThemeContext.tsx';
 import { MarketProvider } from './context/MarketContext.tsx';
 import { Capacitor } from '@capacitor/core';
-import { getDeviceLocation } from './lib/native.ts';
 import { API_ORIGIN } from './lib/config.ts';
 
 interface ErrorBoundaryProps {
@@ -42,6 +41,18 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
       errStr.includes('Failed to fetch dynamically imported module') ||
       errStr.includes('Loading chunk') ||
       errStr.includes('Importing a module script failed');
+
+    // Report crash to backend logger for production diagnostics
+    fetch('/api/log-client-error', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: error?.message || String(error),
+        stack: error?.stack || errorInfo?.componentStack || '',
+        url: window.location.href,
+        userAgent: navigator.userAgent
+      })
+    }).catch(() => {});
 
     if (isChunkError) {
       console.warn('[Aswaq] Vercel build update detected, auto-reloading with latest bundle...');
@@ -152,7 +163,8 @@ if (Capacitor.isNativePlatform()) {
     }
   }
   navigator.geolocation.getCurrentPosition = function(success, error, options) {
-    getDeviceLocation()
+    import('./lib/native.ts')
+      .then(m => m.getDeviceLocation())
       .then(coords => {
         success({
           coords: {
@@ -175,10 +187,40 @@ if (Capacitor.isNativePlatform()) {
 }
 
 // Global window.fetch delegation to unified apiFetch (handles auth, token refresh, and URL resolution)
+if (typeof window !== 'undefined') {
+  (window as any).__rawFetch = window.fetch.bind(window);
+}
 window.fetch = function (input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   const urlStr = typeof input === 'string' ? input : (input instanceof URL ? input.href : input.url);
   return apiFetch(urlStr, init);
 };
+
+// Global client-side unhandled exception tracking
+if (typeof window !== 'undefined') {
+  const reportError = (message: string, stack: string) => {
+    // Use rawFetch (native fetch) directly to avoid looping if apiFetch itself throws
+    const rawFetch = (window as any).__rawFetch || window.fetch;
+    rawFetch('/api/log-client-error', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message,
+        stack: stack || '',
+        url: window.location.href,
+        userAgent: navigator.userAgent
+      })
+    }).catch(() => {});
+  };
+
+  window.addEventListener('error', (event) => {
+    reportError(event.message, event.error?.stack || '');
+  });
+
+  window.addEventListener('unhandledrejection', (event) => {
+    const reason = event.reason;
+    reportError(reason?.message || String(reason), reason?.stack || '');
+  });
+}
 
 
 // Register PWA Service Worker

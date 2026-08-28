@@ -119,18 +119,12 @@ export default function JobPortal({
   const isJobAd = (ad: Ad) => {
     if (!ad) return false;
     const cat = (ad.category || '').toLowerCase();
-    const sub = (ad.subCategory || '').toLowerCase();
-    const title = (ad.title || '').toLowerCase();
     return (
       cat === "jobs" ||
-      cat === "27a06a9e-3d5e-7f67-eb60-4a39536208c9" ||
+      cat === "5d9a17cb-70b9-433a-adc0-73a44c21889d" ||
       cat.includes("وظائف") ||
       cat.includes("فرص") ||
-      cat.includes("job") ||
-      sub.includes("وظائف") ||
-      title.includes("مطلوب") ||
-      title.includes("وظيفة") ||
-      title.includes("سيرة ذاتية")
+      cat.includes("job")
     );
   };
 

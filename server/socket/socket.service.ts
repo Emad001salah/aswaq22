@@ -213,6 +213,39 @@ export class SocketService {
         });
       });
 
+      // Real-time Social Network (نبض المجتمع) Sync & Broadcast
+      socket.on('get-social-posts', async () => {
+        try {
+          if (!global.sharedSocialPosts || global.sharedSocialPosts.length === 0) {
+            const setting = await prisma.systemSetting.findUnique({ where: { key: 'social_posts' } });
+            if (setting && setting.value) {
+              global.sharedSocialPosts = JSON.parse(setting.value);
+            }
+          }
+        } catch (e) {}
+        socket.emit('initial-social-posts', (global as any).sharedSocialPosts || []);
+      });
+
+      socket.on('publish-social-post', async (newPost: any) => {
+        if (!newPost || !newPost.id) return;
+        if (!global.sharedSocialPosts) global.sharedSocialPosts = [];
+        if (!global.sharedSocialPosts.some((p: any) => p.id === newPost.id)) {
+          global.sharedSocialPosts.unshift(newPost);
+          if (global.sharedSocialPosts.length > 200) global.sharedSocialPosts.pop();
+          // Save to database permanently
+          try {
+            await prisma.systemSetting.upsert({
+              where: { key: 'social_posts' },
+              create: { key: 'social_posts', value: JSON.stringify(global.sharedSocialPosts) },
+              update: { value: JSON.stringify(global.sharedSocialPosts) }
+            });
+          } catch (err) {
+            console.error('[Socket] Failed to save social post to DB:', err);
+          }
+        }
+        this.io.emit('new-social-post', newPost);
+      });
+
       socket.on('pin-product', (data: { streamId: string; productId: string | null; productTitle?: string; productPrice?: number; productImage?: string }) => {
         const stream = this.activeStreams.get(data.streamId);
         if (stream) {

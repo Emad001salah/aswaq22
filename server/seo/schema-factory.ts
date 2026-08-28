@@ -8,8 +8,10 @@ export function getWebSiteSchema(): string {
   const schema = {
     "@context": "https://schema.org",
     "@type": "WebSite",
-    "name": "أسواق",
+    "name": "منصة أسواق 22",
+    "alternateName": ["Aswaq22", "أسواق 22", "منصة أسواق"],
     "url": "https://www.aswaq22.com/",
+    "description": "بوابة التجارة والإعلانات الشاملة في 22 دولة عربية",
     "potentialAction": {
       "@type": "SearchAction",
       "target": {
@@ -26,9 +28,9 @@ export function getOrganizationSchema(): string {
   const schema = {
     "@context": "https://schema.org",
     "@type": "Organization",
-    "name": "منصة أسواق",
+    "name": "منصة أسواق 22",
     "url": "https://www.aswaq22.com/",
-    "logo": "https://www.aswaq22.com/uploads/platform-logo.png",
+    "logo": "https://www.aswaq22.com/aswaq-icon-512.png",
     "sameAs": [
       "https://www.facebook.com/aswaq22",
       "https://www.instagram.com/aswaq22"

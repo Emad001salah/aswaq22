@@ -654,20 +654,32 @@ export default function SettingsTab({
                   </button>
                   <button
                     type="button"
-                    onClick={() => {
+                    onClick={async () => {
                       if (kycStep === 1) {
                         setKycStep(2);
                         setKycPhoto(null);
                         setKycMode('idle');
                       } else {
                         setKycLoading(true);
-                        setTimeout(() => {
+                        try {
+                          await apiFetch('/api/users/verification-request', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              type: 'personal',
+                              idDocumentUrl: kycPhoto || null,
+                              notes: 'توثيق بالكاميرا المباشرة والهوية'
+                            })
+                          });
                           currentUser.verified = true;
                           setKycLoading(false);
                           setSettingsSaved(true);
-                          addToast?.("تم التوثيق بنجاح", "تهانينا! تم توثيق حسابك بالكامل بالبطاقة الشخصية ومطابقة الوجه.", "success");
+                          addToast?.("تم التوثيق بنجاح", "تهانينا! تم تقديم طلب توثيق حسابك بالهوية بنجاح للإدارة.", "success");
                           setTimeout(() => setSettingsSaved(false), 3000);
-                        }, 2000);
+                        } catch (err) {
+                          setKycLoading(false);
+                          addToast?.("خطأ في التوثيق", "حدث خطأ أثناء إرسال طلب التوثيق، حاول مجدداً.", "error");
+                        }
                       }
                     }}
                     className="h-9 px-6 rounded-full bg-emerald-500 text-slate-950 text-[10px] font-black hover:bg-emerald-400 transition-colors shadow-lg shadow-emerald-500/10"

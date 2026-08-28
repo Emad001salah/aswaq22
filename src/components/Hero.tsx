@@ -76,49 +76,49 @@ const CATEGORY_ICONS: Record<
 };
 
 const CATEGORY_BACKGROUNDS: Record<string, string> = {
-  cars: "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=400&q=50",
+  cars: "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=200&q=40",
   realestate:
-    "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=400&q=50",
+    "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=200&q=40",
   electronics:
-    "https://images.unsplash.com/photo-1526738549149-8e07eca6c147?auto=format&fit=crop&w=400&q=50",
+    "https://images.unsplash.com/photo-1526738549149-8e07eca6c147?auto=format&fit=crop&w=200&q=40",
   phones:
-    "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=400&q=50",
+    "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=200&q=40",
   laptops:
-    "https://images.unsplash.com/photo-1603481588273-2f908a9a7a1b?auto=format&fit=crop&w=400&q=50",
+    "https://images.unsplash.com/photo-1603481588273-2f908a9a7a1b?auto=format&fit=crop&w=200&q=40",
   rentals:
-    "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=400&q=50",
+    "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=200&q=40",
   hotels:
-    "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=400&q=50",
+    "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=200&q=40",
   resorts:
-    "https://images.unsplash.com/photo-1540541338287-41700207dee6?auto=format&fit=crop&w=400&q=50",
+    "https://images.unsplash.com/photo-1540541338287-41700207dee6?auto=format&fit=crop&w=200&q=40",
   car_rental:
-    "https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?auto=format&fit=crop&w=400&q=50",
+    "https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?auto=format&fit=crop&w=200&q=40",
   furniture:
-    "https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&fit=crop&w=400&q=50",
+    "https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&fit=crop&w=200&q=40",
   clothing:
-    "https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?auto=format&fit=crop&w=400&q=50",
-  jobs: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=400&q=50",
+    "https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?auto=format&fit=crop&w=200&q=40",
+  jobs: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=200&q=40",
   services:
-    "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=400&q=50",
+    "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=200&q=40",
   livestock:
-    "https://images.unsplash.com/photo-1500595046743-cd271d694d30?auto=format&fit=crop&w=400&q=50",
+    "https://images.unsplash.com/photo-1500595046743-cd271d694d30?auto=format&fit=crop&w=200&q=40",
   bicycles:
-    "https://images.unsplash.com/photo-1485965120184-e220f721d03e?auto=format&fit=crop&w=400&q=50",
+    "https://images.unsplash.com/photo-1485965120184-e220f721d03e?auto=format&fit=crop&w=200&q=40",
   trucks:
-    "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=400&q=50",
+    "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=200&q=40",
   educational:
-    "https://images.unsplash.com/photo-1497633762265-9d179a990aa6?auto=format&fit=crop&w=400&q=50",
-  food: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=400&q=50",
+    "https://images.unsplash.com/photo-1497633762265-9d179a990aa6?auto=format&fit=crop&w=200&q=40",
+  food: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=200&q=40",
   medical:
-    "https://images.unsplash.com/photo-1505751172876-fa1923c5c528?auto=format&fit=crop&w=400&q=50",
+    "https://images.unsplash.com/photo-1505751172876-fa1923c5c528?auto=format&fit=crop&w=200&q=40",
   perfumes:
-    "https://images.unsplash.com/photo-1541643600914-78b084683601?auto=format&fit=crop&w=400&q=50",
-  construction:
-    "https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=400&q=50",
-  custom_work:
-    "https://images.unsplash.com/photo-1513519245088-0e12902e5a38?auto=format&fit=crop&w=400&q=50",
+    "https://images.unsplash.com/photo-1541643600914-78b084683601?auto=format&fit=crop&w=200&q=40",
+  watches:
+    "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=200&q=40",
+  gaming:
+    "https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&w=200&q=40",
   other:
-    "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=400&q=50",
+    "https://images.unsplash.com/photo-1513519245088-0e12902e5a38?auto=format&fit=crop&w=200&q=40",
 };
 
 function getCategoryKey(cat: any): string {
@@ -464,6 +464,7 @@ export default function Hero({
             <div className={`flex items-center px-6 transition-colors ${isRtl ? 'md:border-r' : 'md:border-l'} ${isDark ? 'bg-slate-900 border-slate-800 focus-within:bg-slate-800/50' : 'bg-white border-slate-100 focus-within:bg-emerald-50/30'}`}>
               <MapPin className="w-5 h-5 text-emerald-500 shrink-0" />
               <select
+                aria-label={t('hero.allRegions') || 'اختر المدينة والمحافظة'}
                 className={`w-full md:w-auto bg-transparent text-sm h-14 md:h-18 outline-none cursor-pointer font-black appearance-none mx-2 pr-2 transition-colors ${isRtl ? 'text-right' : 'text-left'} ${isDark ? 'text-slate-300' : 'text-slate-700'}`}
                 style={{ direction: isRtl ? 'rtl' : 'ltr' }}
                 value={city}
@@ -693,9 +694,98 @@ export default function Hero({
                  }}
                  className="text-[10px] font-black text-emerald-500 hover:text-emerald-400 underline underline-offset-4 decoration-emerald-500/30 shrink-0 cursor-pointer"
                >
-                 {t('hero.showMap')}
+                {t('hero.showMap')}
                </button>
              </div>
+
+             {/* Rich Prominent Featured VIP Ads Strip (Right Under Search & Cities) */}
+              {ads && ads.some(a => a.isFeatured) && (
+                <div className="w-full mt-3 mb-6">
+                  <div className="p-1 transition-all">
+                    <div className="flex items-center justify-between mb-3 px-1">
+                      <div className="flex items-center gap-2 text-amber-500 font-black text-sm">
+                        <span className="text-base animate-bounce">⭐</span>
+                        <span className="text-slate-800 dark:text-slate-200 font-extrabold text-xs sm:text-sm">{isRtl ? 'إعلانات مميزة مختارة' : 'Featured VIP Ads'}</span>
+                        <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-amber-500 text-slate-950 shadow-sm">
+                          VIP
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">
+                        {isRtl ? 'أفضل الفرص في المقدمة' : 'Top Deals First'}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3.5 overflow-x-auto no-scrollbar py-1">
+                     {ads.filter(a => a.isFeatured).map(ad => {
+                       // Robust image extraction matching AdCard logic
+                       const thumbnailUrl = (ad as any)?.thumbnail as string | undefined;
+                       let safeImgs: string[] = [];
+                       if (Array.isArray(ad?.images)) {
+                         safeImgs = ad.images;
+                       } else if (ad?.images && typeof ad.images === 'string') {
+                         try {
+                           const parsed = JSON.parse(ad.images);
+                           if (Array.isArray(parsed)) safeImgs = parsed;
+                         } catch (e) {}
+                       }
+                       const rawList = safeImgs.map((img: any) => (img && typeof img === 'object' ? img.url : img)).filter(Boolean);
+                       const rawImg = thumbnailUrl || rawList[0] || (ad as any).image || (ad as any).imageUrl || (ad as any).media || '';
+                       const mainImg = rawImg ? resolveMediaUrl(rawImg) : 'https://images.unsplash.com/photo-1496181130204-755241544e35?auto=format&fit=crop&w=400&q=80';
+                       
+                       const cityObj = currentMarket?.cities?.find(c => c.id === ad.city);
+                       const cityName = cityObj ? (isRtl ? cityObj.nameAr : cityObj.nameEn) : ad.city;
+
+                       return (
+                         <button
+                           key={`hero-vip-rich-${ad.id}`}
+                           onClick={() => onSelectAd(ad)}
+                           className={`group relative flex items-center gap-3.5 p-2.5 pr-3.5 rounded-2xl border transition-all duration-300 shrink-0 cursor-pointer text-right ${
+                             isDark 
+                               ? 'bg-slate-900/90 hover:bg-slate-850 border-amber-500/30 hover:border-amber-400 hover:shadow-lg hover:shadow-amber-500/20' 
+                               : 'bg-white hover:bg-amber-50/70 border-amber-200 hover:border-amber-400 shadow-md shadow-amber-500/5 hover:shadow-lg'
+                           }`}
+                         >
+                           {/* Prominent Image Thumbnail Box */}
+                           <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden shrink-0 border border-amber-500/30 bg-slate-800 shadow-sm">
+                             <img 
+                               src={mainImg} 
+                               alt={ad.title} 
+                               onError={(e) => {
+                                 (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1496181130204-755241544e35?auto=format&fit=crop&w=400&q=80';
+                               }}
+                               className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
+                             />
+                             <span className="absolute top-1 right-1 bg-amber-500 text-slate-950 text-[8px] font-black px-1.5 py-0.5 rounded-md shadow-sm">
+                               ✨ مميز
+                             </span>
+                           </div>
+
+                           {/* Ad Info Details */}
+                           <div className="flex flex-col justify-between h-16 sm:h-20 max-w-[180px] sm:max-w-[220px]">
+                             <h4 className={`text-xs font-black line-clamp-2 leading-snug transition-colors ${
+                               isDark ? 'text-slate-100 group-hover:text-amber-300' : 'text-slate-900 group-hover:text-amber-700'
+                             }`}>
+                               {ad.title}
+                             </h4>
+
+                             <div className="flex items-center gap-2 mt-auto">
+                               {cityName && (
+                                 <span className="text-[9px] font-bold text-slate-400 dark:text-slate-400 flex items-center gap-0.5">
+                                   <MapPin className="w-2.5 h-2.5 text-amber-500" />
+                                   {cityName}
+                                 </span>
+                               )}
+                               <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-lg border border-emerald-500/20 mr-auto">
+                                 {ad.price ? `${ad.price.toLocaleString()} ${ad.currency || ''}` : (isRtl ? 'مجاناً' : 'Free')}
+                               </span>
+                             </div>
+                           </div>
+                         </button>
+                       );
+                     })}
+                   </div>
+                 </div>
+               </div>
+             )}
           </div>
 
           <div className={`flex items-center justify-between xl:justify-start xl:gap-8 mb-6 pb-2 ${isRtl ? 'flex-row' : 'flex-row-reverse'}`}>
@@ -713,8 +803,8 @@ export default function Hero({
                const catKey = getCategoryKey(cat);
                const worksAsSelected = category === cat.id;
                const IconComponent = CATEGORY_ICONS[catKey] || Hexagon;
-               const bgImage =
-                 CATEGORY_BACKGROUNDS[catKey] || CATEGORY_BACKGROUNDS.other;
+               const rawBgImage = CATEGORY_BACKGROUNDS[catKey] || CATEGORY_BACKGROUNDS.other;
+               const bgImage = `/api/proxy-image?url=${encodeURIComponent(rawBgImage)}`;
 
                const isPromoted = index === 0 || index === 1;
 
@@ -723,15 +813,27 @@ export default function Hero({
                    key={cat.id}
                    type="button"
                    onClick={() => handleCategorySelect(cat.id)}
-                   className={`relative p-5 rounded-2xl flex flex-col items-center justify-between text-center h-[130px] outline-none group cursor-pointer transition-all duration-300 overflow-hidden border ${
+                   aria-label={isRtl ? cat.nameAr : cat.nameEn}
+                   className={`relative p-2.5 py-3.5 rounded-xl flex flex-col items-center justify-between text-center h-[96px] outline-none group cursor-pointer transition-all duration-300 overflow-hidden border ${
                      worksAsSelected
                        ? "border-emerald-500 shadow-xl shadow-emerald-500/20 scale-105 z-10"
-                       : isDark ? "border-slate-800 hover:border-emerald-500" : "border-slate-100 hover:border-emerald-400 shadow-sm shadow-slate-100/50"
+                       : isDark ? "bg-slate-900 border-slate-800 hover:border-emerald-500" : "bg-white border-slate-100 hover:border-emerald-400 shadow-sm shadow-slate-100/50"
                    }`}
                    id={`hero-category-${cat.id}`}
                  >
                    {/* Background Image */}
-                   <img src={bgImage || 'https://images.unsplash.com/photo-1541746972996-4e0b0f43e01a?auto=format&fit=crop&w=600&q=80'} className={`absolute inset-0 w-full h-full object-cover transition-all duration-500 ${worksAsSelected ? "opacity-100 scale-105" : "opacity-80 group-hover:scale-110 group-hover:opacity-100 saturate-[0.25] group-hover:saturate-100"}`} alt="" />
+                   <img 
+                      src={bgImage || 'https://images.unsplash.com/photo-1541746972996-4e0b0f43e01a?auto=format&fit=crop&w=600&q=80'} 
+                      referrerPolicy="no-referrer"
+                      loading="lazy"
+                      decoding="async"
+                      aria-hidden="true"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                      }}
+                      className={`absolute inset-0 w-full h-full object-cover transition-all duration-500 ${worksAsSelected ? "opacity-100 scale-105" : "opacity-80 group-hover:scale-110 group-hover:opacity-100 saturate-[0.25] group-hover:saturate-100"}`} 
+                      alt="" 
+                    />
                    {/* Gradient Overlay - Adds the artistic touch */}
                    <div
                      className={`absolute inset-0 transition-all duration-500 ${worksAsSelected ? "bg-emerald-900/30 dark:bg-slate-900/40 mix-blend-multiply" : isDark ? "bg-slate-950/75 group-hover:bg-slate-950/30" : "bg-white/75 group-hover:bg-white/30"}`}
@@ -741,19 +843,19 @@ export default function Hero({
                    />
 
                    {isPromoted && !worksAsSelected && (
-                     <span className={`absolute top-2 bg-gradient-to-r from-amber-400 to-amber-500 text-amber-950 text-[9px] font-black px-2 py-0.5 rounded-full shadow-sm z-20 ${isRtl ? 'right-2' : 'left-2'}`}>
+                     <span className={`absolute top-1 bg-gradient-to-r from-amber-400 to-amber-500 text-amber-950 text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-sm z-20 ${isRtl ? 'right-1' : 'left-1'}`}>
                        {isRtl ? 'رائج' : 'Hot'}
                      </span>
                    )}
 
                    <div
-                     className={`mt-2 transition-transform duration-300 relative z-10 ${worksAsSelected ? "scale-110 text-white" : isDark ? "text-emerald-400 group-hover:scale-110 group-hover:-translate-y-1" : "text-emerald-700 group-hover:scale-110 group-hover:-translate-y-1"}`}
+                     className={`mt-1 transition-transform duration-300 relative z-10 ${worksAsSelected ? "scale-105 text-white" : isDark ? "text-emerald-400 group-hover:scale-105 group-hover:-translate-y-0.5" : "text-emerald-700 group-hover:scale-105 group-hover:-translate-y-0.5"}`}
                    >
-                     <IconComponent className="w-10 h-10 stroke-[2.5]" />
+                     <IconComponent className="w-7 h-7 stroke-[2]" />
                    </div>
 
                    <div
-                     className={`text-[12px] sm:text-[14px] font-bold leading-snug select-none tracking-tight w-full line-clamp-2 mt-auto relative z-10 p-1.5 rounded-lg ${worksAsSelected ? "text-white font-black drop-shadow-md" : isDark ? "text-slate-200" : "text-slate-800"}`}
+                     className={`text-[10px] sm:text-[11.5px] font-bold leading-tight select-none tracking-tight w-full line-clamp-2 mt-auto relative z-10 p-0.5 rounded-lg ${worksAsSelected ? "text-white font-black drop-shadow-md" : isDark ? "text-slate-200" : "text-slate-800"}`}
                    >
                      {isRtl ? cat.nameAr : cat.nameEn}
                    </div>

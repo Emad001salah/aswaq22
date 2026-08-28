@@ -5,9 +5,7 @@
  */
 
 const isBrowser = typeof window !== 'undefined';
-const isLocalhost = isBrowser && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-
-const defaultUrl = isLocalhost ? 'http://localhost:5000' : 'https://api.aswaq22.com';
+const defaultUrl = isBrowser ? window.location.origin : 'https://api.aswaq22.com';
 const rawApiUrl = (import.meta.env.VITE_API_URL as string | undefined) || defaultUrl;
 
 /** API origin without any `/api` suffix or trailing slash, e.g. https://api.aswaq22.com */
@@ -62,19 +60,31 @@ export function resolveMediaUrl(url?: string | null): string {
     trimmed = `/uploads${trimmed}`;
   }
 
-  // If it's already a full URL (http/https), normalize any domain mismatches
+  // If it's already a full URL (http/https), check if it points to R2/uploads and route via backend proxy
   if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
-    // Fix wrong domain (www or media subdomain) → correct API origin
-    if (trimmed.includes('/uploads/')) {
-      trimmed = trimmed.replace(/^https?:\/\/(www\.|media\.|api\.)?aswaq22\.com\/uploads\//i, `${API_ORIGIN}/uploads/`);
+    if (trimmed.includes('r2.dev/')) {
+      const parts = trimmed.split('r2.dev/');
+      const key = parts[1];
+      if (key) {
+        return `${API_ORIGIN}/api/storage/serve?key=${encodeURIComponent(key)}`;
+      }
     }
-    if (trimmed.startsWith('https://media.aswaq22.com') || trimmed.startsWith('http://media.aswaq22.com')) {
-      trimmed = trimmed.replace(/^https?:\/\/media\.aswaq22\.com/i, API_ORIGIN);
+    if (trimmed.includes('/uploads/')) {
+      const idx = trimmed.indexOf('/uploads/');
+      const key = trimmed.substring(idx + 1); // "uploads/..."
+      return `${API_ORIGIN}/api/storage/serve?key=${encodeURIComponent(key)}`;
     }
     return trimmed;
   }
 
-  // Relative path or objectKey → build full URL
+  // Relative path or objectKey → route via backend proxy
+  if (trimmed.startsWith('uploads/')) {
+    return `${API_ORIGIN}/api/storage/serve?key=${encodeURIComponent(trimmed)}`;
+  }
+  if (trimmed.startsWith('/uploads/')) {
+    return `${API_ORIGIN}/api/storage/serve?key=${encodeURIComponent(trimmed.substring(1))}`;
+  }
+
   if (trimmed.startsWith('/')) {
     return `${API_ORIGIN}${trimmed}`;
   }

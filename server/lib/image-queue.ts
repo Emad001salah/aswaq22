@@ -1,6 +1,6 @@
 import { Queue, Worker, Job } from 'bullmq';
-import { redis } from '../../src/lib/redis.ts';
 import { logger } from './logger.ts';
+import { redis } from '../../src/lib/redis.ts';
 import { processAdImageJob } from '../workers/image-resize.worker.ts';
 
 export interface AdImageJobData {
@@ -11,13 +11,21 @@ export interface AdImageJobData {
 
 const QUEUE_NAME = 'ad-image-processing';
 
-// Redis connection options for BullMQ
-const connection = redis ? (redis as any).options : { host: '127.0.0.1', port: 6379 };
+// Redis connection options for BullMQ — use env vars directly since redis facade
+// does not expose an ioredis instance reference.
+const connection = {
+  host: process.env.REDIS_HOST || '127.0.0.1',
+  port: parseInt(process.env.REDIS_PORT || '6379'),
+  password: process.env.REDIS_PASSWORD || undefined,
+  // BullMQ requires lazyConnect=false (default), maxRetriesPerRequest=null
+  maxRetriesPerRequest: null,
+  enableReadyCheck: false,
+};
 
 export let imageQueue: Queue<AdImageJobData> | null = null;
 export let imageWorker: Worker<AdImageJobData> | null = null;
 
-if (process.env.NODE_ENV !== 'test') {
+if (process.env.NODE_ENV !== 'test' && redis.getClient()) {
   try {
     imageQueue = new Queue<AdImageJobData>(QUEUE_NAME, {
       connection,

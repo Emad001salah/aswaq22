@@ -1,4 +1,4 @@
-const CACHE_NAME = 'aswaq-pwa-cache-v28-icon-update';
+const CACHE_NAME = 'aswaq-cache-v5';
 const ASSETS_TO_CACHE = [
   '/aswaq-icon.png',
   '/aswaq-icon-192.png',
@@ -44,8 +44,24 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Exclude API routes, Live streams, Socket.io, and non-HTTP(S) schemes
-  if (url.pathname.startsWith('/api') || url.pathname.startsWith('/socket') || request.method !== 'GET' || !url.protocol.startsWith('http')) {
+  // Exclude all cross-origin requests, video/audio media, API routes, WebSockets, and non-GET requests
+  if (
+    url.origin !== self.location.origin ||
+    url.pathname.startsWith('/api') || 
+    url.pathname.startsWith('/socket') || 
+    request.method !== 'GET' || 
+    !url.protocol.startsWith('http') ||
+    request.destination === 'video' ||
+    request.destination === 'audio' ||
+    request.headers.has('range') ||
+    url.pathname.match(/\.(mp4|webm|ogg|mp3|wav|m4v)$/i) ||
+    url.hostname.includes('vimeo.com') ||
+    url.hostname.includes('youtube.com') ||
+    url.hostname.includes('cloudflareinsights.com') ||
+    url.hostname.includes('unsplash.com') ||
+    url.hostname.includes('gstatic.com') ||
+    url.hostname.includes('googleapis.com')
+  ) {
     return;
   }
 
@@ -57,16 +73,74 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Caching Strategy: Network-First for CSS & Assets, fallback to cache
+  // Caching Strategy: Network-First for same-origin static assets
   event.respondWith(
     fetch(request)
       .then((response) => {
-        if (response && response.status === 200) {
+        if (response && response.status === 200 && response.type === 'basic') {
           const responseClone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone).catch(() => {}));
         }
         return response;
       })
-      .catch(() => caches.match(request) || caches.match('/'))
+      .catch(async () => {
+        const matched = await caches.match(request);
+        return matched || fetch(request);
+      })
   );
 });
+
+// Push Notification Event - Trigger phone alert sound and vibration even when app is in background/pocket
+self.addEventListener('push', (event) => {
+  let data = {
+    title: 'منصة أسواق 22',
+    body: 'لديك تنبيه جديد في المنصة',
+    icon: '/aswaq-icon-192.png',
+    badge: '/aswaq-icon-192.png',
+    url: '/'
+  };
+
+  if (event.data) {
+    try {
+      data = Object.assign(data, event.data.json());
+    } catch {
+      data.body = event.data.text();
+    }
+  }
+
+  const options = {
+    body: data.body,
+    icon: data.icon || '/aswaq-icon-192.png',
+    badge: data.badge || '/aswaq-icon-192.png',
+    vibrate: [300, 100, 300, 100, 300], // Phone vibration pattern
+    tag: 'aswaq-notification',
+    renotify: true,
+    data: {
+      url: data.url || '/'
+    }
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(data.title, options)
+  );
+});
+
+// Notification Click Event - Open app window when user taps notification
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const targetUrl = (event.notification.data && event.notification.data.url) || '/';
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if (client.url === targetUrl && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      if (clients.openWindow) {
+        return clients.openWindow(targetUrl);
+      }
+    })
+  );
+});
+

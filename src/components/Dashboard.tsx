@@ -175,6 +175,8 @@ export default function Dashboard({
             partnerName: mockUserObj.name,
             partnerAvatar: mockUserObj.avatar,
             adTitle: adObj ? adObj.title : "إعلان مؤرشف",
+            adCategory: adObj ? (adObj.category || "") : "",
+            adObj: adObj,
             adImage:
               adObj && adObj.images
                 ? (typeof adObj.images[0] === 'object' ? (adObj.images[0] as any).url : adObj.images[0])
@@ -554,7 +556,11 @@ export default function Dashboard({
                   const res = await fetch(`/api/ads/${ad.id}`);
                   if (res.ok) {
                     const fullAd = await res.json();
-                    setEditingAd(fullAd);
+                    if (fullAd && (fullAd.id === ad.id || !ad.id)) {
+                      setEditingAd(fullAd);
+                    } else {
+                      setEditingAd(ad);
+                    }
                   } else {
                     setEditingAd(ad);
                   }

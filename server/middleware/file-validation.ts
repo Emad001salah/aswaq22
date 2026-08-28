@@ -1,15 +1,7 @@
 /**
  * server/middleware/file-validation.ts
  *
- * فحص الملفات قبل المعالجة
- * ────────────────────────
- * - Magic Bytes: يتحقق أن الملف فعلاً صورة، لا مجرد MIME مزيف
- * - SVG/XML: يمنع XSS vectors مخفية
- * - MIME Allowlist: jpeg, png, webp, avif فقط
- * - حجم: 10MB كحد أقصى
- *
- * ملاحظة: ClamAV يُضاف عند الحاجة لامتثال خاص (healthcare, government).
- * لمنصة مثل Aswaq22، Magic Bytes كافية وأسرع بكثير.
+ * File Validation for Media Uploads (Images, Videos, Audio)
  */
 
 export interface ValidationResult {
@@ -18,6 +10,7 @@ export interface ValidationResult {
 }
 
 const ALLOWED_MIME_TYPES = new Set([
+  // Images
   'image/jpeg',
   'image/jpg',
   'image/png',
@@ -30,49 +23,34 @@ const ALLOWED_MIME_TYPES = new Set([
   'image/tiff',
   'image/x-bmp',
   'image/x-tiff',
+  // Videos
+  'video/mp4',
+  'video/webm',
+  'video/quicktime',
+  'video/x-matroska',
+  'video/ogg',
+  'video/x-msvideo',
+  'video/3gpp',
+  // Audio
+  'audio/mpeg',
+  'audio/mp3',
+  'audio/wav',
+  'audio/m4a',
+  'audio/x-m4a',
+  'audio/webm',
+  'audio/ogg',
+  'audio/aac',
+  'audio/flac',
 ]);
 
-const MAX_FILE_SIZE_BYTES = 15 * 1024 * 1024; // 15 MB
+const ALLOWED_EXTENSIONS = new Set([
+  'jpg', 'jpeg', 'png', 'webp', 'avif', 'heic', 'heif', 'gif', 'bmp', 'tiff', 'tif',
+  'mp4', 'webm', 'mov', 'mkv', 'ogv', 'avi', '3gp',
+  'mp3', 'wav', 'm4a', 'ogg', 'aac', 'flac'
+]);
 
-/**
- * Magic Bytes الخاصة بكل نوع صورة
- * (أول N بايتات من الملف)
- */
-const MAGIC_SIGNATURES: Record<string, number[][]> = {
-  'image/jpeg': [
-    [0xFF, 0xD8, 0xFF, 0xE0],  // JFIF
-    [0xFF, 0xD8, 0xFF, 0xE1],  // Exif
-    [0xFF, 0xD8, 0xFF, 0xDB],  // Raw JPEG
-    [0xFF, 0xD8, 0xFF, 0xEE],  // Adobe
-  ],
-  'image/jpg': [
-    [0xFF, 0xD8, 0xFF, 0xE0],
-    [0xFF, 0xD8, 0xFF, 0xE1],
-    [0xFF, 0xD8, 0xFF, 0xDB],
-  ],
-  'image/png': [
-    [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A],  // PNG header
-  ],
-  'image/webp': [
-    [0x52, 0x49, 0x46, 0x46],  // RIFF header (تحقق إضافي: bytes 8-11 = "WEBP")
-  ],
-  'image/gif': [
-    [0x47, 0x49, 0x46, 0x38, 0x37, 0x61],  // GIF87a
-    [0x47, 0x49, 0x46, 0x38, 0x39, 0x61],  // GIF89a
-  ],
-  // HEIC/HEIF: يستخدمان ISOBMFF container — نتحقق منهما بطريقة خاصة مثل AVIF
-  'image/heic': [],
-  'image/heif': [],
-  'image/avif': [
-    // AVIF يستخدم container ISOBMFF — أكثر مرونة
-    // نتحقق من فتغ "ftyp"
-    [0x00, 0x00, 0x00],  // placeholder — سنتحقق بطريقة خاصة
-  ],
-};
+const MAX_FILE_SIZE_BYTES = 60 * 1024 * 1024; // 60 MB
 
-/**
- * التحقق الرئيسي من صحة الملف
- */
 export function validateUploadedFile(
   buffer: Buffer,
   declaredMime: string,
@@ -86,58 +64,45 @@ export function validateUploadedFile(
   }
   if (buffer.length > MAX_FILE_SIZE_BYTES) {
     const sizeMB = (buffer.length / 1024 / 1024).toFixed(1);
-    return { valid: false, reason: `حجم الملف (${sizeMB}MB) يتجاوز الحد الأقصى (10MB)` };
+    return { valid: false, reason: `حجم الملف (${sizeMB}MB) يتجاوز الحد الأقصى (60MB)` };
   }
 
   // ── 2. MIME مسموح ────────────────────────────────────────────────────
-  if (!ALLOWED_MIME_TYPES.has(mime)) {
-    return { valid: false, reason: `نوع الملف "${mime}" غير مسموح. المسموح: JPEG, PNG, WebP, AVIF` };
+  if (!ALLOWED_MIME_TYPES.has(mime) && !mime.startsWith('image/') && !mime.startsWith('video/') && !mime.startsWith('audio/')) {
+    return { valid: false, reason: `نوع الملف "${mime}" غير مسموح.` };
   }
 
-  // ── 3. Relaxed Magic Bytes Check ──────────────────────────────────────
+  // ── 3. Magic Bytes Check for common image files ─────────────────────────
   if (mime === 'image/jpeg' || mime === 'image/jpg') {
-    // Every valid JPEG starts with SOI marker 0xFF 0xD8
     if (buffer[0] !== 0xFF || buffer[1] !== 0xD8) {
-      return { valid: false, reason: 'ملف JPG/JPEG غير صالح (magic bytes)' };
+      return { valid: false, reason: 'ملف JPG/JPEG غير صالح' };
     }
   } else if (mime === 'image/png') {
-    // Every PNG starts with 0x89, 'P', 'N', 'G'
     if (buffer[0] !== 0x89 || buffer[1] !== 0x50 || buffer[2] !== 0x4E || buffer[3] !== 0x47) {
-      return { valid: false, reason: 'ملف PNG غير صالح (magic bytes)' };
-    }
-  } else if (mime === 'image/webp') {
-    // WebP must contain "RIFF" and "WEBP"
-    const isRiff = buffer.slice(0, 4).toString('ascii') === 'RIFF';
-    const isWebp = buffer.slice(8, 12).toString('ascii') === 'WEBP';
-    if (!isRiff || !isWebp) {
-      return { valid: false, reason: 'ملف WebP غير صالح (magic bytes)' };
-    }
-  } else if (mime === 'image/gif') {
-    // Every GIF starts with 'GIF'
-    if (buffer.slice(0, 3).toString('ascii') !== 'GIF') {
-      return { valid: false, reason: 'ملف GIF غير صالح (magic bytes)' };
+      return { valid: false, reason: 'ملف PNG غير صالح' };
     }
   }
 
   // ── 4. منع SVG/XML/HTML مخفية (XSS Vector) ──────────────────────────
-  const startStr = buffer.slice(0, 300).toString('utf8', 0, 300).toLowerCase();
-  const dangerousPatterns = ['<svg', '<?xml', '<html', '<!doctype', '<script', 'javascript:'];
-  const foundDangerous = dangerousPatterns.find(p => startStr.includes(p));
-  if (foundDangerous) {
-    return {
-      valid: false,
-      reason: `محتوى الملف يحتوي على "${foundDangerous}" وهو غير مسموح للأمان`,
-    };
-  }
-
-  // ── 5. امتداد الملف يجب أن يتطابق ───────────────────────────────────
-  if (filename) {
-    const ext = filename.split('.').pop()?.toLowerCase();
-    const allowedExtensions = new Set(['jpg', 'jpeg', 'png', 'webp', 'avif', 'heic', 'heif', 'gif', 'bmp', 'tiff', 'tif']);
-    if (ext && !allowedExtensions.has(ext)) {
+  if (mime.startsWith('image/')) {
+    const startStr = buffer.slice(0, 300).toString('utf8', 0, 300).toLowerCase();
+    const dangerousPatterns = ['<svg', '<?xml', '<html', '<!doctype', '<script', 'javascript:'];
+    const foundDangerous = dangerousPatterns.find(p => startStr.includes(p));
+    if (foundDangerous) {
       return {
         valid: false,
-        reason: `امتداد الملف ".${ext}" غير مسموح. المسموح: jpg, jpeg, png, webp, avif, heic, gif, bmp`,
+        reason: `محتوى الملف يحتوي على "${foundDangerous}" وهو غير مسموح للأمان`,
+      };
+    }
+  }
+
+  // ── 5. امتداد الملف ───────────────────────────────────
+  if (filename) {
+    const ext = filename.split('.').pop()?.toLowerCase();
+    if (ext && !ALLOWED_EXTENSIONS.has(ext)) {
+      return {
+        valid: false,
+        reason: `امتداد الملف ".${ext}" غير مدعوم.`,
       };
     }
   }

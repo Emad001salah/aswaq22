@@ -135,7 +135,7 @@ export default function DeliveryDashboard({
     const lat = pickupCoords?.lat || currentMarket.center.lat;
     const lng = pickupCoords?.lng || currentMarket.center.lng;
     
-    fetch(`/api/v1/shipping/agents/nearby?lat=${lat}&lng=${lng}&radius=15`)
+    fetch(`/api/v1/agents/nearby?lat=${lat}&lng=${lng}&radius=15`)
       .then(res => res.json())
       .then(resData => {
         if (resData.success && Array.isArray(resData.data)) {

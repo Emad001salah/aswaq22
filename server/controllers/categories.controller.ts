@@ -102,6 +102,7 @@ export const CategoriesController = (adminAccessGuards: any[]) => {
           nameEn,
         },
       });
+      await redis.del(CATEGORIES_CACHE_KEY);
       res.status(201).json(subCategory);
     } catch (err) {
       next(err);
@@ -115,6 +116,7 @@ export const CategoriesController = (adminAccessGuards: any[]) => {
       await prisma.subCategory.delete({
         where: { id: subId },
       });
+      await redis.del(CATEGORIES_CACHE_KEY);
       res.json({ success: true });
     } catch (err) {
       next(err);

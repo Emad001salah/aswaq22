@@ -30,6 +30,11 @@ model User {
   // حقول الأمان والمصادقة المضافة للإنتاج
   phoneVerified    Boolean             @default(false) @map("phone_verified")
   emailVerified    Boolean             @default(false) @map("email_verified")
+  verificationType String?             @default("personal") @map("verification_type") // 'personal', 'merchant', 'driver'
+  idDocumentUrl    String?             @db.Text @map("id_document_url")
+  driverLicenseUrl String?             @db.Text @map("driver_license_url")
+  commercialRegUrl String?             @db.Text @map("commercial_reg_url")
+  verificationNote String?             @map("verification_note")
   lastLoginAt      DateTime?           @map("last_login_at")
   deletedAt        DateTime?           @map("deleted_at")
 
@@ -108,6 +113,8 @@ model Ad {
   videoUrl      String?
   contactNumber String?
   isAuction     Boolean        @default(false)
+  isFeatured    Boolean        @default(false) @map("is_featured")
+  featuredUntil DateTime?      @map("featured_until")
   startingPrice Float?        @map("starting_price")
   minBidStep    Float?        @default(5) @map("min_bid_step")
   auctionEndsAt DateTime?     @map("auction_ends_at")

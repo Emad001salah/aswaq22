@@ -1,6 +1,7 @@
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
+ * Aswaq v2.4.1 - Fresh Clean Production Build
  */
 
 "use client";
@@ -32,7 +33,7 @@ import {
   Sliders,
   RotateCcw,
   Home,
-  Map,
+  Map as MapIcon,
   ChevronLeft,
   Briefcase,
   Car,
@@ -52,9 +53,11 @@ import {
   Share2,
   Navigation,
   Star,
-  Trash2
+  Trash2,
+  TrendingUp
 } from "lucide-react";
 import PwaInstallPrompt from "./components/PwaInstallPrompt.tsx";
+import { Avatar } from "./components/Avatar.tsx";
 
 import { User, Ad, ChatMessage, AppNotification, UserRole } from "./types.ts";
 import { getPublicLogoUrl, resolveMediaUrl } from "./lib/config.ts";
@@ -284,12 +287,11 @@ useEffect(() => {
 
             const backupKey = localUser?.name ? localStorage.getItem(`aswaq_avatar_backup_${localUser.name}`) : null;
             const isDataUrl = (str?: string | null) => str && str.startsWith('data:image/');
-            const is404UploadUrl = (str?: string | null) => str && str.includes('/uploads/') && !str.includes('r2.dev') && !str.includes('cloudfront.net');
 
-            let safeAvatar = null;
+            let safeAvatar = serverUser?.avatar || localUser?.avatar || backupKey || null;
             if (isDataUrl(localUser?.avatar)) safeAvatar = localUser.avatar;
             else if (isDataUrl(backupKey)) safeAvatar = backupKey;
-            else if (serverUser?.avatar && !is404UploadUrl(serverUser.avatar)) safeAvatar = serverUser.avatar;
+            else if (serverUser?.avatar) safeAvatar = serverUser.avatar;
 
             const mergedUser = {
               ...localUser,
@@ -414,26 +416,10 @@ useEffect(() => {
   useEffect(() => {
     const syncRouteToState = async () => {
       const pathname = location.pathname;
-      if (!pathname || pathname === '/') return;
 
-      // Handle /profile & /account
-      if (pathname === '/profile' || pathname === '/account') {
-        setCurrentTab('profile');
-        if (currentUser) {
-          setSelectedUserPreview(currentUser);
-        }
-        document.title = 'ملفي الشخصي | أسواق';
-        return;
-      }
-
-      if (pathname === '/messages') { setCurrentTab('messages'); document.title = 'الرسائل والمحادثات | أسواق'; return; }
-      if (pathname === '/notifications') { setCurrentTab('notifications'); document.title = 'الإشعارات والتنبيهات | أسواق'; return; }
-      if (pathname === '/my-ads') { setCurrentTab('my-ads'); document.title = 'إعلاناتي | أسواق'; return; }
-      if (pathname === '/analytics') { setCurrentTab('analytics'); document.title = 'تحليلات الأداء | أسواق'; return; }
-
-      // 0. Parse Query Parameters & Hash for Shared Links (?adId=..., ?userId=..., ?ad=..., #ad-...)
-      const searchParams = new URLSearchParams(window.location.search);
-      const sharedAdId = searchParams.get('adId') || searchParams.get('ad') || searchParams.get('post');
+      // 0. Parse Query Parameters & Hash FIRST (even if pathname is '/')
+      const searchParams = new URLSearchParams(location.search);
+      const sharedAdId = searchParams.get('adId') || searchParams.get('ad') || searchParams.get('id') || searchParams.get('post') || searchParams.get('promo');
       const sharedUserId = searchParams.get('userId') || searchParams.get('user');
       const hash = window.location.hash || '';
       const hashAdId = (hash.startsWith('#ad-') || hash.startsWith('#post-')) ? hash.replace(/^#(ad|post)-/, '') : null;
@@ -462,6 +448,41 @@ useEffect(() => {
           console.error('Failed to fetch shared user profile from query parameter', e);
         }
       }
+
+      // Check direct ad link: /ad/:id, /post/:id, /promo/:id, /item/:id
+      const directAdMatch = pathname.match(/^\/(ad|post|promo|item)\/([^\/]+)/i);
+      if (directAdMatch && directAdMatch[2]) {
+        const adId = directAdMatch[2];
+        if (selectedAd?.id !== adId) {
+          try {
+            const res = await fetch(`/api/ads/${adId}`);
+            if (res.ok) {
+              const adData = await res.json();
+              setSelectedAd(adData);
+            }
+          } catch (e) {
+            console.error('Failed to fetch ad from direct URL', e);
+          }
+        }
+        return;
+      }
+
+      if (!pathname || pathname === '/') return;
+
+      // Handle /profile & /account
+      if (pathname === '/profile' || pathname === '/account') {
+        setCurrentTab('profile');
+        if (currentUser) {
+          setSelectedUserPreview(currentUser);
+        }
+        document.title = 'ملفي الشخصي | أسواق';
+        return;
+      }
+
+      if (pathname === '/messages') { setCurrentTab('messages'); document.title = 'الرسائل والمحادثات | أسواق'; return; }
+      if (pathname === '/notifications') { setCurrentTab('notifications'); document.title = 'الإشعارات والتنبيهات | أسواق'; return; }
+      if (pathname === '/my-ads') { setCurrentTab('my-ads'); document.title = 'إعلاناتي | أسواق'; return; }
+      if (pathname === '/analytics') { setCurrentTab('analytics'); document.title = 'تحليلات الأداء | أسواق'; return; }
 
       // Handle /profile/:id
       if (pathname.startsWith('/profile/')) {
@@ -521,9 +542,9 @@ useEffect(() => {
           setCurrentMarket(MARKETS[countryCode]);
         }
 
-        // Check short reference code ad URL: /:country/ad/:refCode/...
-        if (segments.length >= 3 && segments[1] === 'ad') {
-          const refCode = segments[2];
+        // Check short reference code ad URL: /:country/ad/:refCode/... or /ad/:refCode
+        if ((segments.length >= 3 && segments[1] === 'ad') || (segments.length >= 2 && segments[0] === 'ad')) {
+          const refCode = segments.length >= 3 ? segments[2] : segments[1];
           if (refCode && selectedAd?.id !== refCode) {
             try {
               const res = await fetch(`/api/ads/${refCode}`);
@@ -566,16 +587,7 @@ useEffect(() => {
     syncRouteToState();
   }, [location.pathname]);
 
-  // Load Google Maps Script once globally
-  useEffect(() => {
-    loadGoogleMapsScript()
-      .then(() => {
-        console.log('[App] Google Maps with Places loaded.');
-      })
-      .catch(err => {
-        console.error('[App] Failed to load Google Maps:', err);
-      });
-  }, []);
+  // Note: Maps are lazy-loaded on demand (Leaflet / OpenStreetMap / Places)
   
   // Detect Location on Mount
   useEffect(() => {
@@ -808,7 +820,7 @@ useEffect(() => {
     return {
       commission: 0,
       featuredPrice: 5,
-      appName: 'أسواق',
+      appName: 'أسواق 22',
       logoLetter: 'أ',
       maintenanceMode: false,
       pushNotifications: true,
@@ -888,7 +900,19 @@ useEffect(() => {
       }
     }
   }, [currentUser?.id]);
-  const [favorites, setFavorites] = useState<string[]>([]);
+  const [favorites, setFavorites] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem("aswaq_favorites");
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return [];
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("aswaq_favorites", JSON.stringify(favorites));
+    } catch {}
+  }, [favorites]);
   const [showFavsOnly, setShowFavsOnly] = useState(false);
   const [showFollowedSellersOnly, setShowFollowedSellersOnly] = useState(false);
   const [followedSellers, setFollowedSellers] = useState<string[]>([]);
@@ -923,8 +947,22 @@ useEffect(() => {
     }
   };
 
-  const getCountryFromCity = (cityId: string) => {
-    return Object.values(MARKETS).find(market => market.cities.some(city => city.id === cityId))?.countryCode;
+  const getCountryFromCity = (cityIdOrName?: string) => {
+    if (!cityIdOrName) return null;
+    const raw = String(cityIdOrName).toLowerCase().trim();
+    for (const market of Object.values(MARKETS)) {
+      if (market.countryCode.toLowerCase() === raw) return market.countryCode;
+      if (market.cities.some(c => 
+        c.id.toLowerCase() === raw || 
+        c.nameAr.toLowerCase() === raw || 
+        c.nameEn.toLowerCase() === raw ||
+        raw.includes(c.nameAr.toLowerCase()) ||
+        c.nameAr.toLowerCase().includes(raw)
+      )) {
+        return market.countryCode;
+      }
+    }
+    return null;
   };
 
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -1158,7 +1196,11 @@ useEffect(() => {
           navigate(countryPath);
         }
       }
-      document.title = `أسواق ${currentMarket.labelAr} | منصة الإعلانات المجانية في الوطن العربي — بيع، شراء، تأجير`;
+      if (location.pathname === '/' && !selectedCategory && !selectedCity) {
+        document.title = 'منصة أسواق 22 | بوابة الإعلانات والتجارة الأولى في 22 دولة عربية — بيع، شراء، تأجير';
+      } else {
+        document.title = `أسواق ${currentMarket.labelAr} (منصة أسواق 22) | بيع، شراء، تأجير`;
+      }
     }
   }, [selectedUserPreview, currentTab, platformMode, currentMarket.countryCode, selectedCategory, selectedCity]);
 
@@ -1276,26 +1318,56 @@ useEffect(() => {
     // Fetch real production data from database matching the new market
     fetchAds();
     fetchPromoVideos();
+    fetchSocialPosts();
     fetchNotifications();
     fetchMessages();
     fetchPlatformSettings();
   }, [currentMarket.countryCode]);
 
-  // Real-time: listen for new ads published by ANY user and prepend to local feed immediately
+  // Real-time: listen for new ads and social network posts published by ANY user and prepend immediately
   useEffect(() => {
     const handleNewAd = (newAd: Ad) => {
-      // Only add if this ad belongs to the current market's cities
       const isInMarket = currentMarket.cities.some(
         c => c.id === newAd.city || c.nameAr === newAd.city || c.nameEn === newAd.city
       );
       if (!isInMarket) return;
       setAds(prev => {
-        if (prev.some(a => a.id === newAd.id)) return prev; // avoid duplicates
+        if (prev.some(a => a.id === newAd.id)) return prev;
         return [newAd, ...prev];
       });
     };
+
+    const handleNewSocialPost = (post: any) => {
+      setSocialPosts(prev => prev.some(p => p.id === post.id) ? prev : [post, ...prev]);
+    };
+
+    const handleInitialSocialPosts = (posts: any[]) => {
+      if (Array.isArray(posts) && posts.length > 0) {
+        setSocialPosts(prev => {
+          const mergedMap = new globalThis.Map();
+          prev.forEach(p => mergedMap.set(p.id, p));
+          posts.forEach(p => mergedMap.set(p.id, p));
+          return Array.from(mergedMap.values());
+        });
+      }
+    };
+
+    const handlePollVoted = ({ pollId, votes }: { pollId: string; votes: number[] }) => {
+      setMarketPolls(prev => prev.map(p => p.id === pollId ? { ...p, votes } : p));
+    };
+
+    socket.emit('get-social-posts');
     socket.on('new-ad', handleNewAd);
-    return () => { socket.off('new-ad', handleNewAd); };
+    socket.on('new-social-post', handleNewSocialPost);
+    socket.on('initial-social-posts', handleInitialSocialPosts);
+    socket.on('poll-voted', handlePollVoted);
+
+    return () => { 
+      socket.off('new-ad', handleNewAd); 
+      socket.off('new-social-post', handleNewSocialPost);
+      socket.off('initial-social-posts', handleInitialSocialPosts);
+      socket.off('poll-voted', handlePollVoted);
+    };
   }, [currentMarket.countryCode]);
 
   // Social Community Network States (Persisted in localStorage)
@@ -1505,6 +1577,12 @@ useEffect(() => {
         return post;
       })
     );
+
+    apiFetch(`/api/social-posts/${postId}/comments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, replyToCommentId: target?.commentId })
+    }).catch(() => {});
 
     // Clear input field and reply target
     setCommentInputs((prev) => ({
@@ -1864,6 +1942,23 @@ useEffect(() => {
     }
   }, [platformSettings?.logoUrl, platformSettings?.siteName]);
 
+  const fetchSocialPosts = async () => {
+    try {
+      const response = await fetch("/api/social-posts");
+      if (response.ok) {
+        const data = await response.json();
+        if (Array.isArray(data) && data.length > 0) {
+          setSocialPosts(data);
+          try {
+            localStorage.setItem('aswaq_social_posts', JSON.stringify(data));
+          } catch {}
+        }
+      }
+    } catch (e) {
+      console.error("Failed to fetch social posts", e);
+    }
+  };
+
   const fetchPromoVideos = async () => {
     try {
       const response = await fetch("/api/promo");
@@ -1932,9 +2027,10 @@ useEffect(() => {
   };
 
   const fetchNotifications = async () => {
+    if (!currentUser) return;
     try {
       const url = currentUser ? `/api/notifications?userId=${currentUser.id}` : "/api/notifications";
-      const response = await fetch(url);
+      const response = await apiFetch(url);
       const contentType = response.headers.get("content-type");
       if (response.ok && contentType && contentType.includes("application/json")) {
         const data = await response.json();
@@ -1951,8 +2047,9 @@ useEffect(() => {
   };
 
   const fetchMessages = async () => {
+    if (!currentUser) return;
     try {
-      const response = await fetch("/api/messages");
+      const response = await apiFetch("/api/messages");
       const contentType = response.headers.get("content-type");
       if (response.ok && contentType && contentType.includes("application/json")) {
         const data: ChatMessage[] = await response.json();
@@ -1975,6 +2072,7 @@ useEffect(() => {
 
   // Repeatedly poll for any auto-responses or listings updates
   useEffect(() => {
+    if (!currentUser) return;
     const timer = setInterval(() => {
       fetchMessages();
       fetchNotifications();
@@ -2152,7 +2250,7 @@ useEffect(() => {
             });
             if (res.ok) {
               const resData = await res.json();
-              if (resData.url && (resData.url.includes('r2.dev') || resData.url.includes('amazonaws.com') || resData.url.includes('cloudfront.net'))) {
+              if (resData.url) {
                 finalData.avatar = resData.url;
               }
             }
@@ -2174,7 +2272,7 @@ useEffect(() => {
             });
             if (res.ok) {
               const resData = await res.json();
-              if (resData.url && (resData.url.includes('r2.dev') || resData.url.includes('amazonaws.com') || resData.url.includes('cloudfront.net'))) {
+              if (resData.url) {
                 finalData.coverPhoto = resData.url;
               }
             }
@@ -2206,6 +2304,13 @@ useEffect(() => {
             (ad.userId === formattedUser.id || (currentUser && ad.userId === currentUser.id))
               ? { ...ad, userAvatar: formattedUser.avatar || ad.userAvatar, userName: formattedUser.name || ad.userName } 
               : ad
+          )
+        );
+        setSocialPosts((prevPosts) => 
+          prevPosts.map((post) => 
+            (post.authorId === formattedUser.id || (currentUser && post.authorId === currentUser.id))
+              ? { ...post, authorAvatar: formattedUser.avatar || post.authorAvatar, authorName: formattedUser.name || post.authorName } 
+              : post
           )
         );
         addToast("تم التحديث", "تم تحديث بيانات ملفك الشخصي بنجاح", "success");
@@ -2314,6 +2419,16 @@ useEffect(() => {
     setSelectedJobType("all");
     setCurrentTab("home"); // Reset tab view
     setShowFavsOnly(false);
+
+    // Smoothly scroll down to results
+    if (filters.query || filters.city || filters.category) {
+      setTimeout(() => {
+        const anchor = document.getElementById('search-results-anchor') || document.getElementById('ads-feed-section') || document.getElementById('ad-interactive-map');
+        if (anchor) {
+          anchor.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 150);
+    }
   };
 
   // Create Ad success callback
@@ -3522,9 +3637,21 @@ useEffect(() => {
                   ) : (
                     <>
                       {/* Sovereign Market Insights Indicator */}
-                      <div className="mt-8 space-y-6">
+                      <div className="mt-8 space-y-4">
                         {currentMarket.countryCode === 'YE' && <ExchangeRatesWidget />}
-                        <PriceInsightsWidget ads={ads} currentMarket={currentMarket} />
+                        
+                        <details className="w-full bg-[#0b1329]/10 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden transition-all duration-300 group">
+                          <summary className="p-4 font-black text-xs sm:text-sm flex items-center justify-between cursor-pointer list-none select-none text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-850/30">
+                            <span className="flex items-center gap-2">
+                              <TrendingUp className="w-4 h-4 text-emerald-500" />
+                              {isRtl ? 'مؤشر السعر العادل (تحليلات الأسعار في السوق)' : 'Fair Price Index (Market Price Insights)'}
+                            </span>
+                            <span className="text-[10px] text-slate-400 dark:text-slate-500 group-open:rotate-180 transition-transform">▼</span>
+                          </summary>
+                          <div className="p-4 pt-0 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/20">
+                            <PriceInsightsWidget ads={ads} currentMarket={currentMarket} />
+                          </div>
+                        </details>
                       </div>
 
                       {/* View Mode Switching Logic */}
@@ -3546,6 +3673,11 @@ useEffect(() => {
                         hasMore={hasMore}
                         loadingMore={loadingMore}
                         onLoadMore={loadMoreAds}
+                        searchQuery={searchQuery}
+                        onClearSearch={() => setSearchQuery("")}
+                        onOpenAiAssistant={() => setShowAiModal(true)}
+                        selectedCategory={selectedCategory}
+                        onClearCategory={() => setSelectedCategory("")}
                       />
                     </>
                   )}
@@ -3741,30 +3873,22 @@ useEffect(() => {
                         ) : (
                           <>
                             <div className="flex gap-4">
-                              {currentUser?.avatar ? (
-                                <img 
-                                  src={currentUser.avatar} 
-                                  className="w-11 h-11 rounded-2xl object-cover shrink-0 cursor-pointer hover:opacity-90 hover:scale-105 transition-all ring-2 ring-white/10" 
-                                  onClick={() => {
-                                    if (currentUser) {
-                                      setSelectedUserPreview(currentUser);
-                                      navigate('/profile');
-                                    }
-                                  }}
-                                />
-                          ) : (
-                            <div 
-                              className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-fuchsia-600 to-indigo-650 flex items-center justify-center text-white text-sm font-black shrink-0 cursor-pointer hover:scale-105 transition-all ring-2 ring-white/10"
-                              onClick={() => {
-                                if (currentUser) {
-                                  setSelectedUserPreview(currentUser);
-                                  navigate('/profile');
-                                }
-                              }}
-                            >
-                              {currentUser?.name?.charAt(0) || 'U'}
-                            </div>
-                          )}
+                               <div 
+                                 className="shrink-0 cursor-pointer hover:opacity-90 hover:scale-105 transition-all ring-2 ring-white/10 rounded-2xl overflow-hidden"
+                                 onClick={() => {
+                                   if (currentUser) {
+                                     setSelectedUserPreview(currentUser);
+                                     navigate('/profile');
+                                   }
+                                 }}
+                               >
+                                 <Avatar 
+                                   src={currentUser?.avatar} 
+                                   name={currentUser?.name || ''} 
+                                   sizeClassName="w-11 h-11" 
+                                   className="rounded-2xl" 
+                                 />
+                               </div>
                           <div className="flex-1 min-w-0 space-y-4">
                             <textarea
                               placeholder={t('social.postPlaceholder', { name: currentUser?.name || t('social.merchant') })}
@@ -3900,12 +4024,22 @@ useEffect(() => {
                                 image: selectedSocialImage,
                                 media: selectedMedia,
                                 createdAt: new Date().toISOString(),
-                                likes: 0,
+                                      likes: 0,
                                 likedBy: [] as string[],
                                 comments: [] as any[]
                               };
 
                               setSocialPosts(prev => [newPost, ...prev]);
+                              try {
+                                socket.emit('publish-social-post', newPost);
+                              } catch (e) {
+                                console.error('Failed to broadcast social post over socket:', e);
+                              }
+                              apiFetch('/api/social-posts', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(newPost)
+                              }).catch(() => {});
                               setNewPostText('');
                               setSelectedSocialImage(null);
                               setSelectedMedia([]);
@@ -3930,15 +4064,31 @@ useEffect(() => {
                         {[...socialPosts]
                           .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
                           .map(post => {
+                            const postAuthor = INITIAL_USERS.find(u => u.id === post.authorId) || { ...currentUser, id: post.authorId, name: post.authorName, avatar: post.authorAvatar };
                           return (
                             <div key={post.id} className={`rounded-2xl overflow-hidden flex flex-col justify-between border ${isDark ? 'bg-slate-950/80 border-slate-800' : 'bg-white/90 border-slate-200/80 shadow-sm shadow-slate-100'}`}>
                               {/* Post Header */}
                               <div className="p-4 flex items-center justify-between">
                                 <div className="flex items-center gap-3 cursor-pointer group" onClick={() => {
-                                  const usr = INITIAL_USERS.find(u => u.id === post.authorId);
-                                  if (usr) setSelectedUserPreview(usr);
+                                  const targetUser = (currentUser && post.authorId === currentUser.id)
+                                    ? currentUser
+                                    : (INITIAL_USERS.find(u => u.id === post.authorId) || {
+                                        id: post.authorId,
+                                        name: post.authorName,
+                                        avatar: post.authorAvatar,
+                                        role: (post.authorHandle === 'تاجر_موثق' || post.authorHandle === 'verified_merchant') ? UserRole.MERCHANT : UserRole.USER,
+                                        verified: (post.authorHandle === 'تاجر_موثق' || post.authorHandle === 'verified_merchant'),
+                                        phone: '',
+                                        createdAt: post.createdAt,
+                                      });
+                                  setSelectedUserPreview(targetUser as User);
                                 }}>
-                                  <img src={post.authorAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=40&q=80'} className={`w-9 h-9 rounded-full object-cover ring-2 group-hover:ring-fuchsia-500 transition-all ${isDark ? 'ring-slate-800' : 'ring-slate-200'}`} />
+                                  <Avatar 
+                                    src={post.authorId === currentUser?.id ? (currentUser?.avatar || post.authorAvatar) : (postAuthor.avatar || post.authorAvatar)} 
+                                    name={post.authorName || ''} 
+                                    sizeClassName="w-9 h-9" 
+                                    className={`rounded-full ring-2 group-hover:ring-fuchsia-500 transition-all ${isDark ? 'ring-slate-800' : 'ring-slate-200'}`} 
+                                  />
                                   <div className="text-right">
                                     <span className={`text-xs font-extrabold block group-hover:text-fuchsia-500 transition-colors ${isDark ? 'text-white' : 'text-slate-800'}`}>{post.authorName}</span>
                                     <div className={`flex items-center gap-2 ${isRtl ? 'flex-row' : 'flex-row-reverse'}`}>
@@ -4028,6 +4178,7 @@ useEffect(() => {
                                          }
                                          return p;
                                         }));
+                                        apiFetch(`/api/social-posts/${post.id}/like`, { method: 'POST' }).catch(() => {});
                                         addToast(t('social.greatInteraction'), t('social.greatInteractionDetail'), "success");
                                      }}
                                      className={`flex items-center gap-1.5 cursor-pointer font-bold transition-colors ${post.likedBy.includes(currentUser?.id || 'anon') ? "text-rose-500" : "hover:text-rose-450 text-slate-400"}`}
@@ -4780,6 +4931,7 @@ useEffect(() => {
             <div className="w-[20%] h-full flex justify-center -mt-10 relative z-50">
               <button
                 onClick={() => handleTabChange("create-ad")}
+                aria-label={t('nav.createAd') || 'إضافة إعلان جديد'}
                 className={`w-14 h-14 bg-gradient-to-tr from-emerald-500 to-cyan-500 text-slate-950 rounded-full shadow-[0_8px_25px_rgba(16,185,129,0.5)] flex items-center justify-center active:scale-95 transition-all border-[4px] cursor-pointer ${isDark ? 'border-[#0b0f1a]' : 'border-white'}`}
               >
                 <Plus className="w-6 h-6 stroke-[3.5]" />
@@ -4795,13 +4947,14 @@ useEffect(() => {
                 handleTabChange("home");
                 setViewMode("map");
               }}
+              aria-label={t('nav.map') || 'الخريطة'}
               className={`flex flex-col items-center justify-center w-[20%] h-full transition-all duration-300 relative ${
                 currentTab === "home" && viewMode === "map"
                   ? "text-blue-500 font-black"
                   : isDark ? "text-slate-500 hover:text-slate-300" : "text-slate-600 hover:text-slate-900"
               }`}
             >
-              <Map className={`w-[22px] h-[22px] mb-1.5 transition-transform duration-300 ${currentTab === "home" && viewMode === "map" ? "scale-110" : ""}`} />
+              <MapIcon className={`w-[22px] h-[22px] mb-1.5 transition-transform duration-300 ${currentTab === "home" && viewMode === "map" ? "scale-110" : ""}`} />
               <span className="text-[10px] font-bold tracking-tight">{t('nav.map')}</span>
               {currentTab === "home" && viewMode === "map" && (
                 <div className="absolute -top-1.5 w-8 h-1 rounded-b-full bg-blue-500 shadow-[0_0_8px_rgba(96,165,250,0.6)]" />
@@ -4890,6 +5043,8 @@ useEffect(() => {
                 setAds((prev) => prev.map((a) => (a.id === updatedAd.id ? updatedAd : a)));
                 setFilteredAds((prev) => prev.map((a) => (a.id === updatedAd.id ? updatedAd : a)));
               }}
+              favorites={favorites}
+              onLikeToggle={handleLikeToggle}
             />
           </React.Suspense>
         )}

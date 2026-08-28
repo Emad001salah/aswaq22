@@ -341,6 +341,12 @@ export default React.memo(function AdCard({ ad, onClick, onLikeToggle, onChatCli
         </span>
       )}
 
+      {ad.isFeatured && (
+        <span className="absolute top-2 right-2 z-20 bg-amber-400 text-slate-950 font-black text-[9px] px-2.5 py-1 rounded-full shadow-lg shadow-amber-500/30 flex items-center gap-1 border border-amber-200 backdrop-blur-md animate-pulse">
+          ✨ {isRtl ? 'إعلان مميز' : 'Featured'}
+        </span>
+      )}
+
       {/* Ad Cover Image Container with Interactive Mini Gallery */}
       <div className="relative w-full aspect-[4/3] sm:aspect-video shrink-0 overflow-hidden bg-slate-100 dark:bg-slate-950 group/img">
         <img
@@ -359,6 +365,7 @@ export default React.memo(function AdCard({ ad, onClick, onLikeToggle, onChatCli
           <>
             <button
               onClick={isRtl ? handleNextImage : handlePrevImage}
+              aria-label={isRtl ? 'الصورة التالية' : 'Next image'}
               className="absolute left-2 top-1/2 -translate-y-1/2 z-20 bg-black/40 hover:bg-black/70 text-white p-1.5 rounded-full backdrop-blur-md opacity-0 group-hover/img:opacity-100 transition-opacity"
               title="Previous image"
             >
@@ -366,6 +373,7 @@ export default React.memo(function AdCard({ ad, onClick, onLikeToggle, onChatCli
             </button>
             <button
               onClick={isRtl ? handlePrevImage : handleNextImage}
+              aria-label={isRtl ? 'الصورة السابقة' : 'Previous image'}
               className="absolute right-2 top-1/2 -translate-y-1/2 z-20 bg-black/40 hover:bg-black/70 text-white p-1.5 rounded-full backdrop-blur-md opacity-0 group-hover/img:opacity-100 transition-opacity"
               title="Next image"
             >
@@ -388,6 +396,7 @@ export default React.memo(function AdCard({ ad, onClick, onLikeToggle, onChatCli
         <div className={isRtl ? "absolute top-3 sm:top-5 z-20 flex flex-col gap-2 left-3 sm:left-5" : "absolute top-3 sm:top-5 z-20 flex flex-col gap-2 right-3 sm:right-5"}>
           <button
             onClick={handleLikeClick}
+            aria-label={liked ? "إزالة من المفضلة" : "إضافة للمفضلة"}
             className={`p-2 sm:p-2.5 rounded-xl sm:rounded-2xl border transition-all cursor-pointer backdrop-blur-md shadow-lg ${
               liked
                 ? 'bg-rose-500 border-rose-500 text-white shadow-rose-500/30'
@@ -406,6 +415,7 @@ export default React.memo(function AdCard({ ad, onClick, onLikeToggle, onChatCli
           
           <button
             onClick={handleShareClick}
+            aria-label="مشاركة الإعلان"
             className={`p-2 sm:p-2.5 rounded-xl sm:rounded-2xl border transition-all cursor-pointer backdrop-blur-md shadow-lg ${
               sharing
                 ? 'bg-emerald-500 border-emerald-500 text-white shadow-emerald-500/30'
@@ -518,6 +528,7 @@ export default React.memo(function AdCard({ ad, onClick, onLikeToggle, onChatCli
           <div className="grid grid-cols-3 gap-1.5 pt-1">
             <button
               onClick={handlePhoneClick}
+              aria-label={isRtl ? 'اتصال برقم الهاتف' : 'Call by phone'}
               className="flex items-center justify-center gap-1 bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-1.5 px-2 rounded-xl text-[10px] sm:text-xs shadow-md shadow-emerald-500/20 active:scale-95 transition-all"
               title="اتصال تلفوني"
             >
@@ -527,6 +538,7 @@ export default React.memo(function AdCard({ ad, onClick, onLikeToggle, onChatCli
 
             <button
               onClick={handleWhatsappClick}
+              aria-label={isRtl ? 'مراسلة عبر واتساب' : 'Message on WhatsApp'}
               className="flex items-center justify-center gap-1 bg-emerald-600/10 dark:bg-emerald-500/20 hover:bg-emerald-500 hover:text-white text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 font-bold py-1.5 px-2 rounded-xl text-[10px] sm:text-xs active:scale-95 transition-all"
               title="واتساب مباشر"
             >
@@ -536,6 +548,7 @@ export default React.memo(function AdCard({ ad, onClick, onLikeToggle, onChatCli
 
             <button
               onClick={handleChatDirectClick}
+              aria-label={isRtl ? 'بدء محادثة شات فوري' : 'Start direct chat'}
               className="flex items-center justify-center gap-1 bg-cyan-600/10 dark:bg-cyan-500/20 hover:bg-cyan-500 hover:text-white text-cyan-600 dark:text-cyan-400 border border-cyan-500/30 font-bold py-1.5 px-2 rounded-xl text-[10px] sm:text-xs active:scale-95 transition-all"
               title="محادثة منصة أسواق"
             >

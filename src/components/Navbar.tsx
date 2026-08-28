@@ -298,8 +298,8 @@ export default function Navbar({
                 >
                   <MessageSquare className="w-4 h-4 lg:w-5 lg:h-5" />
                   {unreadMessagesCount > 0 && (
-                    <span className="absolute 0 top-0 right-0 bg-red-500 text-white font-black text-[10px] w-4 h-4 lg:w-5 lg:h-5 rounded-full flex items-center justify-center">
-                      {unreadMessagesCount}
+                    <span className="absolute -top-1 -right-1 bg-rose-500 text-white font-black text-[10px] w-4 h-4 lg:w-5 lg:h-5 rounded-full flex items-center justify-center animate-pulse shadow-[0_0_10px_rgba(244,63,94,0.8)] border border-white dark:border-slate-900">
+                      {unreadMessagesCount > 9 ? '+9' : unreadMessagesCount}
                     </span>
                   )}
                 </button>
@@ -318,8 +318,8 @@ export default function Navbar({
                   >
                     <Bell className="w-4 h-4 lg:w-5 lg:h-5" />
                     {unreadNotificationsCount > 0 && (
-                      <span className="absolute 0 top-0 right-0 bg-red-500 text-white font-black text-[10px] w-4 h-4 lg:w-5 lg:h-5 rounded-full flex items-center justify-center">
-                        {unreadNotificationsCount}
+                      <span className="absolute -top-1 -right-1 bg-red-500 text-white font-black text-[10px] w-4 h-4 lg:w-5 lg:h-5 rounded-full flex items-center justify-center animate-pulse shadow-[0_0_10px_rgba(239,68,68,0.8)] border border-white dark:border-slate-900">
+                        {unreadNotificationsCount > 9 ? '+9' : unreadNotificationsCount}
                       </span>
                     )}
                   </button>

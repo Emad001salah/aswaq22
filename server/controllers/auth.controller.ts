@@ -676,6 +676,8 @@ export function AuthController() {
       await ensureAdminEscalation(user);
       const tokens = await authService.generateTokens(user.id, user.email, user.role);
 
+      const adCount = await prisma.ad.count({ where: { userId: user.id } });
+
       res.json({
         success: true,
         accessToken: tokens.accessToken,
@@ -685,7 +687,11 @@ export function AuthController() {
           email: user.email,
           name: user.name,
           role: user.role.toLowerCase(),
-          phone: user.phone
+          avatar: user.avatar,
+          coverPhoto: user.coverPhoto,
+          bio: user.bio,
+          phone: user.phone,
+          hasPostedAd: adCount > 0
         }
       });
     } catch (e: any) {

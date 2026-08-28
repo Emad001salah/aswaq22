@@ -49,6 +49,9 @@ export default defineConfig(({ mode }) => {
 
       rollupOptions: {
         output: {
+          entryFileNames: `assets/[name]-v2-[hash].js`,
+          chunkFileNames: `assets/[name]-v2-[hash].js`,
+          assetFileNames: `assets/[name]-v2-[hash].[ext]`,
           // Optimal manual chunk splitting for Aswaq
           manualChunks(id) {
             // React core

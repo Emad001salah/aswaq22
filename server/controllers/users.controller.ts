@@ -40,18 +40,20 @@ export const UsersController = () => {
       const manager = await prisma.user.findFirst({
         where: { role: { in: ['SUPER_ADMIN', 'ADMIN'] }, deletedAt: null },
         select: {
+          id: true,
           name: true,
           avatar: true,
           email: true,
-        }
+        },
+        orderBy: { createdAt: 'asc' }
       });
-      if (!manager) {
-        return res.json({
-          name: 'إدارة أسواق',
-          avatar: '/aswaq-admin-avatar.png'
-        });
+      if (manager) {
+        return res.json(manager);
       }
-      res.json(manager);
+      res.json({
+        name: 'Emad Salah',
+        avatar: 'https://lh3.googleusercontent.com/a/ACg8ocILZLj44t6xsNGSs0XS0LWGNknuYW-7HX_HLmWQ0duGl8STxw=s96-c'
+      });
     } catch (e: any) {
       res.status(500).json({ error: 'Database Error', message: e.message });
     }
@@ -427,6 +429,63 @@ export const UsersController = () => {
       });
     } catch (e: any) {
       res.status(500).json({ error: 'Status Action Failed', message: e.message });
+    }
+  });
+
+  // POST /api/users/verification-request (Submit KYC / Merchant / Driver documents)
+  router.post('/verification-request', authMiddleware, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user!.id;
+      const { type = 'personal', idDocumentUrl, driverLicenseUrl, commercialRegUrl, notes } = req.body;
+
+      const updatedUser = await prisma.user.update({
+        where: { id: userId },
+        data: {
+          isVerified: 'pending',
+          verificationType: type,
+          idDocumentUrl: idDocumentUrl || null,
+          driverLicenseUrl: driverLicenseUrl || null,
+          commercialRegUrl: commercialRegUrl || null,
+          verificationNote: notes || null,
+        },
+        select: {
+          id: true, name: true, email: true, phone: true, avatar: true,
+          isVerified: true, verificationType: true, createdAt: true
+        }
+      });
+
+      res.json({
+        success: true,
+        message: 'تم تقديم طلب التوثيق بنجاح وسيتم مراجعته من الإدارة في أقرب وقت.',
+        user: updatedUser
+      });
+    } catch (e: any) {
+      res.status(500).json({ error: 'Failed to submit verification', message: e.message });
+    }
+  });
+
+  // GET /api/users/verification-requests (Admin list pending requests)
+  router.get('/verification-requests', authMiddleware, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userRole = (req.user?.role || '').toUpperCase();
+      if (!['ADMIN', 'SUPER_ADMIN', 'MODERATOR'].includes(userRole)) {
+        return res.status(403).json({ error: 'Forbidden' });
+      }
+
+      const pendingUsers = await prisma.user.findMany({
+        where: { isVerified: 'pending' },
+        select: {
+          id: true, name: true, email: true, phone: true, avatar: true,
+          role: true, isVerified: true, verificationType: true,
+          idDocumentUrl: true, driverLicenseUrl: true, commercialRegUrl: true,
+          verificationNote: true, createdAt: true
+        },
+        orderBy: { updatedAt: 'desc' }
+      });
+
+      res.json(pendingUsers);
+    } catch (e: any) {
+      res.status(500).json({ error: 'Failed to fetch verification requests', message: e.message });
     }
   });
 

@@ -15,6 +15,7 @@ export interface FileData {
 export interface PresignedPostResult {
   uploadUrl: string;
   objectKey: string;
+  publicUrl: string;
   fields: Record<string, string>;
   expiresIn: number;
 }
@@ -108,9 +109,11 @@ export class LocalStorageStrategy implements StorageStrategy {
   async createPresignedUpload(key: string, mimeType: string, expiresIn = 300): Promise<PresignedPostResult> {
     const publicDomain = process.env.MEDIA_PUBLIC_BASE_URL || process.env.API_URL || 'http://localhost:5000';
     const base = publicDomain.endsWith('/') ? publicDomain.slice(0, -1) : publicDomain;
+    const cleanKey = key.startsWith('/') ? key : `/${key}`;
     return {
       uploadUrl: `${base}/api/media/upload-local?key=${encodeURIComponent(key)}`,
       objectKey: key,
+      publicUrl: `${base}${cleanKey}`,
       fields: { 'Content-Type': mimeType },
       expiresIn,
     };
@@ -278,9 +281,15 @@ export class S3StorageStrategy implements StorageStrategy {
         ContentType: mimeType,
       });
       const url = await getSignedUrl(this.s3Client, command, { expiresIn });
+      
+      const publicDomain = this.publicUrl || process.env.R2_PUBLIC_URL || process.env.MEDIA_PUBLIC_BASE_URL || process.env.S3_PUBLIC_URL || 'https://api.aswaq22.com';
+      const base = publicDomain.endsWith('/') ? publicDomain.slice(0, -1) : publicDomain;
+      const cleanKey = key.startsWith('/') ? key : `/${key}`;
+
       return {
         uploadUrl: url,
         objectKey: key,
+        publicUrl: `${base}${cleanKey}`,
         fields: { 'Content-Type': mimeType },
         expiresIn,
       };

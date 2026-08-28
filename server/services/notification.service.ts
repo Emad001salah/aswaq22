@@ -55,6 +55,18 @@ export class NotificationService {
         }
       }).catch(() => null);
 
+      // 1.1. Emit real-time Socket.IO event to target user room
+      if ((global as any).io) {
+        (global as any).io.to(userId).emit('new-notification', {
+          id: inAppNotification?.id || `notif_${Date.now()}`,
+          title: payload.title,
+          description: payload.body,
+          type: 'SYSTEM',
+          read: false,
+          createdAt: new Date().toISOString()
+        });
+      }
+
       // 2. Check if FCM Server Key or Web Push key is set
       const fcmKey = process.env.FCM_SERVER_KEY || process.env.FIREBASE_SERVER_KEY;
       if (fcmKey) {

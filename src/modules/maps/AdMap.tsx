@@ -60,7 +60,177 @@ const AdMap = forwardRef<AdMapHandle, AdMapProps>(function AdMap(props, ref) {
   const [isCityDropdownOpen, setIsCityDropdownOpen] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [forcingUserLocation, setForcingUserLocation] = useState(false);
-  
+
+  // Map search state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<{ name: string; placeId?: string; lat?: number; lng?: number }[]>([]);
+  const [searching, setSearching] = useState(false);
+
+  const fetchOSMPredictions = async (q: string) => {
+    try {
+      const countryParam = props.countryCode ? `&countrycodes=${props.countryCode.toLowerCase()}` : '';
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=5${countryParam}`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        const mapped = data.map((item: any) => ({
+          name: item.display_name,
+          lat: parseFloat(item.lat),
+          lng: parseFloat(item.lon)
+        })).filter((item: any) => !isNaN(item.lat) && !isNaN(item.lng));
+        setSearchResults(mapped);
+      }
+    } catch (e) {
+      console.error('OSM Geocoding predictions failed:', e);
+    }
+  };
+
+  const fetchPredictions = async (q: string) => {
+    const google = (window as any).google;
+
+    // Try Google Maps Places Autocomplete predictions first
+    if (google && google.maps && google.maps.places && google.maps.places.AutocompleteService) {
+      try {
+        const autocompleteService = new google.maps.places.AutocompleteService();
+        const request: any = {
+          input: q,
+        };
+        if (props.countryCode) {
+          request.componentRestrictions = { country: props.countryCode.toLowerCase() };
+        }
+
+        autocompleteService.getPlacePredictions(request, (predictions: any, status: any) => {
+          if (status === 'OK' && predictions && predictions.length > 0) {
+            const mapped = predictions.map((p: any) => ({
+              name: p.description,
+              placeId: p.place_id,
+            }));
+            setSearchResults(mapped);
+          } else {
+            fetchOSMPredictions(q);
+          }
+        });
+        return;
+      } catch (err) {
+        console.warn('[Google Autocomplete Error, falling back to OSM]:', err);
+      }
+    }
+
+    // Fallback to OpenStreetMap Nominatim
+    fetchOSMPredictions(q);
+  };
+
+  // Debounced search-as-you-type autocomplete
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      fetchPredictions(searchQuery.trim());
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const fallbackOSMGeocode = async (q: string) => {
+    try {
+      const countryParam = props.countryCode ? `&countrycodes=${props.countryCode.toLowerCase()}` : '';
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=1${countryParam}`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        if (data && data[0]) {
+          const item = data[0];
+          const lat = parseFloat(item.lat);
+          const lng = parseFloat(item.lon);
+          if (!isNaN(lat) && !isNaN(lng) && mapRef.current) {
+            mapRef.current.setView([lat, lng], 14);
+            setSearchQuery(item.display_name);
+          }
+        }
+      }
+    } catch (e) {
+      console.error('OSM Geocoding fallback failed:', e);
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const handleSearchLocation = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!searchQuery.trim()) return;
+
+    if (searchResults.length > 0) {
+      handleSelectSearchResult(searchResults[0]);
+      return;
+    }
+
+    setSearching(true);
+    const q = searchQuery.trim();
+
+    // Try Google Maps Geocoder first if loaded
+    const google = (window as any).google;
+    if (google && google.maps && google.maps.Geocoder) {
+      try {
+        const geocoder = new google.maps.Geocoder();
+        const request: any = { address: q };
+        if (props.countryCode) {
+          request.componentRestrictions = { country: props.countryCode.toLowerCase() };
+        }
+        geocoder.geocode(request, (results: any, status: any) => {
+          if (status === 'OK' && results && results[0]) {
+            const lat = results[0].geometry.location.lat();
+            const lng = results[0].geometry.location.lng();
+            if (mapRef.current) {
+              mapRef.current.setView([lat, lng], 14);
+            }
+            setSearchQuery(results[0].formatted_address);
+            setSearching(false);
+          } else {
+            fallbackOSMGeocode(q);
+          }
+        });
+        return;
+      } catch (err) {
+        console.warn('[Google Geocoder onSubmit error]:', err);
+      }
+    }
+
+    fallbackOSMGeocode(q);
+  };
+
+  const handleSelectSearchResult = (result: { name: string; placeId?: string; lat?: number; lng?: number }) => {
+    if (result.placeId) {
+      const google = (window as any).google;
+      if (google && google.maps && google.maps.Geocoder) {
+        const geocoder = new google.maps.Geocoder();
+        geocoder.geocode({ placeId: result.placeId }, (results: any, status: any) => {
+          if (status === 'OK' && results && results[0]) {
+            const lat = results[0].geometry.location.lat();
+            const lng = results[0].geometry.location.lng();
+            if (mapRef.current) {
+              mapRef.current.setView([lat, lng], 14);
+            }
+          }
+        });
+      }
+    } else if (result.lat !== undefined && result.lng !== undefined) {
+      if (mapRef.current) {
+        mapRef.current.setView([result.lat, result.lng], 14);
+      }
+    }
+    setSearchResults([]);
+    setSearchQuery(result.name);
+  };
+
+  const preventMapPropagation = (e: React.MouseEvent | React.TouchEvent) => {
+    e.stopPropagation();
+  };
+
   const mapDivRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
@@ -486,9 +656,73 @@ const AdMap = forwardRef<AdMapHandle, AdMapProps>(function AdMap(props, ref) {
 
   return (
     <div className="w-full h-full relative bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl z-0" style={{ minHeight: '350px' }}>
+      <style>{`
+        .leaflet-bottom.leaflet-left {
+          margin-left: 12px !important;
+          margin-bottom: 12px !important;
+        }
+        .leaflet-bar {
+          border: 1px solid rgba(255,255,255,0.1) !important;
+          border-radius: 12px !important;
+          overflow: hidden !important;
+          box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+        }
+        .leaflet-bar a {
+          background-color: rgba(15, 23, 42, 0.9) !important;
+          color: white !important;
+          border-bottom: 1px solid rgba(255,255,255,0.1) !important;
+          width: 36px !important;
+          height: 36px !important;
+          line-height: 36px !important;
+          font-size: 16px !important;
+          transition: all 0.2s !important;
+        }
+        .leaflet-bar a:hover {
+          background-color: rgba(30, 41, 59, 0.9) !important;
+          color: #10b981 !important;
+        }
+      `}</style>
       
       {/* Map Container */}
       <div ref={mapDivRef} style={{ width: '100%', height: '100%', minHeight: '350px' }} className="z-0" />
+
+      {/* Sleek Search overlay on Map */}
+      <div 
+        className="absolute top-4 left-4 z-[1000] w-64 max-w-[calc(100%-100px)]"
+        onMouseDown={preventMapPropagation}
+        onClick={preventMapPropagation}
+        onTouchStart={preventMapPropagation}
+      >
+        <form onSubmit={handleSearchLocation} className="relative">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={isRtl ? 'ابحث عن مدينة أو مكان...' : 'Search city or place...'}
+            className="w-full h-11 bg-slate-900/90 backdrop-blur-md border border-slate-700 text-white rounded-2xl px-4 pl-10 pr-4 outline-none text-xs text-right focus:border-emerald-500 transition-all shadow-2xl"
+          />
+          <button
+            type="submit"
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-all cursor-pointer"
+          >
+            {searching ? '⏳' : '🔍'}
+          </button>
+        </form>
+
+        {searchResults.length > 0 && (
+          <div className="absolute left-0 right-0 mt-2 bg-slate-900/95 backdrop-blur-md rounded-2xl border border-slate-700 shadow-2xl max-h-48 overflow-y-auto p-1.5 space-y-1">
+            {searchResults.map((res, index) => (
+              <button
+                key={index}
+                onClick={() => handleSelectSearchResult(res)}
+                className="w-full text-right px-3 py-2 text-[10px] text-slate-200 hover:bg-slate-800 rounded-xl transition-all block truncate cursor-pointer"
+              >
+                📍 {res.name}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Overlay controls */}
       <div className="absolute top-4 right-4 z-[1000] flex flex-col gap-2">

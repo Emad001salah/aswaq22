@@ -14,7 +14,13 @@ export function getDeterministicUuid(str: string): string {
   return `${part1}-${part2}-${part3}-${part4}-${part5}`;
 }
 
-const STATIC_CATEGORIES = ['cars', 'realestate', 'electronics', 'phones', 'laptops', 'jobs', 'general'];
+const STATIC_CATEGORIES = [
+  'jobs', 'cars', 'realestate', 'rent_housing', 'hotels', 'resorts', 
+  'car_rental', 'electronics', 'furniture', 'other', 'handicrafts', 
+  'food', 'services', 'bicycles', 'heavy_equipment', 'perfumes', 
+  'books', 'laptops', 'medical', 'fashion', 'building_materials', 
+  'livestock', 'phones', 'general', 'watches', 'solar', 'agriculture', 'antiques'
+];
 const STATIC_SUBCATEGORIES = [
   'sedan', 'suv', 'truck', 'motorcycle', 
   'apartment', 'villa', 'land', 'commercial', 

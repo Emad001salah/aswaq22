@@ -66,6 +66,11 @@ export const PollsController = () => {
       // Record vote — expires after 24 hours (fail open if Redis is down)
       await redis.set(voteKey, '1', 86400);
 
+      // Broadcast real-time vote updates to all connected users
+      try {
+        req.app.get('io')?.emit('poll-voted', { pollId: id, votes: updated.votes });
+      } catch {}
+
       res.json({ success: true, votes: updated.votes });
     } catch (err: any) {
       res.status(500).json({ error: 'Vote registration failed', message: err.message });

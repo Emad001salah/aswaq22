@@ -147,6 +147,7 @@ export default function PwaInstallPrompt({ isDark, isRtl, logoUrl }: PwaInstallP
           {/* Close trigger */}
           <button
             onClick={handleDismiss}
+            aria-label={isRtl ? 'إغلاق' : 'Close'}
             className={`absolute top-3 left-3 p-1.5 rounded-full transition-colors cursor-pointer ${
               isDark ? 'hover:bg-slate-800 text-slate-400 hover:text-white' : 'hover:bg-slate-100 text-slate-500 hover:text-slate-900'
             }`}
@@ -170,9 +171,9 @@ export default function PwaInstallPrompt({ isDark, isRtl, logoUrl }: PwaInstallP
                     <Smartphone className="w-3.5 h-3.5" />
                     {isRtl ? 'تحميل تطبيق أسواق' : 'Download Aswaq App'}
                   </h3>
-                  <h4 className="text-xs font-bold mt-0.5">
+                  <p className="text-xs font-bold mt-0.5">
                     {isRtl ? 'تثبيت المنصة كتطبيق هاتف ذكي!' : 'Install Aswaq on your device!'}
-                  </h4>
+                  </p>
                   <p className={`text-[11px] leading-relaxed mt-1 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
                     {isRtl 
                       ? 'تمتع بتجربة تصفح سريعة وآمنة، تواصل فوري عبر الإشعارات، وتوفير هائل في بيانات الإنترنت.'
@@ -184,6 +185,7 @@ export default function PwaInstallPrompt({ isDark, isRtl, logoUrl }: PwaInstallP
               <div className="flex gap-2 mt-2">
                 <button
                   onClick={handleInstallClick}
+                  aria-label={isRtl ? 'تثبيت التطبيق الآن' : 'Install App Now'}
                   className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold text-xs hover:from-emerald-600 hover:to-teal-700 active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 cursor-pointer"
                   id="pwa-install-action"
                 >

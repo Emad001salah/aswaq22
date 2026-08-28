@@ -4,8 +4,9 @@
  */
 
 import React, { useState, useRef, FormEvent } from "react";
-import { MessageSquare, Star, CheckCircle2, Camera, Send, Loader2 } from "lucide-react";
+import { MessageSquare, Star, CheckCircle2, Camera, Send, Loader2, Truck, Calendar, Home, Car, Briefcase, Wrench } from "lucide-react";
 import { User, ChatMessage } from "../../types.ts";
+import DeliveryRequestModal from "../shipping/DeliveryRequestModal";
 
 interface MessagesTabProps {
   currentUser: User;
@@ -36,6 +37,7 @@ export default function MessagesTab({
 }: MessagesTabProps) {
   const [replyText, setReplyText] = useState("");
   const [replying, setReplying] = useState(false);
+  const [deliveryModalOpen, setDeliveryModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const formatPrice = (num?: number) => {
@@ -88,6 +90,90 @@ export default function MessagesTab({
     }
   };
 
+  // Helper: determine context based on ad category and title
+  const getAdContext = (room: any) => {
+    const text = `${room?.adCategory || ''} ${room?.adTitle || ''}`.toLowerCase();
+    
+    // 1. Hotels & Tourism
+    if (text.match(/فندق|فنادق|سياح|شاليه|منتجع|اقام|إقام|شقق مفروشة|حجز|hotel|resort|tourism|stay|booking|suite/i)) {
+      return {
+        type: 'hotel',
+        ratingLabel: 'تقييم الفندق',
+        actionLabel: 'طلب حجز إقامة',
+        actionIcon: Calendar,
+        actionColor: 'bg-indigo-500 hover:bg-indigo-600 shadow-indigo-500/20',
+        isDeliverable: false,
+        bookingTemplate: 'مرحباً، أود الاستفسار عن إمكانية حجز وتوفر الإقامة للفترة القادمة والتفاصيل المتاحة.'
+      };
+    }
+    
+    // 2. Real Estate / Property
+    if (text.match(/عقار|شقة|فيلا|أرض|ارض|ايجار|إيجار|مكتب|عمارة|real estate|property|villa|apartment/i)) {
+      return {
+        type: 'real_estate',
+        ratingLabel: 'تقييم المعلن العقاري',
+        actionLabel: 'حجز موعد معاينة',
+        actionIcon: Home,
+        actionColor: 'bg-blue-500 hover:bg-blue-600 shadow-blue-500/20',
+        isDeliverable: false,
+        bookingTemplate: 'مرحباً، أود التنسيق لتحديد موعد مناسب لمعاينة هذا العقار على أرض الواقع.'
+      };
+    }
+    
+    // 3. Vehicles & Cars
+    if (text.match(/سيار|مركب|شاحن|دراج|موتور|car|vehicle|auto|motor/i)) {
+      return {
+        type: 'vehicle',
+        ratingLabel: 'تقييم المعرض / البائع',
+        actionLabel: 'طلب فحص ومعاينة',
+        actionIcon: Car,
+        actionColor: 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/20',
+        isDeliverable: false,
+        bookingTemplate: 'مرحباً، أود الاستفسار عن حالة المركبة وتحديد موعد للفحص والمعاينة.'
+      };
+    }
+    
+    // 4. Jobs & Careers
+    if (text.match(/وظائف|وظيفة|توظيف|عمل|job|career|hiring|recruitment/i)) {
+      return {
+        type: 'job',
+        ratingLabel: 'تقييم جهة العمل',
+        actionLabel: 'تقديم للوظيفة',
+        actionIcon: Briefcase,
+        actionColor: 'bg-purple-500 hover:bg-purple-600 shadow-purple-500/20',
+        isDeliverable: false,
+        bookingTemplate: 'مرحباً، أود التقدم لهذه الفرصة الوظيفية ومشاركة سيرتي الذاتية وخبراتي.'
+      };
+    }
+    
+    // 5. Services & Crafts
+    if (text.match(/خدمات|خدمة|صيانة|مقاولات|برمجة|تصميم|تنظيف|تصليح|service|repair/i)) {
+      return {
+        type: 'service',
+        ratingLabel: 'تقييم مقدم الخدمة',
+        actionLabel: 'طلب تنفيذ الخدمة',
+        actionIcon: Wrench,
+        actionColor: 'bg-teal-500 hover:bg-teal-600 shadow-teal-500/20',
+        isDeliverable: false,
+        bookingTemplate: 'مرحباً، أود طلب هذه الخدمة والاستفسار عن الأسعار وموعد البدء.'
+      };
+    }
+
+    // Default: Deliverable Goods / Products (Electronics, Fashion, Food, etc.)
+    return {
+      type: 'goods',
+      ratingLabel: 'تقييم البائع',
+      actionLabel: 'اطلب توصيل',
+      actionIcon: Truck,
+      actionColor: 'bg-emerald-500 hover:bg-emerald-600 shadow-emerald-500/20',
+      isDeliverable: true,
+      bookingTemplate: ''
+    };
+  };
+
+  const adContext = selectedRoom ? getAdContext(selectedRoom) : null;
+  const ActionIcon = adContext?.actionIcon || Truck;
+
   return (
     <div className={`mt-8 grid grid-cols-1 lg:grid-cols-3 rounded-3xl overflow-hidden border h-[500px] transition-colors ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-xl'}`}>
       {/* Active room lists */}
@@ -127,7 +213,7 @@ export default function MessagesTab({
                       <h4 className={`text-xs font-bold truncate flex items-center gap-1.5 ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
                         {room.partnerName}
                         {ratedConversationIds.includes(room.id) && (
-                          <Star className="w-3 h-3 text-amber-400 fill-current" />
+                          <Star className="w-3 3 text-amber-400 fill-current" />
                         )}
                       </h4>
                       <span className="text-[8px] text-slate-500 font-mono">
@@ -173,7 +259,8 @@ export default function MessagesTab({
                 </div>
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 sm:gap-3">
+                {/* Rating Button with context-aware label */}
                 {ratedConversationIds.includes(selectedRoom.id) ? (
                   <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-bold">
                     <Star className="w-3.5 h-3.5 fill-current" />
@@ -190,7 +277,27 @@ export default function MessagesTab({
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-450 hover:shadow-lg hover:shadow-amber-500/10 text-slate-950 text-[10px] font-black transition-all cursor-pointer active:scale-95"
                   >
                     <Star className="w-3.5 h-3.5 fill-current animate-pulse" />
-                    <span>إنهاء وتقييم</span>
+                    <span>{adContext?.ratingLabel || 'تقييم البائع'}</span>
+                  </button>
+                )}
+
+                {/* Context-aware Action Button (Delivery for goods / Booking for hotels / Inspection for cars / etc.) */}
+                {adContext && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (adContext.isDeliverable) {
+                        setDeliveryModalOpen(true);
+                      } else if (adContext.bookingTemplate) {
+                        setReplyText(adContext.bookingTemplate);
+                      }
+                    }}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-white text-[10px] font-bold transition-all cursor-pointer active:scale-95 hover:shadow-lg ${adContext.actionColor}`}
+                  >
+                    <ActionIcon className="w-3.5 h-3.5" />
+                    <span>{adContext.actionLabel}</span>
                   </button>
                 )}
 
@@ -290,6 +397,19 @@ export default function MessagesTab({
           </div>
         )}
       </div>
+
+      {selectedRoom && (
+        <DeliveryRequestModal
+          isOpen={deliveryModalOpen}
+          onClose={() => setDeliveryModalOpen(false)}
+          adId={selectedRoom.adId}
+          adTitle={selectedRoom.adTitle}
+          adImage={selectedRoom.adImage}
+          partnerId={selectedRoom.partnerId}
+          partnerName={selectedRoom.partnerName}
+          price={selectedRoom.price}
+        />
+      )}
     </div>
   );
 }

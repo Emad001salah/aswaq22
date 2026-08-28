@@ -31,18 +31,7 @@ export const ShippingController = (io?: Server): Router => {
   router.use(authMiddleware);
   router.use(async (req: Request, res: Response, next: NextFunction) => {
     try {
-      if (req.flags && typeof req.flags.isEnabled === 'function') {
-        const enabled = (await req.flags.isEnabled('logistics_service')) || process.env.NODE_ENV === 'test';
-        const isAdmin = (req as any).user?.role === 'ADMIN' || (req as any).user?.role === 'SUPER_ADMIN';
-        if (!enabled && !isAdmin) {
-          return res.status(503).json({
-            success: false,
-            status: 503,
-            error: 'Service Unavailable',
-            message: 'خدمة التوصيل والشحن قيد التجريب حالياً وسيتم إطلاقها قريباً.',
-          });
-        }
-      }
+      const enabled = true; // Logistics service enabled for production & live users
       next();
     } catch (err) {
       next(err);

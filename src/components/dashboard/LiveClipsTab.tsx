@@ -95,10 +95,10 @@ export default function LiveClipsTab({
         <div>
           <h3 className="text-xl font-black text-white flex items-center gap-2">
             <Video className="w-6 h-6 text-rose-500" />
-            مقاطع البث المباشر والترويج
+            مقاطع الريلز والفيديوهات الترويجية
           </h3>
           <p className="text-xs text-slate-400 mt-1">
-            هنا يمكنك استعراض مقاطع البث المباشر السابقة وإدارة القصص الترويجية الخاصة بك.
+            هنا يمكنك استعراض مقاطع الريلز المنشورة وإدارة الفيديوهات الترويجية لسلعك وإعلاناتك.
           </p>
         </div>
         <button
@@ -106,7 +106,7 @@ export default function LiveClipsTab({
            className="bg-rose-600 hover:bg-rose-500 text-white px-5 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-2 shadow-lg shadow-rose-600/20 active:scale-95 cursor-pointer"
         >
            <Camera className="w-4 h-4" />
-           تسجيل مقطع ترويجي جديد
+           نشر ريلز ترويجي جديد
         </button>
       </div>
 

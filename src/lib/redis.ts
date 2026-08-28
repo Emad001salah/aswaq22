@@ -70,9 +70,10 @@ try {
     }
   });
 
-  redisClient.connect().catch(() => {
-    isRedisAvailable = false;
-  });
+  // Removed eager connection attempt to avoid startup errors when Redis is unavailable.
+  // The client will connect lazily on first use if Redis becomes available.
+  // This prevents ECONNREFUSED logs during development without Redis.
+
 } catch (e) {
   console.warn('[Redis] Failed to instantiate ioredis:', e);
 }

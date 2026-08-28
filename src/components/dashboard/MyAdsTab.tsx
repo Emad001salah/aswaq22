@@ -202,18 +202,43 @@ export default function MyAdsTab({
                     <span className="text-[10px]">{ad.currency}</span>
                   </p>
 
-                  <div className="flex gap-2 items-center">
+                  <div className="flex gap-1.5 items-center">
                     <button
                       onClick={() => onSelectAd(ad)}
-                      className={`text-[10px] font-bold px-3 py-1.5 rounded-lg cursor-pointer transition-all ${isDark ? 'bg-slate-800 hover:bg-slate-750 text-slate-200' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'}`}
+                      className={`text-[10px] font-bold px-2.5 py-1.5 rounded-lg cursor-pointer transition-all ${isDark ? 'bg-slate-800 hover:bg-slate-750 text-slate-200' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'}`}
                     >
                       معاينة
                     </button>
                     <button
                       onClick={() => handleStartEditAd(ad)}
-                      className="bg-emerald-500 hover:bg-emerald-450 text-slate-950 text-[10px] font-bold px-3 py-1.5 rounded-lg cursor-pointer transition-all"
+                      className="bg-emerald-500 hover:bg-emerald-450 text-slate-950 text-[10px] font-bold px-2.5 py-1.5 rounded-lg cursor-pointer transition-all"
                     >
                       تعديل
+                    </button>
+                    <button
+                      onClick={async () => {
+                        try {
+                          const token = localStorage.getItem('aswaq_access_token') || localStorage.getItem('auth_token');
+                          const res = await fetch(`/api/ads/${ad.id}/feature`, {
+                            method: 'POST',
+                            headers: { 
+                              'Content-Type': 'application/json',
+                              'Authorization': `Bearer ${token}`
+                            },
+                            body: JSON.stringify({ days: 7 })
+                          });
+                          const data = await res.json();
+                          if (res.ok && data.message) {
+                            alert(data.message);
+                          }
+                        } catch (e) {
+                          console.error("Failed to promote ad:", e);
+                        }
+                      }}
+                      className="bg-amber-500/15 text-amber-500 hover:bg-amber-500 hover:text-slate-950 text-[10px] font-bold px-2.5 py-1.5 rounded-lg cursor-pointer transition-all border border-amber-500/30"
+                      title="ترقية الإعلان للقمة"
+                    >
+                      تميز ✨
                     </button>
                     <button
                       onClick={() => onDeleteAdRequest(ad.id, ad.title)}

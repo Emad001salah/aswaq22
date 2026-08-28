@@ -43,7 +43,10 @@ import {
   StopCircle,
   Zap,
   ShoppingCart,
-  Upload
+  Upload,
+  ExternalLink,
+  Play,
+  Pause
 } from 'lucide-react';
 import { Ad, User } from '../types.ts';
 import { INITIAL_USERS, CATEGORIES } from '../data.ts';
@@ -51,6 +54,7 @@ import { getCurrencyAr, getCurrencyNameAr, MARKETS } from '../markets.ts';
 import socket from '../lib/socket.ts';
 import { Avatar, sanitizeName } from './Avatar.tsx';
 import { apiFetch } from '../lib/api';
+import { getAdCtaConfig } from '../lib/ctaConfig.ts';
 import { resolveMediaUrl } from '../lib/config.ts';
 
 // ── WebRTC ICE Server Configuration ──────────────────────────────────────────
@@ -127,6 +131,26 @@ export const getImageUrl = (rawImg: any, fallback = 'https://images.unsplash.com
     if (resolved) return resolved;
   }
   return fallback;
+};
+
+export const getCountryFromCity = (cityIdOrName?: string): string | null => {
+  if (!cityIdOrName) return null;
+  const raw = String(cityIdOrName).toLowerCase().trim();
+  if (raw === 'كافة المناطق' || raw === 'all regions' || raw === 'كافة المدن' || raw === 'all cities' || raw === '') {
+    return null;
+  }
+  for (const [code, market] of Object.entries(MARKETS)) {
+    if (market.cities.some(c => 
+      c.id.toLowerCase() === raw || 
+      c.nameAr.toLowerCase() === raw || 
+      c.nameEn.toLowerCase() === raw ||
+      raw.includes(c.nameAr.toLowerCase()) ||
+      raw.includes(c.nameEn.toLowerCase())
+    )) {
+      return code;
+    }
+  }
+  return null;
 };
 
 const AUDIO_TRACKS = [
@@ -226,6 +250,18 @@ function WebcamStreamPlayer({
   const pcRef = useRef<RTCPeerConnection | null>(null);
 
   useEffect(() => {
+    if (videoRef.current) {
+      if (isBroadcaster || isCreator) {
+        videoRef.current.muted = true;
+        videoRef.current.volume = 0;
+      } else {
+        videoRef.current.muted = isMuted;
+        videoRef.current.volume = isMuted ? 0 : 1;
+      }
+    }
+  }, [isMuted, isBroadcaster, isCreator]);
+
+  useEffect(() => {
     setIsBroadcaster(isCreator);
     setIsOffline(false);
 
@@ -239,9 +275,11 @@ function WebcamStreamPlayer({
           let stream: MediaStream | null = null;
 
           const advancedAudioConstraints = {
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true,
+            echoCancellation: { ideal: true },
+            noiseSuppression: { ideal: true },
+            autoGainControl: { ideal: true },
+            channelCount: 1,
+            sampleRate: 48000,
             googEchoCancellation: true,
             googAutoGainControl: true,
             googNoiseSuppression: true,
@@ -889,14 +927,14 @@ function WebcamStreamPlayer({
       <video
         ref={(el) => {
           videoRef.current = el;
-          if (el && (isCreator || isBroadcaster)) {
+          if (el && (localStreamRef.current || isCreator || isBroadcaster)) {
             el.muted = true;
             el.volume = 0;
           }
         }}
         autoPlay
         playsInline
-        muted={isCreator || isBroadcaster || isMuted}
+        muted={!!localStreamRef.current || isCreator || isBroadcaster || isMuted}
         style={{ filter: finalFilter }}
         className={`w-full h-full object-cover brightness-[1.1] transition-all duration-300 ${
           (isOffline && statusText) ? 'opacity-0 scale-95 blur-sm' : 'opacity-100 scale-100 blur-0'
@@ -1105,6 +1143,113 @@ interface SpotlightFeedProps {
   onLikeToggle?: (adId: string) => void;
 }
 
+
+interface FeedVideoPlayerProps {
+  src: string;
+  isCurrent: boolean;
+  isMuted: boolean;
+  audioUrl?: string;
+}
+
+const FeedVideoPlayer: React.FC<FeedVideoPlayerProps> = ({
+  src,
+  isCurrent,
+  isMuted,
+  audioUrl,
+}) => {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  // Validate src
+  const isValidSrc = Boolean(src && typeof src === 'string' && src.trim().length > 4 && !src.startsWith('blob:null') && src !== 'none');
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !isValidSrc) return;
+
+    video.muted = !!audioUrl || isMuted;
+
+    if (isCurrent) {
+      if (video.readyState >= 2) {
+        video.play()
+          .then(() => setIsPlaying(true))
+          .catch(() => {
+            if (video) {
+              video.muted = true;
+              video.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
+            }
+          });
+      }
+    } else {
+      video.pause();
+      setIsPlaying(false);
+      try {
+        video.currentTime = 0;
+      } catch {}
+    }
+  }, [isCurrent, isMuted, audioUrl, isValidSrc]);
+
+  if (!isValidSrc) return null;
+
+  const togglePlayPause = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const video = videoRef.current;
+    if (!video) return;
+    if (video.paused) {
+      video.play().then(() => setIsPlaying(true)).catch(() => {});
+    } else {
+      video.pause();
+      setIsPlaying(false);
+    }
+  };
+
+  return (
+    <div className="absolute inset-0 w-full h-full z-[1] cursor-pointer select-none" onClick={togglePlayPause}>
+      <video
+        ref={videoRef}
+        src={src}
+        loop
+        playsInline
+        webkit-playsinline="true"
+        x5-playsinline="true"
+        crossOrigin="anonymous"
+        muted={!!audioUrl || isMuted}
+        preload={isCurrent ? "auto" : "metadata"}
+        onCanPlay={() => {
+          if (isCurrent && videoRef.current && videoRef.current.paused) {
+            videoRef.current.play()
+              .then(() => setIsPlaying(true))
+              .catch(() => {
+                if (videoRef.current) {
+                  videoRef.current.muted = true;
+                  videoRef.current.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
+                }
+              });
+          }
+        }}
+        onPlay={() => setIsPlaying(true)}
+        onPause={() => setIsPlaying(false)}
+        onError={() => setIsPlaying(false)}
+        className="absolute inset-0 w-full h-full object-cover brightness-100"
+      />
+      {!isPlaying && isCurrent && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 bg-black/20">
+          <div className="w-16 h-16 rounded-full bg-black/60 backdrop-blur-md flex items-center justify-center text-white border border-white/20 shadow-2xl animate-pulse">
+            <Play className="w-8 h-8 fill-current ml-1" />
+          </div>
+        </div>
+      )}
+      {audioUrl && (
+        <AudioPlayer
+          src={audioUrl}
+          isPlaying={isCurrent && isPlaying}
+          isMuted={isMuted}
+        />
+      )}
+    </div>
+  );
+};
+
 export default function SpotlightFeed({ 
   ads, 
   onSelectAd, 
@@ -1125,6 +1270,12 @@ export default function SpotlightFeed({
   const [isMuted, setIsMuted] = useState(true);
   const [likedAds, setLikedAds] = useState<Record<string, boolean>>(() => {
     const initial: Record<string, boolean> = {};
+    try {
+      const stored = localStorage.getItem('aswaq_liked_reels');
+      if (stored) {
+        Object.assign(initial, JSON.parse(stored));
+      }
+    } catch {}
     if (favorites) {
       favorites.forEach(id => {
         initial[id] = true;
@@ -1132,6 +1283,24 @@ export default function SpotlightFeed({
     }
     return initial;
   });
+
+  useEffect(() => {
+    if (favorites && favorites.length > 0) {
+      setLikedAds(prev => {
+        const next = { ...prev };
+        favorites.forEach(id => {
+          next[id] = true;
+        });
+        return next;
+      });
+    }
+  }, [favorites]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('aswaq_liked_reels', JSON.stringify(likedAds));
+    } catch {}
+  }, [likedAds]);
 
   const [savedAds, setSavedAds] = useState<Record<string, boolean>>({});
   const [adViews, setAdViews] = useState<Record<string, number>>({});
@@ -1151,7 +1320,10 @@ export default function SpotlightFeed({
   const [localAdOverrides, setLocalAdOverrides] = useState<Record<string, Partial<Ad>>>({});
 
   const [dbPromoVideos, setDbPromoVideos] = useState<any[]>([]);
-  const [managerProfile, setManagerProfile] = useState<{ name: string; avatar: string } | null>(null);
+  const [managerProfile, setManagerProfile] = useState<{ id?: string; name: string; avatar: string } | null>({
+    name: 'Emad Salah',
+    avatar: 'https://lh3.googleusercontent.com/a/ACg8ocILZLj44t6xsNGSs0XS0LWGNknuYW-7HX_HLmWQ0duGl8STxw=s96-c'
+  });
 
   useEffect(() => {
     fetch('/api/users/manager')
@@ -1159,8 +1331,9 @@ export default function SpotlightFeed({
       .then(data => {
         if (data && data.name) {
           setManagerProfile({
+            id: data.id,
             name: data.name,
-            avatar: data.avatar || "/aswaq-admin-avatar.png"
+            avatar: data.avatar || "https://lh3.googleusercontent.com/a/ACg8ocILZLj44t6xsNGSs0XS0LWGNknuYW-7HX_HLmWQ0duGl8STxw=s96-c"
           });
         }
       })
@@ -1200,6 +1373,14 @@ export default function SpotlightFeed({
   const [pinnedProduct, setPinnedProduct] = useState<{ id: string; title: string; price: number; image: string } | null>(null);
   const [showPinProductModal, setShowPinProductModal] = useState<boolean>(false);
 
+  // --- Video Reels Upload States ---
+  const [videoSourceType, setVideoSourceType] = useState<'upload' | 'camera' | 'link'>('upload');
+  const [uploadedVideoUrl, setUploadedVideoUrl] = useState<string>('');
+  const [videoUploading, setVideoUploading] = useState<boolean>(false);
+  const [videoUploadProgress, setVideoUploadProgress] = useState<number>(0);
+  const [videoOriginalName, setVideoOriginalName] = useState<string>('');
+  const [videoThumbnailUrl, setVideoThumbnailUrl] = useState<string>('');
+
   // --- Live Stream Custom Audio Upload States ---
   const [audioSourceType, setAudioSourceType] = useState<'none' | 'file' | 'link'>('none');
   const [uploadedAudioUrl, setUploadedAudioUrl] = useState<string>('');
@@ -1224,8 +1405,11 @@ export default function SpotlightFeed({
 
   const promoAds = React.useMemo(() => {
     const currency = MARKETS[countryCode]?.currency || 'YER';
-    const adminAvatar = managerProfile?.avatar || ASWAQ_ADMIN_AVATAR;
-    const adminName   = managerProfile?.name || (isRtl ? ASWAQ_ADMIN_NAME_AR : ASWAQ_ADMIN_NAME_EN);
+    const countryName = MARKETS[countryCode]?.labelAr || (isRtl ? 'المنطقة العربية' : 'the Arab region');
+    const countryNameEn = MARKETS[countryCode]?.labelEn || 'the Arab region';
+    const creatorAvatar = managerProfile?.avatar || currentUser?.avatar || "https://lh3.googleusercontent.com/a/ACg8ocILZLj44t6xsNGSs0XS0LWGNknuYW-7HX_HLmWQ0duGl8STxw=s96-c";
+    const creatorName   = managerProfile?.name || currentUser?.name || "Emad Salah";
+    const creatorId     = managerProfile?.id || currentUser?.id || "admin";
     
     return [
     // ─── ريل 1: التسوق الذكي على أسواق ────────────────────────────────────
@@ -1236,22 +1420,22 @@ export default function SpotlightFeed({
       title: isRtl
         ? "🛍️ تسوّق بذكاء مع منصة أسواق"
         : "🛍️ Shop Smart with Aswaq",
-      userName: adminName,
-      userAvatar: adminAvatar,
-      userId: "aswaq_admin",
+      userName: creatorName,
+      userAvatar: creatorAvatar,
+      userId: creatorId,
       category: isRtl ? "ترويج المنصة" : "Platform Promo",
       city: isRtl ? "جميع المدن" : "All Cities",
       price: 0,
       currency: currency,
       description: isRtl
-        ? "منصة أسواق — السوق الرقمي الأول في اليمن والمنطقة العربية. أعلن عن منتجاتك، تفاوض مباشرةً، واشتروا بأمان. تجربة تسوق متكاملة بضغطة واحدة!"
-        : "Aswaq — the #1 digital marketplace in Yemen & the Arab region. List your products, negotiate directly, and buy safely. A complete shopping experience in one tap!",
+        ? "منصة أسواق — السوق الرقمي الأول في ${countryName} والمنطقة العربية. أعلن عن منتجاتك، تفاوض مباشرةً، واشتروا بأمان. تجربة تسوق متكاملة بضغطة واحدة!"
+        : "Aswaq — the #1 digital marketplace in ${countryNameEn} & the Arab region. List your products, negotiate directly, and buy safely. A complete shopping experience in one tap!",
       createdAt: "2026-06-01T00:00:00.000Z",
-      views: 24,
-      likes: 3,
+      views: 1840,
+      likes: 142,
       userVerified: true,
       images: ["https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&w=1920&q=80"],
-      videoUrl: "https://player.vimeo.com/external/554807491.sd.mp4?s=3a411be07fac8aa9e8d7bb54c30c8ad9ef83cd3d&profile_id=165&oauth2_token_id=57447761",
+      videoUrl: "",
       features: [
         isRtl ? "✅ ملايين المنتجات بأسعار منافسة" : "✅ Millions of products at competitive prices",
         isRtl ? "✅ تواصل مباشر مع البائعين" : "✅ Direct communication with sellers",
@@ -1267,9 +1451,9 @@ export default function SpotlightFeed({
       title: isRtl
         ? "🚀 توصيل سريع لباب بيتك"
         : "🚀 Fast Delivery to Your Door",
-      userName: adminName,
-      userAvatar: adminAvatar,
-      userId: "aswaq_admin",
+      userName: creatorName,
+      userAvatar: creatorAvatar,
+      userId: creatorId,
       category: isRtl ? "خدمة التوصيل" : "Delivery Service",
       city: isRtl ? "جميع المدن" : "All Cities",
       price: 0,
@@ -1278,11 +1462,11 @@ export default function SpotlightFeed({
         ? "مع خدمة التوصيل في أسواق، استقبل مشترياتك في وقت قياسي! تتبع شحنتك لحظة بلحظة، وادفع عند الاستلام."
         : "With Aswaq delivery, receive your purchases in record time! Track your shipment in real time and pay on delivery.",
       createdAt: "2026-06-05T00:00:00.000Z",
-      views: 18,
-      likes: 2,
+      views: 1215,
+      likes: 98,
       userVerified: true,
       images: ["https://images.unsplash.com/photo-1580674684081-7617fbf3d745?auto=format&fit=crop&w=1920&q=80"],
-      videoUrl: "https://player.vimeo.com/external/394301551.sd.mp4?s=ff7fedf4bb9bc3dc9391b1a43a758bdee1aa6ef8&profile_id=165&oauth2_token_id=57447761",
+      videoUrl: "",
       features: [
         isRtl ? "🚚 توصيل خلال 24 ساعة" : "🚚 Delivery within 24 hours",
         isRtl ? "📍 تتبع مباشر للشحنة" : "📍 Live shipment tracking",
@@ -1298,9 +1482,9 @@ export default function SpotlightFeed({
       title: isRtl
         ? "🎬 أعلن بريل احترافي وبع أكثر"
         : "🎬 Advertise with Pro Reels & Sell More",
-      userName: adminName,
-      userAvatar: adminAvatar,
-      userId: "aswaq_admin",
+      userName: creatorName,
+      userAvatar: creatorAvatar,
+      userId: creatorId,
       category: isRtl ? "ريلز المنتجات" : "Product Reels",
       city: isRtl ? "جميع المدن" : "All Cities",
       price: 0,
@@ -1309,11 +1493,11 @@ export default function SpotlightFeed({
         ? "الريلز التجارية في أسواق — الطريقة الأكثر تأثيراً لعرض منتجاتك! صوّر، أضف موسيقى، وانشر لملايين المستخدمين في ثوانٍ."
         : "Aswaq commercial reels — the most impactful way to showcase your products! Film, add music, and publish to millions of users in seconds.",
       createdAt: "2026-06-10T00:00:00.000Z",
-      views: 35,
-      likes: 5,
+      views: 2420,
+      likes: 215,
       userVerified: true,
       images: ["https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?auto=format&fit=crop&w=1920&q=80"],
-      videoUrl: "https://player.vimeo.com/external/434045526.sd.mp4?s=c19c968f44ff531ae7e77b105021e141aabccb8c&profile_id=165&oauth2_token_id=57447761",
+      videoUrl: "",
       features: [
         isRtl ? "🎥 تصوير وتعديل مباشر من التطبيق" : "🎥 Film & edit directly from the app",
         isRtl ? "📊 إحصائيات وصول فورية" : "📊 Instant reach analytics",
@@ -1329,9 +1513,9 @@ export default function SpotlightFeed({
       title: isRtl
         ? "⭐ ميّز إعلانك وتصدّر النتائج"
         : "⭐ Boost Your Ad & Top the Results",
-      userName: adminName,
-      userAvatar: adminAvatar,
-      userId: "aswaq_admin",
+      userName: creatorName,
+      userAvatar: creatorAvatar,
+      userId: creatorId,
       category: isRtl ? "إعلانات مميزة" : "Featured Ads",
       city: isRtl ? "جميع المدن" : "All Cities",
       price: 0,
@@ -1340,11 +1524,11 @@ export default function SpotlightFeed({
         ? "أسواق تمنحك أدوات التميّز! رفّع إعلانك ليظهر أمام الآلاف من المشترين المهتمين، وحقق مبيعاتك بأسرع وقت ممكن."
         : "Aswaq gives you the tools to stand out! Boost your listing to appear in front of thousands of interested buyers and achieve your sales faster.",
       createdAt: "2026-06-15T00:00:00.000Z",
-      views: 12,
-      likes: 1,
+      views: 980,
+      likes: 86,
       userVerified: true,
       images: ["https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1920&q=80"],
-      videoUrl: "https://player.vimeo.com/external/370467553.sd.mp4?s=92b4f2c7e0f23e0c9c1d3b1a1e2f3d4b5c6e7f8a&profile_id=165&oauth2_token_id=57447761",
+      videoUrl: "",
       features: [
         isRtl ? "⭐ ظهور في أعلى نتائج البحث" : "⭐ Top search result placement",
         isRtl ? "📣 انتشار واسع على الشبكة الاجتماعية" : "📣 Wide social network reach",
@@ -1360,9 +1544,9 @@ export default function SpotlightFeed({
       title: isRtl
         ? "🔐 أسواق — تسوّق بثقة وأمان تام"
         : "🔐 Aswaq — Shop with Complete Safety",
-      userName: adminName,
-      userAvatar: adminAvatar,
-      userId: "aswaq_admin",
+      userName: creatorName,
+      userAvatar: creatorAvatar,
+      userId: creatorId,
       category: isRtl ? "الأمان والثقة" : "Safety & Trust",
       city: isRtl ? "جميع المدن" : "All Cities",
       price: 0,
@@ -1371,11 +1555,11 @@ export default function SpotlightFeed({
         ? "نظام التحقق والتقييمات في أسواق يضمن لك تجربة آمنة. البائعون الموثّقون، والدفع المحمي، وخدمة العملاء على مدار الساعة."
         : "Aswaq's verification & rating system ensures a safe experience. Verified sellers, protected payments, and 24/7 customer support.",
       createdAt: "2026-06-20T00:00:00.000Z",
-      views: 9,
-      likes: 0,
+      views: 1610,
+      likes: 164,
       userVerified: true,
       images: ["https://images.unsplash.com/photo-1563013544-824ae1b704d3?auto=format&fit=crop&w=1920&q=80"],
-      videoUrl: "https://player.vimeo.com/external/321919467.sd.mp4?s=c27eebe5f76c1a4d8d6e5f3b2a1c4e5d6f7a8b9c&profile_id=165&oauth2_token_id=57447761",
+      videoUrl: "",
       features: [
         isRtl ? "✅ بائعون موثّقون بهوية حقيقية" : "✅ Identity-verified sellers",
         isRtl ? "🔒 حماية بيانات متقدمة" : "🔒 Advanced data protection",
@@ -1383,7 +1567,7 @@ export default function SpotlightFeed({
       ],
       ctaText: isRtl ? "تعرف على ضمانات أسواق 🔐" : "Learn About Aswaq Guarantees 🔐",
     },
-  ]}, [t, countryCode, isRtl, managerProfile]);
+  ]}, [t, countryCode, isRtl]);
 
   const displayAds = React.useMemo(() => {
     const sortedAds = [...ads].sort((a, b) => {
@@ -1498,7 +1682,7 @@ export default function SpotlightFeed({
 
   // Fetch administrator/employee uploaded promos
   useEffect(() => {
-    fetch('/api/promo')
+    fetch('/api/promo' + (countryCode ? `?countryCode=${countryCode}` : ''))
       .then(res => {
         if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
         return res.json();
@@ -1546,16 +1730,56 @@ export default function SpotlightFeed({
   const activeAdId = activeAdForViewer?.id;
   const activeAdIsLive = activeAdForViewer?.isLive;
 
+  // Fetch real-time persisted interactions from server
   useEffect(() => {
-    // Sync initial likes and views directly from database ad properties
-    const initialLikes: Record<string, number> = {};
-    const initialViews: Record<string, number> = {};
-    displayAds.forEach(ad => {
-      initialLikes[ad.id] = ad.likes || 0;
-      initialViews[ad.id] = ad.views || 0;
+    const userId = currentUser?.id;
+    fetch(`/api/promo/interactions${userId ? `?userId=${userId}` : ''}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.interactions) {
+          const newLikes: Record<string, number> = {};
+          const newViews: Record<string, number> = {};
+          const serverLiked: Record<string, boolean> = {};
+
+          Object.entries(data.interactions as Record<string, any>).forEach(([id, item]) => {
+            if (typeof item.likes === 'number') newLikes[id] = item.likes;
+            if (typeof item.views === 'number') newViews[id] = item.views;
+            if (userId && Array.isArray(item.likedBy) && item.likedBy.includes(userId)) {
+              serverLiked[id] = true;
+            }
+          });
+
+          setLikesCount(prev => ({ ...newLikes, ...prev }));
+          setAdViews(prev => ({ ...newViews, ...prev }));
+          if (Object.keys(serverLiked).length > 0) {
+            setLikedAds(prev => ({ ...prev, ...serverLiked }));
+          }
+        }
+      })
+      .catch(() => {});
+  }, [currentUser?.id]);
+
+  useEffect(() => {
+    // Merge initial likes and views without destroying existing counts
+    setLikesCount(prev => {
+      const next = { ...prev };
+      displayAds.forEach(ad => {
+        if (next[ad.id] === undefined && typeof ad.likes === 'number') {
+          next[ad.id] = ad.likes;
+        }
+      });
+      return next;
     });
-    setLikesCount(initialLikes);
-    setAdViews(initialViews);
+
+    setAdViews(prev => {
+      const next = { ...prev };
+      displayAds.forEach(ad => {
+        if (next[ad.id] === undefined && typeof ad.views === 'number') {
+          next[ad.id] = ad.views;
+        }
+      });
+      return next;
+    });
 
     const handleLikeUpdate = ({ adId, likes }: { adId: string, likes: number }) => {
       setLikesCount(prev => ({ ...prev, [adId]: likes }));
@@ -1579,7 +1803,7 @@ export default function SpotlightFeed({
       socket.off('ad-like-update', handleLikeUpdate);
       socket.off('new-broadcast', handleNewBroadcast);
     };
-  }, [isRtl]);
+  }, [displayAds, isRtl]);
 
   useEffect(() => {
     if (activeAdForViewer && activeAdForViewer.isLive) {
@@ -1777,7 +2001,14 @@ export default function SpotlightFeed({
     }
 
     const isLiked = !!likedAds[adId];
-    setLikedAds(prev => ({ ...prev, [adId]: !isLiked }));
+    const nextLiked = !isLiked;
+    setLikedAds(prev => {
+      const next = { ...prev, [adId]: nextLiked };
+      try {
+        localStorage.setItem('aswaq_liked_reels', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
     
     // Optimistically update likes count (+1 when liking, -1 when unliking)
     setLikesCount(prev => {
@@ -1807,7 +2038,7 @@ export default function SpotlightFeed({
       apiFetch(endpoint, { 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: !isLiked ? 'like' : 'unlike' })
+        body: JSON.stringify({ action: nextLiked ? 'like' : 'unlike', userId: currentUser?.id })
       })
       .then(res => res.json())
       .then(data => {
@@ -1887,16 +2118,21 @@ export default function SpotlightFeed({
           </button>
           
           <div className="flex items-center gap-1.5 sm:gap-2">
-            {/* Live & Reels upload button */}
+            {/* Reels upload button */}
             <button
               onClick={() => {
+                if (!currentUser) {
+                  showToast(isRtl ? "يرجى تسجيل الدخول أو إنشاء حساب لنشر مقاطع الريلز" : "Please log in to post reels");
+                  onLoginRequest?.();
+                  return;
+                }
                 setShowLiveUploadModal(true);
-                showToast(isRtl ? "شغل بثك المباشر أو انشر ريلز لصفقتك الآن! 🎥" : "Start your Live Broadcast or Post a Reels promo now! 🎥");
+                showToast(isRtl ? "انشر فيديو ريلز جديد لصفقتك وسلعتك الآن! 🎥" : "Post a new Reels video promo now! 🎥");
               }}
               className="text-white bg-gradient-to-r from-purple-600 via-pink-600 to-rose-600 hover:from-purple-500 hover:to-rose-500 text-[10px] sm:text-xs px-2.5 sm:px-3 py-1.5 rounded-full border border-pink-400/30 flex items-center gap-1 cursor-pointer transition-all duration-300 font-extrabold shadow shadow-pink-500/10 hover:border-pink-400"
             >
-              <Video className="w-3 h-3 text-white animate-pulse" />
-              <span>{isRtl ? 'بث وريلز +' : 'Live & Reels +'}</span>
+              <Video className="w-3 h-3 text-white" />
+              <span>{isRtl ? 'نشر ريلز فيديو 🎥' : 'Post Reel 🎥'}</span>
             </button>
 
             <div className="flex items-center gap-2 bg-emerald-500/20 px-2.5 py-1 rounded-full border border-emerald-500/40 backdrop-blur-md shadow-md hidden xs:flex">
@@ -2266,6 +2502,7 @@ export default function SpotlightFeed({
           </div>
         ) : (
           displayAds.map((ad, i) => {
+            const ctaConfig = getAdCtaConfig(ad, isRtl);
             const isLiked = likedAds[ad.id] || false;
             const isSaved = savedAds[ad.id] || false;
             const isCurrent = i === activeIndex;
@@ -2346,50 +2583,50 @@ export default function SpotlightFeed({
         {/* 2. Interactive Video Overlay (Only active for the current slide if no custom image is set or visible) */}
                 {(() => {
                   const parsedMedia = parseVideoUrl(ad.videoUrl);
-                  const actualVid = parsedMedia.videoUrl || ad.videoUrl || '';
-                  const isWebcamSource = actualVid === 'webcam' || actualVid === 'camera';
+                  const actualVid = resolveMediaUrl(parsedMedia.videoUrl || ad.videoUrl || '');
                   const isAdLive = localAdOverrides[ad.id]?.isLive !== undefined ? localAdOverrides[ad.id].isLive : ad.isLive;
+                  const isWebcamSource = (actualVid === 'webcam' || actualVid === 'camera') && myBroadcastingIds.includes(ad.id);
 
                   return (
                     <>
-                      {((isWebcamSource ? isCurrent : isPreloading)) && actualVid && (
-                        isWebcamSource ? (
-                          <div className="absolute inset-0 z-[60]">
-                            <WebcamStreamPlayer 
-                              isMuted={isMuted} 
-                              isRtl={isRtl} 
-                              ad={ad} 
-                              currentUser={currentUser} 
-                              pinnedProduct={pinnedProduct} 
-                              onPinProductClick={() => setShowPinProductModal(true)} 
-                              myBroadcastingIds={myBroadcastingIds}
-                              onStreamEnded={(adId, archiveUrl, archiveThumb) => {
-                                const overrideUrl = `${archiveUrl}||none||${ad.description || ''}||${ad.city || ''}||${ad.category || ''}`;
-                                setLocalAdOverrides(prev => ({
-                                  ...prev,
-                                  [adId]: {
-                                    isLive: false,
-                                    videoUrl: overrideUrl,
-                                    images: archiveThumb ? [archiveThumb] : ad.images
-                                  }
-                                }));
-                                if (archiveThumb) {
-                                  setCustomBgs(prev => ({ ...prev, [adId]: archiveThumb }));
+                      {isWebcamSource ? (
+                        <div className="absolute inset-0 z-[60]">
+                          <WebcamStreamPlayer 
+                            isMuted={isMuted} 
+                            isRtl={isRtl} 
+                            ad={ad} 
+                            currentUser={currentUser} 
+                            pinnedProduct={pinnedProduct} 
+                            onPinProductClick={() => setShowPinProductModal(true)} 
+                            myBroadcastingIds={myBroadcastingIds}
+                            onStreamEnded={(adId, archiveUrl, archiveThumb) => {
+                              const overrideUrl = `${archiveUrl}||none||${ad.description || ''}||${ad.city || ''}||${ad.category || ''}`;
+                              setLocalAdOverrides(prev => ({
+                                ...prev,
+                                [adId]: {
+                                  isLive: false,
+                                  videoUrl: overrideUrl,
+                                  images: archiveThumb ? [archiveThumb] : ad.images
                                 }
-                                apiFetch(`/api/promo/${adId}`, {
-                                  method: 'PATCH',
-                                  headers: { 'Content-Type': 'application/json' },
-                                  body: JSON.stringify({ 
-                                    isLive: false, 
-                                    videoUrl: overrideUrl,
-                                    thumbnailUrl: archiveThumb || getImageUrl(ad.images?.[0])
-                                  })
-                                }).catch(() => {});
-                                showToast(isRtl ? "تم إنهاء البث بنجاح وتحويله إلى فيديو مسجل! 🎥" : "Live stream completed and converted to playback! 🎥");
-                              }}
-                            />
-                          </div>
-                        ) : getYoutubeEmbedUrlForBg(actualVid, isMuted) ? (
+                              }));
+                              if (archiveThumb) {
+                                setCustomBgs(prev => ({ ...prev, [adId]: archiveThumb }));
+                              }
+                              apiFetch(`/api/promo/${adId}`, {
+                                method: 'PATCH',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ 
+                                  isLive: false, 
+                                  videoUrl: overrideUrl, 
+                                  thumbnailUrl: archiveThumb || getImageUrl(ad.images?.[0])
+                                })
+                              }).catch(() => {});
+                              showToast(isRtl ? "تم إنهاء البث بنجاح وتحويله إلى فيديو مسجل! 🎥" : "Live stream completed and converted to playback! 🎥");
+                            }}
+                          />
+                        </div>
+                      ) : ((isCurrent || isPreloading) && actualVid && !actualVid.startsWith('webcam') && !actualVid.startsWith('camera')) ? (
+                        getYoutubeEmbedUrlForBg(actualVid, isMuted) ? (
                           <div className="absolute inset-0 w-full h-full z-[1]">
                             <iframe
                               src={getYoutubeEmbedUrlForBg(actualVid, isMuted) || undefined}
@@ -2399,25 +2636,14 @@ export default function SpotlightFeed({
                             />
                           </div>
                         ) : (
-                          <div className="absolute inset-0 w-full h-full z-[1]">
-                            <video 
-                              src={actualVid} 
-                              autoPlay={isCurrent}
-                              loop 
-                              muted={ad.audioUrl ? true : isMuted}
-                              playsInline
-                              className="absolute inset-0 w-full h-full object-cover brightness-100"
-                            />
-                            {ad.audioUrl && (
-                              <AudioPlayer 
-                                src={ad.audioUrl} 
-                                isPlaying={isCurrent} 
-                                isMuted={isMuted} 
-                              />
-                            )}
-                          </div>
+                          <FeedVideoPlayer
+                            src={actualVid}
+                            isCurrent={isCurrent}
+                            isMuted={isMuted}
+                            audioUrl={ad.audioUrl}
+                          />
                         )
-                      )}
+                      ) : null}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/45 to-black/30 z-[2]" />
                       
                       {/* Live Stream Indicator & Badge - Only show when stream is live */}
@@ -2479,17 +2705,11 @@ export default function SpotlightFeed({
               )}
 
               <div className={`absolute bottom-[170px] sm:bottom-28 z-[200] flex flex-col gap-3 sm:gap-4 items-center pointer-events-auto ${isRtl ? 'left-2 sm:left-4' : 'right-2 sm:right-4'}`}>
-                
                 {/* 1. Avatar Profile */}
                 <div className="flex flex-col items-center gap-1 relative mb-2">
                   <div 
                      onClick={() => {
-                       const isSystemAdminPromo = ad.promoType === 'system' || ad.userName === 'إدارة أسواق' || ad.userName === 'Aswaq Management';
-                       if (isSystemAdminPromo) {
-                         showToast(isRtl ? '🏢 إدارة أسواق — المنصة الرسمية' : '🏢 Aswaq Management — Official Platform');
-                         return;
-                       }
-                       const usr = INITIAL_USERS.find(u => u.avatar === ad.userAvatar || u.id === ad.userId);
+                       const usr = INITIAL_USERS.find(u => u.avatar === (ad.user?.avatar || ad.userAvatar) || u.id === ad.userId);
                        if (usr && onSelectUser) {
                          onSelectUser(usr);
                          onClose();
@@ -2498,45 +2718,25 @@ export default function SpotlightFeed({
                        }
                        showToast(t('spotlight.merchantToast'));
                      }}
-                     className={`w-11 h-11 sm:w-12 sm:h-12 rounded-full overflow-hidden bg-slate-900 shadow-xl cursor-pointer hover:scale-105 transition-transform ${
-                       (ad.promoType === 'system' || ad.userName === 'إدارة أسواق')
-                         ? 'border-[2px] border-amber-400 shadow-amber-400/40 shadow-lg ring-2 ring-amber-500/30'
-                         : 'border-[1.5px] border-white p-0.5'
-                     }`}
+                     className="w-11 h-11 sm:w-12 sm:h-12 rounded-full overflow-hidden bg-slate-900 shadow-xl cursor-pointer hover:scale-105 transition-transform border-[2px] border-emerald-400/90 shadow-emerald-500/30 p-0.5"
                   >
                     <Avatar 
-                      src={(ad.promoType === 'system' || ad.userName === 'إدارة أسواق') ? '/aswaq-admin-avatar.png' : (ad.user?.avatar || ad.userAvatar)} 
-                      name={(ad.promoType === 'system' || ad.userName === 'إدارة أسواق') ? (isRtl ? 'إدارة أسواق' : 'Aswaq Management') : (ad.user?.name || ad.userName || (isRtl ? 'بائع أسواق' : 'Aswaq Seller'))} 
+                      src={ad.user?.avatar || ad.userAvatar || managerProfile?.avatar || currentUser?.avatar} 
+                      name={ad.user?.name || ad.userName || managerProfile?.name || currentUser?.name || (isRtl ? 'بائع أسواق' : 'Aswaq Seller')} 
                       sizeClassName="w-full h-full"
-                      className="rounded-full"
+                      className="rounded-full object-cover"
                     />
                   </div>
-                  {/* Badge: شعار ذهبي للإدارة / زر متابعة للعاديين */}
-                  {(ad.promoType === 'system' || ad.userName === 'إدارة أسواق') ? (
-                    <div className="absolute -bottom-2 bg-gradient-to-br from-amber-400 to-yellow-500 rounded-full w-5 h-5 flex items-center justify-center shadow-lg shadow-amber-500/50 border border-white"
-                         title={isRtl ? 'إدارة أسواق الرسمية' : 'Official Aswaq Management'}
-                    >
-                      <span className="text-slate-900 text-[9px] leading-none font-black">✓</span>
-                    </div>
-                  ) : (
-                    <div className="absolute -bottom-2 bg-rose-500 rounded-full w-5 h-5 flex items-center justify-center cursor-pointer hover:scale-110 transition-transform shadow-lg shadow-rose-500/50 border border-white"
-                         onClick={() => {
-                            onSelectAd(ad);
-                            showToast(t('spotlight.chatToast'));
-                         }}
-                    >
-                      <span className="text-white text-xs leading-none font-bold">+</span>
-                    </div>
-                  )}
+                  {/* Verified Badge */}
+                  <div className="absolute -bottom-2 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-full w-5 h-5 flex items-center justify-center shadow-lg shadow-emerald-500/50 border border-white"
+                       title={t('spotlight.verifiedSeller')}
+                  >
+                    <span className="text-slate-900 text-[9px] leading-none font-black">✓</span>
+                  </div>
                 </div>
                 {/* اسم صاحب الريل */}
-                <span className={`text-[9px] font-black drop-shadow-lg text-center leading-tight max-w-[48px] truncate ${
-                  (ad.promoType === 'system' || ad.userName === 'إدارة أسواق') ? 'text-amber-300' : 'text-white/90'
-                }`}>
-                  {(ad.promoType === 'system' || ad.userName === 'إدارة أسواق')
-                    ? (isRtl ? 'إدارة\nأسواق' : 'Aswaq\nMgmt')
-                    : sanitizeName(ad.user?.name || ad.userName || (isRtl ? 'بائع' : 'Seller')).split(' ')[0]
-                  }
+                <span className="text-[10px] font-black drop-shadow-lg text-center leading-tight max-w-[56px] truncate text-white/95">
+                  {sanitizeName(ad.user?.name || ad.userName || managerProfile?.name || currentUser?.name || (isRtl ? 'بائع' : 'Seller')).split(' ')[0]}
                 </span>
 
                 {/* 2. Like */}
@@ -2592,12 +2792,12 @@ export default function SpotlightFeed({
                       setShoppableBuyerName(currentUser?.name || '');
                       setShoppableBuyerPhone(currentUser?.phone || '');
                     }}
-                    className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-500 flex items-center justify-center text-white hover:from-emerald-400 hover:to-teal-400 transition-all shadow-[0_0_15px_rgba(16,185,129,0.4)] animate-pulse active:animate-none cursor-pointer"
+                    className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-tr ${ctaConfig.fabColor} flex items-center justify-center text-white transition-all ${ctaConfig.fabShadow} animate-pulse active:animate-none cursor-pointer`}
                   >
-                    <ShoppingCart className="w-5 h-5 sm:w-6 sm:h-6" />
+                    <ctaConfig.icon className="w-5 h-5 sm:w-6 sm:h-6" />
                   </motion.button>
                   <span className="text-emerald-400 text-[9px] sm:text-[10px] font-bold drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)] tracking-wide">
-                    {isRtl ? 'شراء' : 'Buy'}
+                    {ctaConfig.fabLabel}
                   </span>
                 </div>
 
@@ -2664,7 +2864,7 @@ export default function SpotlightFeed({
                         }}
                         className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-lg text-[9.5px] transition-all cursor-pointer border-none shrink-0"
                       >
-                        {isRtl ? 'شراء' : 'Buy'}
+                        {ctaConfig.fabLabel || (isRtl ? 'شراء' : 'Buy')}
                       </button>
                     </motion.div>
                   )}
@@ -2686,27 +2886,18 @@ export default function SpotlightFeed({
 
                   {/* اسم صاحب الريل في المحتوى السفلي */}
                   <div className={`flex items-center gap-1.5 ${isRtl ? 'flex-row' : 'flex-row-reverse'}`}>
-                    {(ad.promoType === 'system' || ad.userName === 'إدارة أسواق') ? (
-                      <div className="flex items-center gap-1.5 bg-gradient-to-r from-amber-500/20 to-yellow-500/20 border border-amber-500/40 px-3 py-1 rounded-full backdrop-blur-md shadow-md">
-                        <img src="/aswaq-admin-avatar.png" alt="Aswaq Admin" className="w-4 h-4 rounded-full border border-amber-400/60 object-cover" />
-                        <span className="text-amber-300 text-[10px] sm:text-[11px] font-black tracking-wide">
-                          {isRtl ? 'إدارة أسواق' : 'Aswaq Management'}
-                        </span>
-                        <ShieldCheck className="w-3 h-3 text-amber-400" />
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1.5 bg-slate-950/70 border border-white/10 px-2.5 py-1 rounded-full backdrop-blur-md">
-                        <Avatar
-                          src={ad.user?.avatar || ad.userAvatar}
-                          name={ad.user?.name || ad.userName || ''}
-                          sizeClassName="w-4 h-4"
-                          className="rounded-full"
-                        />
-                        <span className="text-white/80 text-[10px] font-bold">
-                          {ad.user?.name || ad.userName || (isRtl ? 'بائع أسواق' : 'Aswaq Seller')}
-                        </span>
-                      </div>
-                    )}
+                    <div className="flex items-center gap-1.5 bg-slate-950/80 border border-emerald-500/30 px-3 py-1 rounded-full backdrop-blur-md shadow-md">
+                      <Avatar
+                        src={ad.user?.avatar || ad.userAvatar || managerProfile?.avatar || currentUser?.avatar}
+                        name={ad.user?.name || ad.userName || managerProfile?.name || currentUser?.name || ''}
+                        sizeClassName="w-4 h-4"
+                        className="rounded-full"
+                      />
+                      <span className="text-white text-[10px] sm:text-[11px] font-black tracking-wide">
+                        {ad.user?.name || ad.userName || managerProfile?.name || currentUser?.name || (isRtl ? 'بائع أسواق' : 'Aswaq Seller')}
+                      </span>
+                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                    </div>
                   </div>
 
                   <div className={`flex items-center flex-wrap gap-1.5 sm:gap-3 text-white/90 ${isRtl ? 'flex-row' : 'flex-row-reverse'}`}>
@@ -2766,10 +2957,10 @@ export default function SpotlightFeed({
                           onClose();
                           showToast(t('spotlight.redirectToast'));
                         }}
-                        className="flex-1 bg-gradient-to-r from-rose-500 to-amber-500 hover:from-rose-400 hover:to-amber-400 text-slate-950 h-11 sm:h-14 rounded-xl sm:rounded-2xl font-black flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg shadow-rose-500/30 cursor-pointer text-[11px] sm:text-xs uppercase tracking-wider"
+                        className={`flex-1 ${ctaConfig.color} hover:opacity-90 text-white h-11 sm:h-14 rounded-xl sm:rounded-2xl font-black flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg cursor-pointer text-[11px] sm:text-xs uppercase tracking-wider`}
                        >
-                         <Compass className="w-4 h-4 sm:w-5 sm:h-5 text-slate-950" />
-                         <span>{ad.ctaText || t('spotlight.viewDetails')}</span>
+                         <ctaConfig.icon className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                         <span>{ctaConfig.mainLabel}</span>
                        </button>
                      ) : (
                        <button 
@@ -2777,10 +2968,10 @@ export default function SpotlightFeed({
                           onSelectAd(ad);
                           showToast(t('spotlight.detailsToast'));
                         }}
-                        className="flex-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 h-11 sm:h-14 rounded-xl sm:rounded-2xl font-black flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg shadow-emerald-500/10 cursor-pointer text-xs sm:text-sm"
+                        className={`flex-1 ${ctaConfig.color} hover:opacity-90 text-white h-11 sm:h-14 rounded-xl sm:rounded-2xl font-black flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg cursor-pointer text-xs sm:text-sm`}
                        >
-                         <Eye className="w-4 h-4 sm:w-5 sm:h-5 text-slate-950" />
-                         {t('spotlight.viewDetails')}
+                         <ctaConfig.icon className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                         <span>{ctaConfig.mainLabel}</span>
                        </button>
                      )}
                      <button 
@@ -2921,50 +3112,60 @@ export default function SpotlightFeed({
         </div>
       </div>
 
-      {/* Shoppable Instant Buy Panel for Reels */}
+      {/* Shoppable / Booking / Inspection Panel for Reels */}
       <div 
-        className={`fixed bottom-0 left-0 right-0 bg-slate-950 border-t border-emerald-500/50 rounded-t-3xl pt-2 pb-24 px-5 z-[1200] transition-transform duration-300 flex flex-col shadow-[0_-15px_45px_rgba(16,185,129,0.15)] h-[65%] pointer-events-auto ${showShoppablePanel ? "translate-y-0" : "translate-y-full"} ${isRtl ? 'text-right' : 'text-left'}`}
+        className={`fixed bottom-0 left-0 right-0 bg-slate-950 border-t border-emerald-500/50 rounded-t-3xl pt-2 pb-24 px-5 z-[1200] transition-transform duration-300 flex flex-col shadow-[0_-15px_45px_rgba(16,185,129,0.15)] h-[70%] max-h-[85vh] pointer-events-auto ${showShoppablePanel ? "translate-y-0" : "translate-y-full"} ${isRtl ? 'text-right' : 'text-left'}`}
       >
         <div className="flex justify-center mb-2">
           <div className="w-12 h-1 bg-slate-850 rounded-full cursor-pointer" onClick={() => setShowShoppablePanel(false)}></div>
         </div>
 
-        <div className={`flex items-center justify-between border-b border-slate-900 pb-3 mb-3 ${isRtl ? 'flex-row' : 'flex-row-reverse'}`}>
-          <div className="flex items-center gap-2">
-            <span className="text-lg">🛒</span>
-            <div>
-              <h4 className="text-xs font-black text-white">إتمام طلب فوري وسريع للسلعة</h4>
-              <p className="text-[9px] text-emerald-400 font-bold">بموجب ضمان الشحن الآمن واللوجستيات لأسواق</p>
+        {(() => {
+          const currentAd = displayAds[activeIndex];
+          const ad = pinnedProduct ? {
+            id: pinnedProduct.id,
+            title: pinnedProduct.title,
+            price: pinnedProduct.price,
+            currency: currentAd?.currency || 'YER',
+            images: [pinnedProduct.image],
+            user: currentAd?.user,
+            userName: currentAd?.userName,
+            city: currentAd?.city || 'كافة المناطق',
+            category: currentAd?.category,
+            categoryId: currentAd?.categoryId
+          } : currentAd;
+
+          if (!ad) return (
+            <div className="flex-1 flex items-center justify-center">
+              <p className="text-slate-400 text-center text-xs">لا يوجد إعلان مرتبط بهذا المقطع.</p>
             </div>
-          </div>
-          <button 
-            onClick={() => setShowShoppablePanel(false)} 
-            className="text-slate-500 hover:text-white border-none bg-transparent font-black text-lg cursor-pointer p-1"
-          >
-            ×
-          </button>
-        </div>
+          );
 
-        <div className="flex-1 overflow-y-auto space-y-4 pr-1 scrollbar-hidden pb-12">
-          {(() => {
-            const currentAd = displayAds[activeIndex];
-            const ad = pinnedProduct ? {
-              id: pinnedProduct.id,
-              title: pinnedProduct.title,
-              price: pinnedProduct.price,
-              currency: currentAd?.currency || 'YER',
-              images: [pinnedProduct.image],
-              user: currentAd?.user,
-              userName: currentAd?.userName,
-              city: currentAd?.city || 'كافة المناطق'
-            } : currentAd;
+          const ctaConfig = getAdCtaConfig(ad, isRtl);
+          const panel = ctaConfig.panel;
+          const safeImages = Array.isArray(ad.images) ? ad.images : [];
 
-            if (!ad) return <p className="text-slate-400 text-center text-xs">لا توجد سلعة مرتبطة بهذا المقطع.</p>;
-            const safeImages = Array.isArray(ad.images) ? ad.images : [];
+          return (
+            <>
+              {/* Dynamic Header based on category */}
+              <div className={`flex items-center justify-between border-b border-slate-900 pb-3 mb-3 ${isRtl ? 'flex-row' : 'flex-row-reverse'}`}>
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">{panel.icon}</span>
+                  <div>
+                    <h4 className="text-xs font-black text-white">{panel.headerTitle}</h4>
+                    <p className="text-[9.5px] text-emerald-400 font-bold">{panel.headerSubtitle}</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setShowShoppablePanel(false)} 
+                  className="text-slate-500 hover:text-white border-none bg-transparent font-black text-lg cursor-pointer p-1"
+                >
+                  ×
+                </button>
+              </div>
 
-            return (
-              <div className="space-y-4">
-                {/* Product mini header information */}
+              <div className="flex-1 overflow-y-auto space-y-4 pr-1 scrollbar-hidden pb-12">
+                {/* Item / Hotel mini header information */}
                 <div className="flex gap-3 bg-slate-900/60 p-2.5 rounded-xl border border-slate-900">
                   <img 
                     src={getImageUrl(safeImages?.[0], 'https://images.unsplash.com/photo-1540553016722-983e48a2cd10?auto=format&fit=crop&w=120&q=80')} 
@@ -2977,7 +3178,7 @@ export default function SpotlightFeed({
                       {(ad.price || 0).toLocaleString()} {getCurrencyNameAr(ad.currency)}
                     </p>
                     <p className="text-[9px] text-slate-500 mt-0.5 flex items-center gap-1">
-                      <span>👤 {ad.user?.name || ad.userName || (isRtl ? 'بائع أسواق' : 'Aswaq Seller')}</span>
+                      <span>👤 {ad.user?.name || ad.userName || (isRtl ? 'المعلن' : 'Advertiser')}</span>
                       <span>•</span>
                       <span>📍 {ad.city}</span>
                     </p>
@@ -2993,84 +3194,92 @@ export default function SpotlightFeed({
                     <div className="w-12 h-12 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-black text-2xl mx-auto">
                       ✓
                     </div>
-                    <h5 className="text-xs font-black text-emerald-400">تهانينا! تم تأكيد طلبك الفوري بنجاح 🎉</h5>
-                    <p className="text-[10px] text-slate-300 leading-normal max-w-[280px] mx-auto">
-                      تم إصدار رقم الطلبية <span className="font-mono font-bold text-white bg-slate-950 px-1.5 py-0.5 rounded">ASW-{shoppableOrderId}</span>. تم إدراج الطلب مباشرة في نظام دليفري اللوجستي للتنفيذ الفوري!
+                    <h5 className="text-xs font-black text-emerald-400">{panel.successTitle}</h5>
+                    <p className="text-[10px] text-slate-300 leading-normal max-w-[300px] mx-auto">
+                      رقم الطلب المرجعي: <span className="font-mono font-bold text-white bg-slate-950 px-1.5 py-0.5 rounded">ASW-{shoppableOrderId}</span>. {panel.successDesc}
                     </p>
                     <button
                       type="button"
                       onClick={() => setShowShoppablePanel(false)}
-                      className="text-[10px] font-black text-emerald-400 hover:underline border-none bg-transparent block mx-auto cursor-pointer"
+                      className="text-[10px] font-black text-emerald-400 hover:underline border-none bg-transparent block mx-auto cursor-pointer pt-2"
                     >
-                      متابعة تصفح مقاطع السلع الأخرى
+                      {panel.successContinueText}
                     </button>
                   </motion.div>
                 ) : (
                   <div className="space-y-3.5">
-                    {/* Buyer Information input fields */}
+                    {/* Dynamic Fields */}
                     <div className="space-y-3">
                       <div>
-                        <label className="block text-[9.5px] font-bold text-slate-400 mb-1">اسم المشتري الكريم الكامل:</label>
+                        <label className="block text-[9.5px] font-bold text-slate-400 mb-1">{panel.nameLabel}</label>
                         <input 
                           type="text" 
                           value={shoppableBuyerName}
                           onChange={(e) => setShoppableBuyerName(e.target.value)}
-                          placeholder="مثال: صالح اليماني"
+                          placeholder={panel.namePlaceholder}
                           className="w-full bg-slate-900 border border-slate-900 rounded-xl p-2.5 text-xs text-white outline-none focus:border-emerald-500 transition-colors"
                         />
                       </div>
                       <div>
-                        <label className="block text-[9.5px] font-bold text-slate-400 mb-1">رقم هاتف الوجهة والتوصيل السريع:</label>
+                        <label className="block text-[9.5px] font-bold text-slate-400 mb-1">{panel.phoneLabel}</label>
                         <input 
                           type="text" 
                           value={shoppableBuyerPhone}
                           onChange={(e) => setShoppableBuyerPhone(e.target.value)}
-                          placeholder="مثال: 777000123"
+                          placeholder={panel.phonePlaceholder}
                           className="w-full bg-slate-900 border border-slate-900 rounded-xl p-2.5 text-xs text-white outline-none focus:border-emerald-500 transition-colors font-mono"
                         />
                       </div>
                     </div>
 
-                    {/* Quantity counter */}
-                    <div className="flex items-center justify-between border-t border-slate-900/60 pt-3">
-                      <span className="text-[11px] font-bold text-slate-400">الكمية المطلوبة لشحنها:</span>
-                      <div className="flex items-center gap-3">
-                        <button 
-                          type="button" 
-                          onClick={() => setShoppableQuantity(prev => Math.max(1, prev - 1))}
-                          className="w-8 h-8 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 flex items-center justify-center text-white font-extrabold cursor-pointer border-none"
-                        >
-                          -
-                        </button>
-                        <span className="text-[11.5px] font-black text-white font-mono w-4 text-center">{shoppableQuantity}</span>
-                        <button 
-                          type="button" 
-                          onClick={() => setShoppableQuantity(prev => prev + 1)}
-                          className="w-8 h-8 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 flex items-center justify-center text-white font-extrabold cursor-pointer border-none"
-                        >
-                          +
-                        </button>
+                    {/* Quantity or Duration Counter */}
+                    {panel.hasQuantity ? (
+                      <div className="flex items-center justify-between border-t border-slate-900/60 pt-3">
+                        <span className="text-[11px] font-bold text-slate-400">{panel.quantityLabel}</span>
+                        <div className="flex items-center gap-3">
+                          <button 
+                            type="button" 
+                            onClick={() => setShoppableQuantity(prev => Math.max(1, prev - 1))}
+                            className="w-8 h-8 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 flex items-center justify-center text-white font-extrabold cursor-pointer border-none"
+                          >
+                            -
+                          </button>
+                          <span className="text-[11.5px] font-black text-white font-mono px-1">
+                            {shoppableQuantity} {panel.quantityUnit}
+                          </span>
+                          <button 
+                            type="button" 
+                            onClick={() => setShoppableQuantity(prev => prev + 1)}
+                            className="w-8 h-8 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 flex items-center justify-center text-white font-extrabold cursor-pointer border-none"
+                          >
+                            +
+                          </button>
+                        </div>
                       </div>
-                    </div>
+                    ) : null}
 
-                    {/* Cost summary */}
+                    {/* Cost summary tailored to category */}
                     <div className="p-3 bg-slate-900/40 rounded-xl border border-slate-900 space-y-1.5 font-mono text-right">
                       <div className="flex justify-between text-[10px]">
-                        <span className="text-slate-500 font-sans">قيمة السلع الصافية:</span>
-                        <span className="text-slate-300">{((ad.price || 0) * shoppableQuantity).toLocaleString()} {ad.currency}</span>
+                        <span className="text-slate-500 font-sans">{panel.costRow1Label}</span>
+                        <span className="text-slate-300">
+                          {((ad.price || 0) * (panel.hasQuantity ? shoppableQuantity : 1)).toLocaleString()} {ad.currency}
+                        </span>
                       </div>
                       <div className="flex justify-between text-[10px]">
-                        <span className="text-slate-500 font-sans">رسوم التوصيل والخدمة والضمان اللوجستي:</span>
-                        <span className="text-emerald-400 font-sans">توصيل مجاني ومؤمّن 🚚</span>
+                        <span className="text-slate-500 font-sans">{panel.costRow2Label}</span>
+                        <span className="text-emerald-400 font-sans">{panel.costRow2Value}</span>
                       </div>
                       <div className="flex justify-between text-xs font-black border-t border-slate-950 pt-2">
-                        <span className="text-slate-400 font-sans">الإجمالي الكلي النهائي:</span>
-                        <span className="text-emerald-400 text-sm">{((ad.price || 0) * shoppableQuantity).toLocaleString()} {getCurrencyNameAr(ad.currency)}</span>
+                        <span className="text-slate-400 font-sans">{panel.costTotalLabel}</span>
+                        <span className="text-emerald-400 text-sm">
+                          {((ad.price || 0) * (panel.hasQuantity ? shoppableQuantity : 1)).toLocaleString()} {getCurrencyNameAr(ad.currency)}
+                        </span>
                       </div>
                     </div>
 
-                    {/* Direct checkout call-to-action */}
-                     <button
+                    {/* Direct Action Button */}
+                    <button
                       type="button"
                       disabled={shoppableLoading || !shoppableBuyerName.trim() || !shoppableBuyerPhone.trim()}
                       onClick={async () => {
@@ -3089,9 +3298,10 @@ export default function SpotlightFeed({
                             },
                             body: JSON.stringify({
                               adId: ad.id,
-                              quantity: shoppableQuantity,
+                              quantity: panel.hasQuantity ? shoppableQuantity : 1,
                               buyerName: shoppableBuyerName,
-                              buyerPhone: shoppableBuyerPhone
+                              buyerPhone: shoppableBuyerPhone,
+                              categoryType: panel.type
                             })
                           });
                           const result = await response.json();
@@ -3102,7 +3312,7 @@ export default function SpotlightFeed({
                             setShoppableOrderId(orderNum);
                             setShoppableSuccess(true);
                           } else {
-                            alert(result.message || 'فشل إتمام عملية الشراء.');
+                            alert(result.message || 'فشلت معالجة الطلب.');
                           }
                         } catch (e) {
                           console.error(e);
@@ -3114,18 +3324,19 @@ export default function SpotlightFeed({
                       className="w-full py-3 bg-gradient-to-l from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 disabled:from-slate-800 disabled:to-slate-850 disabled:text-slate-500 disabled:cursor-not-allowed text-slate-950 font-black rounded-xl text-xs flex items-center justify-center gap-1 cursor-pointer transition-all active:scale-95 shadow-md shadow-emerald-500/5 mt-2"
                     >
                       {shoppableLoading ? (
-                        <span>جاري تسجيل الطلب اللوجستي وتصميم بوليصة الاستباق...</span>
+                        <span>جاري تسجيل وتأكيد الطلب المباشر...</span>
                       ) : (
-                        <span>🛒 تسجيل وتأكيد الشراء بضمان التوصيل اللوجستي لأسواق</span>
+                        <span>{panel.submitButtonText}</span>
                       )}
                     </button>
                   </div>
                 )}
               </div>
-            );
-          })()}
-        </div>
+            </>
+          );
+        })()}
       </div>
+
 
       {/* Live & Reels Creation Portal Modal */}
       <AnimatePresence>
@@ -3140,7 +3351,7 @@ export default function SpotlightFeed({
               initial={{ scale: 0.95, y: 30 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, y: 30 }}
-              className="bg-slate-900 border border-white/10 rounded-3xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto shadow-2xl relative flex flex-col gap-4 text-slate-100"
+              className="bg-slate-900 border border-white/10 rounded-3xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto shadow-2xl relative flex flex-col gap-4 text-slate-100 font-sans"
             >
               {/* Close Button */}
               <button
@@ -3151,6 +3362,10 @@ export default function SpotlightFeed({
                   setUploadedAudioUrl('');
                   setAudioUploading(false);
                   setAudioOriginalName('');
+                  setUploadedVideoUrl('');
+                  setVideoUploading(false);
+                  setVideoOriginalName('');
+                  setVideoThumbnailUrl('');
                 }}
                 className="absolute top-4 left-4 p-2 rounded-full bg-slate-950/60 border border-white/10 hover:border-pink-500/30 text-slate-400 hover:text-white cursor-pointer"
               >
@@ -3158,15 +3373,15 @@ export default function SpotlightFeed({
               </button>
 
               <div className="flex items-center gap-2 border-b border-white/5 pb-3">
-                <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-400">
-                  <Radio className="w-5 h-5 animate-pulse" />
+                <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-pink-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-pink-500/30">
+                  <Video className="w-5 h-5" />
                 </div>
                 <div>
                   <h3 className="text-sm sm:text-base font-black text-white">
-                    {isRtl ? 'بوابة البث المباشر ونشر الريلز والترفيه 🎥' : 'Live Broadcast & Reels Showcase Portal 🎥'}
+                    {isRtl ? '🎬 نشر مقطع ريلز فيديو احترافي' : '🎬 Post Professional Reels Video'}
                   </h3>
                   <p className="text-[10px] text-slate-400 font-extrabold mt-0.5">
-                    {isRtl ? 'اجذب آلاف المتابعين وبث صفقاتك ومنتجاتك فوراً' : 'Engage users & start real-time sales simulation'}
+                    {isRtl ? 'ارفع فيديو لمنتجك أو صفقتك ليظهر لآلاف المشترين فوراً' : 'Upload a video to showcase your product to thousands of buyers'}
                   </p>
                 </div>
               </div>
@@ -3175,6 +3390,10 @@ export default function SpotlightFeed({
                 onSubmit={async (e) => {
                   e.preventDefault();
                   try {
+                    if (videoUploading) {
+                      showToast(isRtl ? 'يرجى الانتظار حتى يكتمل رفع ملف الفيديو!' : 'Please wait for the video upload to finish!');
+                      return;
+                    }
                     if (audioUploading) {
                       showToast(isRtl ? 'يرجى الانتظار حتى يكتمل رفع الملف الصوتي!' : 'Please wait for the audio file to finish uploading!');
                       return;
@@ -3184,8 +3403,21 @@ export default function SpotlightFeed({
                     
                     const title = (formData.get('liveTitle') || '').toString().trim();
                     const description = (formData.get('liveDesc') || '').toString().trim();
-                    const rawVideoUrl = (formData.get('liveUrl') || '').toString().trim() || 'webcam';
                     
+                    let rawVideoUrl = '';
+                    if (videoSourceType === 'upload') {
+                      rawVideoUrl = uploadedVideoUrl;
+                    } else if (videoSourceType === 'camera') {
+                      rawVideoUrl = 'webcam';
+                    } else if (videoSourceType === 'link') {
+                      rawVideoUrl = (formData.get('videoUrlLink') || '').toString().trim();
+                    }
+
+                    if (!rawVideoUrl) {
+                      showToast(isRtl ? 'يرجى رفع ملف فيديو أو إدخال رابط الفيديو أولاً!' : 'Please upload a video file or provide a video link!');
+                      return;
+                    }
+
                     let audioUrl = 'none';
                     if (audioSourceType === 'file') {
                       audioUrl = uploadedAudioUrl || 'none';
@@ -3195,17 +3427,19 @@ export default function SpotlightFeed({
 
                     const city = (formData.get('liveCity') || 'all').toString();
                     const liveCategory = (formData.get('liveCat') || '').toString();
-                    
-                    const liveTypeVal = (formData.get('liveType') || 'live').toString();
-                    const isLive = liveTypeVal === 'live';
+                    const isLive = videoSourceType === 'camera';
 
                     if (!title) {
-                      showToast(isRtl ? 'يرجى إدخال عنوان الإعلان أو البث!' : 'Please enter a stream/reel title!');
+                      showToast(isRtl ? 'يرجى إدخال عنوان لمقطع الريلز!' : 'Please enter a title for the reel!');
                       return;
                     }
 
                     // Serialize videoUrl
                     const videoUrl = `${rawVideoUrl}||${audioUrl}||${description}||${city === 'all' ? (isRtl ? "كافة المناطق" : "All Regions") : city}||${liveCategory}`;
+
+                    const creatorAvatar = managerProfile?.avatar || currentUser?.avatar || "https://lh3.googleusercontent.com/a/ACg8ocILZLj44t6xsNGSs0XS0LWGNknuYW-7HX_HLmWQ0duGl8STxw=s96-c";
+                    const creatorName = managerProfile?.name || currentUser?.name || "Emad Salah";
+                    const creatorId = managerProfile?.id || currentUser?.id || "admin";
 
                     const response = await apiFetch('/api/promo', {
                       method: 'POST',
@@ -3218,9 +3452,10 @@ export default function SpotlightFeed({
                         category: liveCategory,
                         isLive,
                         userVerified: true,
-                        userId: currentUser?.id || "guest_user",
-                        userName: currentUser?.name || (isRtl ? "زائر" : "Guest"),
-                        userAvatar: currentUser?.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80"
+                        userId: creatorId,
+                        userName: creatorName,
+                        userAvatar: creatorAvatar,
+                        thumbnailUrl: videoThumbnailUrl || undefined
                       })
                     });
 
@@ -3231,20 +3466,21 @@ export default function SpotlightFeed({
                       // Fallback creation for offline/instant mode
                       createdItem = {
                         id: `promo_local_${Date.now()}`,
-                        title: title || (isRtl ? "بث مباشر جديد" : "New Live Stream"),
+                        title: title || (isRtl ? "ريلز جديد" : "New Reel"),
                         videoUrl: videoUrl,
-                        userId: currentUser?.id || "guest_user",
-                        userName: currentUser?.name || (isRtl ? "مُذيع أسواق" : "Aswaq Streamer"),
-                        userAvatar: currentUser?.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80",
+                        userId: creatorId,
+                        userName: creatorName,
+                        userAvatar: creatorAvatar,
+                        thumbnailUrl: videoThumbnailUrl || undefined,
                         isLive: isLive || rawVideoUrl === 'webcam' || rawVideoUrl === 'camera'
                       };
                     }
 
                     const parsed = parseVideoUrl(createdItem.videoUrl || videoUrl);
                     const isWebcam = parsed.videoUrl === 'webcam' || parsed.videoUrl === 'camera';
-                    const defaultImg = isWebcam 
+                    const defaultImg = videoThumbnailUrl || (isWebcam 
                       ? "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80"
-                      : "https://picsum.photos/seed/promo/800/400";
+                      : "https://picsum.photos/seed/promo/800/400");
 
                     const formatted = {
                       ...createdItem,
@@ -3256,9 +3492,10 @@ export default function SpotlightFeed({
                       title: createdItem.title || title,
                       category: parsed.category || (isRtl ? "فيديو ترويجي" : "Promo Video"),
                       city: parsed.city || (isRtl ? "كافة المناطق" : "All Regions"),
-                      description: parsed.description || description || (isRtl ? "مطلب أو بث ترويجي مميز تم نشره من قبل المستخدم" : "Featured promo uploaded by user"),
-                      userId: createdItem.userId || currentUser?.id || "guest_user",
-                      userAvatar: createdItem.userAvatar || currentUser?.avatar || "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&w=150&q=80",
+                      description: parsed.description || description || (isRtl ? "مقطع ريلز مميز تم نشره من قبل المستخدم" : "Featured reel uploaded by user"),
+                      userId: createdItem.userId || creatorId,
+                      userName: createdItem.userName || creatorName,
+                      userAvatar: createdItem.userAvatar || creatorAvatar,
                       userVerified: true,
                       videoUrl: parsed.videoUrl,
                       audioUrl: parsed.audioUrl,
@@ -3268,7 +3505,7 @@ export default function SpotlightFeed({
 
                     setMyBroadcastingIds(prev => [formatted.id, ...prev]);
                     setDbPromoVideos(prev => [formatted, ...prev]);
-                    showToast(isRtl ? 'تم إطلاق ونشر محتواك بنجاح! يتم الآن توجيهك للبث... 🚀' : 'Launched successfully! Redirecting you to your stream... 🚀');
+                    showToast(isRtl ? 'تم نشر مقطع الريلز بنجاح! 🚀' : 'Reel posted successfully! 🚀');
                     
                     // Reset ALL filters and search to ensure the new ad is visible at index 0
                     setSearchQuery('');
@@ -3280,11 +3517,15 @@ export default function SpotlightFeed({
                     setTimeout(() => {
                       setActiveIndex(0);
                       setShowLiveUploadModal(false);
-                      // Reset audio states
+                      // Reset upload states
                       setAudioSourceType('none');
                       setUploadedAudioUrl('');
                       setAudioUploading(false);
                       setAudioOriginalName('');
+                      setUploadedVideoUrl('');
+                      setVideoUploading(false);
+                      setVideoOriginalName('');
+                      setVideoThumbnailUrl('');
                       // Force container to top to show the new ad
                       if (containerRef.current) {
                         containerRef.current.scrollTo({ top: 0, behavior: 'auto' });
@@ -3295,139 +3536,215 @@ export default function SpotlightFeed({
                     showToast(isRtl ? `حدث خطأ: ${err?.message || err}` : `Error: ${err?.message || err}`);
                   }
                 }}
-                className="flex flex-col gap-3 text-right"
+                className="flex flex-col gap-3.5 text-right"
               >
-                {/* 1. Content Type Selector */}
-                <div className="flex flex-col gap-1">
-                  <label className="text-[10px] font-black text-slate-400">
-                    📢 {isRtl ? 'نوع البث والمحتوى الأنسب لك:' : 'Media Broadcast Type:'}
+                {/* 1. Video Source Selection (MAIN FEATURE) */}
+                <div className="flex flex-col gap-2 bg-slate-950/80 border border-pink-500/20 p-3.5 rounded-2xl">
+                  <label className="text-[11px] font-black text-pink-400 flex items-center justify-between">
+                    <span>📹 {isRtl ? 'مصدر مقطع الفيديو (مطلوب):' : 'Video Source (Required):'}</span>
+                    {uploadedVideoUrl && (
+                      <span className="text-emerald-400 text-[10px] font-bold">✓ {isRtl ? 'جاهز للنشر' : 'Ready'}</span>
+                    )}
                   </label>
-                  <select
-                    name="liveType"
-                    className="bg-slate-950 border border-white/5 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-pink-500/65 font-bold cursor-pointer"
-                  >
-                    <option value="live">{isRtl ? '🔴 بث مباشر تفاعلي بالتعليقات وحركة القلوب (أداة جذب الآن)' : '🔴 Interactive Live stream with chat comments & hearts (Engagement device)'}</option>
-                    <option value="reel">{isRtl ? '🎥 ريلز ترويجي احترافي مميز (مقطع ترويجي ترفيهي)' : '🎥 Professional Promotional Showcase Reel'}</option>
-                  </select>
-                </div>
 
-                {/* 1.5 Audio Selection Control */}
-                <div className="flex flex-col gap-2 bg-slate-950/60 border border-white/5 p-3 rounded-2xl">
-                  <label className="text-[10px] font-black text-slate-400 flex items-center gap-1.5">
-                    <span>🎵 {isRtl ? 'إضافة مقطع صوتي مخصص للمقطع:' : 'Add Custom Audio Track to Video:'}</span>
-                  </label>
-                  
                   {/* Mode Buttons */}
-                  <div className="grid grid-cols-3 gap-1.5 p-1 bg-slate-950 rounded-xl border border-white/5">
+                  <div className="grid grid-cols-3 gap-1.5 p-1 bg-slate-900 rounded-xl border border-white/5">
                     <button
                       type="button"
-                      onClick={() => setAudioSourceType('none')}
-                      className={`py-1.5 text-[10px] font-black rounded-lg transition-all cursor-pointer ${
-                        audioSourceType === 'none'
-                          ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md'
+                      onClick={() => setVideoSourceType('upload')}
+                      className={`py-2 text-[10px] font-black rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                        videoSourceType === 'upload'
+                          ? 'bg-gradient-to-r from-pink-600 to-purple-600 text-white shadow-md'
                           : 'text-slate-400 hover:text-white hover:bg-white/5'
                       }`}
                     >
-                      {isRtl ? 'صوت أصلي' : 'Original Sound'}
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>{isRtl ? 'رفع ملف فيديو' : 'Upload File'}</span>
                     </button>
                     <button
                       type="button"
-                      onClick={() => setAudioSourceType('file')}
-                      className={`py-1.5 text-[10px] font-black rounded-lg transition-all cursor-pointer ${
-                        audioSourceType === 'file'
-                          ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md'
+                      onClick={() => setVideoSourceType('camera')}
+                      className={`py-2 text-[10px] font-black rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                        videoSourceType === 'camera'
+                          ? 'bg-gradient-to-r from-pink-600 to-purple-600 text-white shadow-md'
                           : 'text-slate-400 hover:text-white hover:bg-white/5'
                       }`}
                     >
-                      {isRtl ? 'رفع ملف صوت' : 'Upload File'}
+                      <Radio className="w-3.5 h-3.5" />
+                      <span>{isRtl ? 'تصوير بالكاميرا' : 'Live Camera'}</span>
                     </button>
                     <button
                       type="button"
-                      onClick={() => setAudioSourceType('link')}
-                      className={`py-1.5 text-[10px] font-black rounded-lg transition-all cursor-pointer ${
-                        audioSourceType === 'link'
-                          ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md'
+                      onClick={() => setVideoSourceType('link')}
+                      className={`py-2 text-[10px] font-black rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                        videoSourceType === 'link'
+                          ? 'bg-gradient-to-r from-pink-600 to-purple-600 text-white shadow-md'
                           : 'text-slate-400 hover:text-white hover:bg-white/5'
                       }`}
                     >
-                      {isRtl ? 'رابط خارجي' : 'External Link'}
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      <span>{isRtl ? 'رابط مباشر' : 'Video URL'}</span>
                     </button>
                   </div>
 
-                  {/* Mode Content: File Upload */}
-                  {audioSourceType === 'file' && (
+                  {/* Mode 1: File Upload */}
+                  {videoSourceType === 'upload' && (
                     <div className="flex flex-col gap-2 mt-1">
-                      <div className="flex items-center gap-3 bg-slate-900 border border-white/5 rounded-xl p-2.5">
-                        <label className="bg-white/10 hover:bg-white/15 border border-white/10 hover:border-white/20 text-white font-extrabold text-[10px] px-3 py-1.5 rounded-lg cursor-pointer transition-all flex items-center gap-1">
-                          <Upload className="w-3.5 h-3.5 text-pink-400" />
-                          <span>{isRtl ? 'اختر ملف الصوت' : 'Choose Audio'}</span>
+                      {!uploadedVideoUrl ? (
+                        <label className="border-2 border-dashed border-pink-500/40 hover:border-pink-400 bg-pink-500/5 hover:bg-pink-500/10 rounded-2xl p-4 flex flex-col items-center justify-center gap-2 cursor-pointer transition-all">
+                          <div className="w-12 h-12 rounded-full bg-pink-500/20 flex items-center justify-center text-pink-400">
+                            {videoUploading ? (
+                              <div className="w-6 h-6 border-2 border-pink-400 border-t-transparent rounded-full animate-spin" />
+                            ) : (
+                              <Upload className="w-6 h-6 animate-bounce" />
+                            )}
+                          </div>
+                          
+                          <div className="text-center">
+                            <span className="text-xs font-black text-white block">
+                              {videoUploading 
+                                ? (isRtl ? `جاري رفع الفيديو... ${videoUploadProgress}%` : `Uploading video... ${videoUploadProgress}%`)
+                                : (isRtl ? 'اضغط لاختيار ملف الفيديو من جهازك أو هاتفك' : 'Click to select video from your device')}
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-extrabold mt-0.5 block">
+                              {isRtl ? 'الصيغ المدعومة: MP4, MOV, WEBM (حتى 60 ميجابايت)' : 'Supported formats: MP4, MOV, WEBM (up to 60MB)'}
+                            </span>
+                          </div>
+
+                          {videoUploading && (
+                            <div className="w-full bg-slate-900 rounded-full h-2 overflow-hidden border border-white/10 mt-1">
+                              <div 
+                                className="bg-gradient-to-r from-pink-500 to-purple-500 h-full transition-all duration-300 rounded-full"
+                                style={{ width: `${videoUploadProgress}%` }}
+                              />
+                            </div>
+                          )}
+
                           <input
                             type="file"
-                            accept="audio/*"
+                            accept="video/mp4,video/webm,video/quicktime,video/mov,video/*"
+                            disabled={videoUploading}
                             className="hidden"
                             onChange={async (e) => {
                               const file = e.target.files?.[0];
                               if (!file) return;
-                              
-                              setAudioOriginalName(file.name);
-                              setAudioUploading(true);
-                              
+
+                              if (file.size > 65 * 1024 * 1024) {
+                                showToast(isRtl ? 'حجم الفيديو كبير جداً (الحد الأقصى 60 ميجابايت)' : 'Video too large (max 60MB)');
+                                return;
+                              }
+
+                              setVideoOriginalName(file.name);
+                              setVideoUploading(true);
+                              setVideoUploadProgress(0);
+
                               try {
                                 const uploadData = new FormData();
                                 uploadData.append('file', file);
-                                
-                                const res = await fetch('/api/storage/upload', {
-                                  method: 'POST',
-                                  body: uploadData,
-                                });
-                                
-                                if (res.ok) {
-                                  const data = await res.json();
-                                  setUploadedAudioUrl(data.url);
-                                  showToast(isRtl ? 'تم رفع الملف الصوتي مبروك! 🎉' : 'Audio file uploaded successfully! 🎉');
-                                } else {
-                                  showToast(isRtl ? 'فشل رفع الملف الصوتي' : 'Failed to upload audio file');
+
+                                const xhr = new XMLHttpRequest();
+                                xhr.open('POST', '/api/storage/upload', true);
+
+                                // Include Authorization header if available
+                                const token = localStorage.getItem('aswaq_access_token') || localStorage.getItem('auth_token') || localStorage.getItem('aswaq_token');
+                                if (currentUser?.email) { xhr.setRequestHeader('X-User-Email', currentUser.email); }
+                                if (currentUser?.id) { xhr.setRequestHeader('X-User-Id', currentUser.id); }
+                                if (token) {
+                                  xhr.setRequestHeader('Authorization', `Bearer ${token}`);
                                 }
-                              } catch (err) {
-                                console.error('Audio upload error:', err);
-                                showToast(isRtl ? 'حدث خطأ أثناء الرفع' : 'Error uploading file');
-                              } finally {
-                                setAudioUploading(false);
+
+                                xhr.upload.onprogress = (event) => {
+                                  if (event.lengthComputable) {
+                                    const percent = Math.round((event.loaded / event.total) * 100);
+                                    setVideoUploadProgress(percent);
+                                  }
+                                };
+
+                                xhr.onload = () => {
+                                  if (xhr.status >= 200 && xhr.status < 300) {
+                                    try {
+                                      const data = JSON.parse(xhr.responseText);
+                                      if (data.url) {
+                                        setUploadedVideoUrl(data.url);
+                                        showToast(isRtl ? 'تم رفع مقطع الفيديو بنجاح! 🎉' : 'Video uploaded successfully! 🎉');
+                                      } else {
+                                        showToast(isRtl ? 'حدث خطأ في استجابة السيرفر' : 'Server error');
+                                      }
+                                    } catch {
+                                      showToast(isRtl ? 'فشل معالجة الفيديو' : 'Failed to parse response');
+                                    }
+                                  } else {
+                                    showToast(isRtl ? 'فشل رفع الفيديو، يرجى المحاولة مرة أخرى' : 'Video upload failed');
+                                  }
+                                  setVideoUploading(false);
+                                };
+
+                                xhr.onerror = () => {
+                                  showToast(isRtl ? 'حدث خطأ في الاتصال أثناء الرفع' : 'Network error during upload');
+                                  setVideoUploading(false);
+                                };
+
+                                xhr.send(uploadData);
+                              } catch (err: any) {
+                                console.error('Video upload error:', err);
+                                showToast(isRtl ? 'حدث خطأ أثناء الرفع' : 'Upload error');
+                                setVideoUploading(false);
                               }
                             }}
                           />
                         </label>
-
-                        {/* Upload Status / Preview */}
-                        <div className="flex-1 min-w-0 text-left">
-                          {audioUploading ? (
-                            <div className="flex items-center gap-1.5 text-[10px] text-pink-400 font-extrabold justify-end">
-                              <span className="w-3 h-3 rounded-full border border-pink-400 border-t-transparent animate-spin" />
-                              <span>{isRtl ? 'يتم الرفع الآن...' : 'Uploading...'}</span>
-                            </div>
-                          ) : uploadedAudioUrl ? (
-                            <div className="flex items-center gap-1.5 text-[10px] text-emerald-400 font-extrabold justify-end">
-                              <span className="text-emerald-500 font-black">✓</span>
-                              <span className="truncate max-w-[150px]">{audioOriginalName || (isRtl ? 'ملف صوتي مرفوع' : 'Audio file')}</span>
-                            </div>
-                          ) : (
-                            <span className="text-[10px] text-slate-500 font-extrabold block text-right">
-                              {isRtl ? 'امتدادات مقبولة: MP3, WAV, M4A' : 'Supported formats: MP3, WAV, M4A'}
+                      ) : (
+                        /* Video Live Preview Box */
+                        <div className="relative rounded-2xl overflow-hidden bg-black border border-emerald-500/40 p-2 flex flex-col gap-2">
+                          <video
+                            src={uploadedVideoUrl}
+                            controls
+                            playsInline
+                            className="w-full h-44 rounded-xl object-contain bg-slate-950"
+                          />
+                          <div className="flex items-center justify-between px-2 text-xs">
+                            <span className="text-emerald-400 font-bold flex items-center gap-1">
+                              <span>✓</span>
+                              <span className="truncate max-w-[200px]">{videoOriginalName || (isRtl ? 'فيديو جاهز' : 'Video Ready')}</span>
                             </span>
-                          )}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setUploadedVideoUrl('');
+                                setVideoOriginalName('');
+                                setVideoUploadProgress(0);
+                              }}
+                              className="text-rose-400 hover:text-rose-300 text-[10px] font-bold cursor-pointer"
+                            >
+                              {isRtl ? 'تغيير الفيديو 🔄' : 'Change Video 🔄'}
+                            </button>
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
                   )}
 
-                  {/* Mode Content: External Link */}
-                  {audioSourceType === 'link' && (
-                    <div className="flex flex-col gap-1 mt-1">
+                  {/* Mode 2: Camera Broadcast */}
+                  {videoSourceType === 'camera' && (
+                    <div className="bg-emerald-950/40 border border-emerald-500/30 p-3 rounded-xl text-center flex flex-col items-center gap-1.5 mt-1">
+                      <Radio className="w-6 h-6 text-emerald-400 animate-pulse" />
+                      <span className="text-xs font-black text-emerald-300">
+                        {isRtl ? 'كاميرا البث الحي مفعلة' : 'Live Camera Enabled'}
+                      </span>
+                      <p className="text-[10px] text-slate-300 font-bold">
+                        {isRtl ? 'سيتم فتح كاميرا هاتفك/جهازك مباشرة عند بدء المقطع' : 'Your device camera will activate when stream starts'}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Mode 3: Direct Link */}
+                  {videoSourceType === 'link' && (
+                    <div className="flex flex-col gap-2 mt-1">
                       <input
                         type="url"
-                        name="audioUrlLink"
-                        placeholder={isRtl ? 'أدخل رابط المقطع الصوتي المباشر (مثل: https://example.com/sound.mp3)' : 'Enter audio direct link (e.g., https://example.com/sound.mp3)'}
-                        className="bg-slate-900 border border-white/5 rounded-xl px-3 py-2 text-[11px] text-white placeholder-slate-600 outline-none focus:border-pink-500/65 font-bold"
+                        name="videoUrlLink"
+                        placeholder={isRtl ? 'أدخل رابط فيديو مباشر (MP4, Vimeo, CDN...)' : 'Enter direct video URL (e.g. https://.../video.mp4)'}
+                        className="bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-600 outline-none focus:border-pink-500/65 font-mono font-bold"
                       />
                     </div>
                   )}
@@ -3436,12 +3753,13 @@ export default function SpotlightFeed({
                 {/* 2. Title */}
                 <div className="flex flex-col gap-1">
                   <label className="text-[10px] font-black text-slate-400">
-                    ✍️ {isRtl ? 'عنوان البث أو المقطع الترويجي:' : 'Stream or Reel Title:'}
+                    ✍️ {isRtl ? 'عنوان مقطع الريلز (مطلوب):' : 'Reel Title (Required):'}
                   </label>
                   <input
                     type="text"
                     name="liveTitle"
-                    placeholder={isRtl ? 'مثال: أسعار الهواتف مباشرة من سوق عمان بمناسبة الصيف!' : 'e.g. Live Smartphone Sales in Amman marketplace'}
+                    required
+                    placeholder={isRtl ? 'مثال: تخفيضات كبرى على الهواتف والأجهزة الذكية!' : 'e.g. Huge Sale on Smartphones & Tech!'}
                     className="bg-slate-950 border border-white/5 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-600 outline-none focus:border-pink-500/65 font-extrabold"
                   />
                 </div>
@@ -3449,12 +3767,12 @@ export default function SpotlightFeed({
                 {/* 3. Description */}
                 <div className="flex flex-col gap-1">
                   <label className="text-[10px] font-black text-slate-400">
-                    📝 {isRtl ? 'تفاصيل العرض وجذب المتابعين والترفية:' : 'Description and details to attract visitors:'}
+                    📝 {isRtl ? 'تفاصيل ووصف المقطع:' : 'Description & Details:'}
                   </label>
                   <textarea
                     name="liveDesc"
                     rows={2}
-                    placeholder={isRtl ? 'اكتب تفاصيل المحل، الخصومات المتوفرة أو الفعاليات الترفيهية التي تقدمها...' : 'List discounts, location or entertaining details...'}
+                    placeholder={isRtl ? 'اكتب تفاصيل العرض، السعر، رقم التواصل، أو ميزات المنتج...' : 'Write product details, price, contact or features...'}
                     className="bg-slate-950 border border-white/5 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-600 outline-none focus:border-pink-500/65 resize-none font-bold"
                   />
                 </div>
@@ -3467,7 +3785,7 @@ export default function SpotlightFeed({
                     </label>
                     <select
                       name="liveCity"
-                      className="bg-slate-950 border border-white/5 rounded-xl px-2 py-1.5 text-xs text-white font-bold outline-none cursor-pointer"
+                      className="bg-slate-950 border border-white/5 rounded-xl px-2 py-2 text-xs text-white font-bold outline-none cursor-pointer"
                     >
                       <option value="all">{isRtl ? 'كل المناطق 🌍' : 'All Regions 🌍'}</option>
                       {(MARKETS[countryCode]?.cities || []).map(cityOpt => (
@@ -3484,142 +3802,122 @@ export default function SpotlightFeed({
                     </label>
                     <select
                       name="liveCat"
-                      className="bg-slate-950 border border-white/5 rounded-xl px-2 py-1.5 text-xs text-white font-bold outline-none cursor-pointer"
+                      className="bg-slate-950 border border-white/5 rounded-xl px-2 py-2 text-xs text-white font-bold outline-none cursor-pointer"
                     >
                       {CATEGORIES.map(cat => (
                         <option key={cat.id} value={isRtl ? cat.nameAr : cat.nameEn}>
                           {isRtl ? cat.nameAr : cat.nameEn}
                         </option>
                       ))}
-                      <option value="أخرى (اكتب قسماً مخصصاً ✏️)">{isRtl ? 'أخرى (اكتب قسماً مخصصاً ✏️)' : 'Other Custom Category'}</option>
+                      <option value="عام">{isRtl ? 'عام / متنوع 📦' : 'General'}</option>
                     </select>
                   </div>
                 </div>
 
-                {/* 4.5 Universal Ad Intent (Offer vs Request) for Live Stream */}
-                <div className="flex flex-col gap-1.5 bg-slate-950/80 p-2.5 rounded-xl border border-white/5 text-right">
-                  <label className="text-[10px] font-black text-pink-400 block">
-                    🎯 {isRtl ? 'غرض وطبيعة البث / المحتوى:' : 'Broadcast Intent:'}
+                {/* 5. Audio Selection Control */}
+                <div className="flex flex-col gap-2 bg-slate-950/60 border border-white/5 p-3 rounded-2xl">
+                  <label className="text-[10px] font-black text-slate-400 flex items-center justify-between">
+                    <span>🎵 {isRtl ? 'موسيقى أو مقطع صوتي خلفي (اختياري):' : 'Background Audio (Optional):'}</span>
+                    <span className="text-[9px] text-slate-500 font-bold">{audioSourceType === 'none' ? (isRtl ? 'صوت الفيديو الأصلي' : 'Original Video Audio') : (isRtl ? 'صوت مخصص' : 'Custom Audio')}</span>
                   </label>
-                  <div className="grid grid-cols-2 gap-2">
+                  
+                  {/* Audio Mode Buttons */}
+                  <div className="grid grid-cols-3 gap-1.5 p-1 bg-slate-950 rounded-xl border border-white/5">
                     <button
                       type="button"
-                      onClick={() => setLiveIntentMode("offer")}
-                      className={`py-2 px-3 rounded-lg text-[10px] font-black transition-all border cursor-pointer flex items-center justify-center gap-1 ${
-                        liveIntentMode !== "request"
-                          ? "bg-emerald-500/20 border-emerald-500 text-emerald-300"
-                          : "bg-slate-900 border-white/5 text-slate-400"
+                      onClick={() => setAudioSourceType('none')}
+                      className={`py-1 text-[9px] font-black rounded-lg transition-all cursor-pointer ${
+                        audioSourceType === 'none'
+                          ? 'bg-purple-600 text-white'
+                          : 'text-slate-400 hover:text-white'
                       }`}
                     >
-                      <span>🏷️</span>
-                      <span>{isRtl ? 'عرض (للبيع / للبث / تقديم)' : 'Offer / Showcase'}</span>
+                      {isRtl ? 'صوت أصلي' : 'Original'}
                     </button>
                     <button
                       type="button"
-                      onClick={() => setLiveIntentMode("request")}
-                      className={`py-2 px-3 rounded-lg text-[10px] font-black transition-all border cursor-pointer flex items-center justify-center gap-1 ${
-                        liveIntentMode === "request"
-                          ? "bg-amber-500/20 border-amber-500 text-amber-300"
-                          : "bg-slate-900 border-white/5 text-slate-400"
+                      onClick={() => setAudioSourceType('file')}
+                      className={`py-1 text-[9px] font-black rounded-lg transition-all cursor-pointer ${
+                        audioSourceType === 'file'
+                          ? 'bg-purple-600 text-white'
+                          : 'text-slate-400 hover:text-white'
                       }`}
                     >
-                      <span>🙋‍♂️</span>
-                      <span>{isRtl ? 'مطلوب (طلب شراء / خدمة)' : 'Request / Seeking'}</span>
+                      {isRtl ? 'رفع ملف صوت' : 'Upload Audio'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAudioSourceType('link')}
+                      className={`py-1 text-[9px] font-black rounded-lg transition-all cursor-pointer ${
+                        audioSourceType === 'link'
+                          ? 'bg-purple-600 text-white'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      {isRtl ? 'رابط صوت' : 'Audio Link'}
                     </button>
                   </div>
-                </div>
 
-                {/* 4.8 Free-text Custom Details & Specifications for Stream */}
-                <div className="flex flex-col gap-1">
-                  <label className="text-[10px] font-black text-emerald-400">
-                    ✏️ {isRtl ? 'ميزات أو تفاصيل ومواصفات إضافية مخصصة (حرية كتابة صاحب الإعلان):' : 'Custom Additional Details / Specs:'}
-                  </label>
-                  <input
-                    type="text"
-                    name="customLiveSpecs"
-                    placeholder={isRtl ? 'اكتب أي ميزة أو مواصفة خاصة غير موجودة بالخيارات لتعرض للبث...' : 'Write any extra specs or details for your audience...'}
-                    className="bg-slate-950 border border-emerald-500/30 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-600 outline-none focus:border-emerald-400 font-bold"
-                  />
-                </div>
-
-                {/* 5. URL Path and Presets */}
-                <div className="flex flex-col gap-1">
-                  <label className="text-[10px] font-black text-slate-400">
-                    🔗 {isRtl ? 'رابط خيار البث أو مصدر الفيديو (الكاميرا مفعلة تلقائياً):' : 'Video/Stream Source (Camera enabled by default):'}
-                  </label>
-                  <input
-                    type="text"
-                    id="liveUrlInput"
-                    name="liveUrl"
-                    placeholder="webcam"
-                    defaultValue="webcam"
-                    className="bg-slate-950 border border-emerald-500/30 rounded-xl px-3 py-2.5 text-xs text-white placeholder-slate-600 outline-none focus:border-pink-500/65 font-mono text-center font-bold"
-                  />
-
-                  {/* Preset Choices for rapid testing and visual variety */}
-                  <div className="mt-1 flex flex-col gap-1 bg-slate-950/40 p-2.5 border border-white/5 rounded-xl text-right">
-                    <span className="text-[9px] text-pink-400 font-extrabold mb-1">
-                      💡 {isRtl ? 'قنوات ومصادر محتوى للبث (اختر الكاميرا لفتح كاميرتك وتصوير بث حقيقي):' : 'Stream Sources (Select Camera to stream with your webcam, or select premium presets):'}
-                    </span>
-                    <div className="grid grid-cols-2 gap-1.5 text-right">
-                      {[
-                        {
-                          labelAr: "📸 كاميرا كواجهة البث (تصوير بث حي حقيقي) 🔥",
-                          labelEn: "📸 Live Camera (Actual device webcam filming) 🔥",
-                          url: "webcam",
-                          isCamera: true
-                        },
-                        {
-                          labelAr: "🎁 بث ترفيهي وتوزيع هدايا",
-                          labelEn: "Live Game Show Promo",
-                          url: "https://player.vimeo.com/external/459341492.sd.mp4?s=9dc49d79a8385a7cc3c4fbfa2e5c8e768390b395&profile_id=165&oauth2_token_id=57447761"
-                        },
-                        {
-                          labelAr: "🏢 ريلز عقاري فخم بدابوق",
-                          labelEn: "Luxury Real Estate",
-                          url: "https://player.vimeo.com/external/394301551.sd.mp4?s=ff7fedf4bb9bc3dc9391b1a43a758bdee1aa6ef8&profile_id=165&oauth2_token_id=57447761"
-                        },
-                        {
-                          labelAr: "📱 بث صفقات إلكترونيات عمان",
-                          labelEn: "Commercial Tech",
-                          url: "https://player.vimeo.com/external/434045526.sd.mp4?s=c19c968f44ff531ae7e77b105021e141aabccb8c&profile_id=165&oauth2_token_id=57447761"
-                        },
-                        {
-                          labelAr: "🚗 ريلز سيارات عمان الجديدة",
-                          labelEn: "Automobiles Show",
-                          url: "https://player.vimeo.com/external/554807491.sd.mp4?s=3a411be07fac8aa9e8d7bb54c35c8ad9ef83cd3d&profile_id=165&oauth2_token_id=57447761"
-                        }
-                      ].map((preset, idx) => (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() => {
-                            const input = document.getElementById('liveUrlInput') as HTMLInputElement;
-                            if (input) {
-                              input.value = preset.url;
-                              showToast(isRtl ? `تم تحديد: ${preset.labelAr}` : `Selected preset: ${preset.labelEn}`);
+                  {audioSourceType === 'file' && (
+                    <div className="flex items-center gap-2 bg-slate-900 p-2 rounded-xl border border-white/5">
+                      <label className="bg-white/10 hover:bg-white/20 text-white text-[10px] font-bold px-2.5 py-1 rounded-lg cursor-pointer flex items-center gap-1">
+                        <Upload className="w-3 h-3 text-pink-400" />
+                        <span>{isRtl ? 'اختر ملف الصوت' : 'Choose Audio'}</span>
+                        <input
+                          type="file"
+                          accept="audio/*"
+                          className="hidden"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            setAudioOriginalName(file.name);
+                            setAudioUploading(true);
+                            try {
+                              const uploadData = new FormData();
+                              uploadData.append('file', file);
+                              const res = await fetch('/api/storage/upload', {
+                                method: 'POST',
+                                headers: localStorage.getItem('aswaq_token') ? { 'Authorization': `Bearer ${localStorage.getItem('aswaq_token')}` } : {},
+                                body: uploadData,
+                              });
+                              if (res.ok) {
+                                const data = await res.json();
+                                setUploadedAudioUrl(data.url);
+                                showToast(isRtl ? 'تم رفع الصوت بنجاح!' : 'Audio uploaded!');
+                              }
+                            } catch {
+                              showToast(isRtl ? 'فشل رفع الصوت' : 'Audio upload failed');
+                            } finally {
+                              setAudioUploading(false);
                             }
                           }}
-                          className={`text-[8.5px] sm:text-[9.5px] p-2 rounded-lg border text-right font-bold transition-all cursor-pointer block ${
-                            preset.isCamera 
-                              ? 'bg-emerald-950/40 text-emerald-300 border-emerald-500/30 col-span-2'
-                              : 'bg-slate-950 hover:bg-slate-900 border-white/5 text-slate-300'
-                          }`}
-                        >
-                          {isRtl ? preset.labelAr : preset.labelEn}
-                        </button>
-                      ))}
+                        />
+                      </label>
+                      <span className="text-[10px] text-slate-400 truncate flex-1">{audioOriginalName || (isRtl ? 'MP3, WAV, M4A' : 'Audio file')}</span>
                     </div>
-                  </div>
+                  )}
+
+                  {audioSourceType === 'link' && (
+                    <input
+                      type="url"
+                      name="audioUrlLink"
+                      placeholder="https://example.com/sound.mp3"
+                      className="bg-slate-900 border border-white/5 rounded-xl px-3 py-1.5 text-[10px] text-white outline-none focus:border-purple-500 font-bold"
+                    />
+                  )}
                 </div>
 
                 {/* Submitting Buttons */}
                 <div className="flex gap-2.5 mt-2">
                   <button
                     type="submit"
-                    className="flex-1 bg-gradient-to-r from-purple-500 via-pink-500 to-rose-500 hover:from-purple-400 hover:to-rose-400 text-slate-950 text-xs py-2.5 rounded-xl font-black transition-all active:scale-95 cursor-pointer shadow-lg shadow-pink-500/20 text-center border-none"
+                    disabled={videoUploading || audioUploading}
+                    className={`flex-1 bg-gradient-to-r from-pink-500 via-rose-500 to-purple-600 hover:from-pink-400 hover:to-purple-500 text-white text-xs py-3 rounded-xl font-black transition-all active:scale-95 cursor-pointer shadow-lg shadow-pink-500/20 text-center border-none flex items-center justify-center gap-2 ${
+                      videoUploading ? 'opacity-50 cursor-not-allowed' : ''
+                    }`}
                   >
-                    🚀 {isRtl ? 'إطلاق البث ونشر المحتوى للجميع' : 'Launch Live Stream / Post Reel'}
+                    <Video className="w-4 h-4" />
+                    <span>{videoUploading ? (isRtl ? 'جاري رفع الفيديو...' : 'Uploading...') : (isRtl ? '🚀 نشر مقطع الريلز الآن' : '🚀 Post Reel Now')}</span>
                   </button>
                   <button
                     type="button"

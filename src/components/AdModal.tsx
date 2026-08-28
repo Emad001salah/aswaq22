@@ -44,6 +44,12 @@ import { INITIAL_USERS, CATEGORIES, getAdReferenceCode } from '../data.ts';
 import { Avatar, sanitizeName } from './Avatar.tsx';
 import { apiFetch } from '../lib/api';
 import { resolveMediaUrl } from '../lib/config.ts';
+import DeliveryRequestModal from './shipping/DeliveryRequestModal';
+import AdMediaGallery from './adModal/AdMediaGallery';
+import AdSellerCard from './adModal/AdSellerCard';
+import AdActionButtons from './adModal/AdActionButtons';
+import AdCommentsSection from './adModal/AdCommentsSection';
+import { openAndPrintContract } from '../lib/contractGenerator';
 
 const isAudioFile = (url?: string): boolean => {
   if (!url) return false;
@@ -69,6 +75,11 @@ const getYoutubeEmbedUrl = (url?: string): string | null => {
     return `https://www.youtube.com/embed/${match[2]}`;
   }
   return null;
+};
+
+const resolveCategoryKey = (cat?: string): string => {
+  if (!cat) return '';
+  return String(cat).toLowerCase().trim();
 };
 
 interface AdModalProps {
@@ -253,6 +264,18 @@ export default function AdModal({
   const [durationMonths, setDurationMonths] = useState(12);
   const [isSubmittingOffer, setIsSubmittingOffer] = useState(false);
   const [offerSuccessMessage, setOfferSuccessMessage] = useState<string | null>(null);
+
+  // Dynamic Booking (Check-in / Check-out) local states
+  const todayStr = new Date().toISOString().split('T')[0];
+  const threeDaysLaterStr = new Date(Date.now() + 3 * 86400000).toISOString().split('T')[0];
+  const [checkInDate, setCheckInDate] = useState(todayStr);
+  const [checkOutDate, setCheckOutDate] = useState(threeDaysLaterStr);
+  const [guestsCount, setGuestsCount] = useState(1);
+
+  // Dynamic Lease Contract local states
+  const [leaseStartDate, setLeaseStartDate] = useState(todayStr);
+  const [leaseDurationMonths, setLeaseDurationMonths] = useState(12);
+  const [leasePaymentFrequency, setLeasePaymentFrequency] = useState<'monthly' | 'quarterly' | 'yearly'>('monthly');
 
   useEffect(() => {
     setInternalViews(ad.views || 0);
@@ -688,6 +711,98 @@ const sessionViewedAdsSet = new Set<string>();
   };
   const valuation = getAdValuation();
 
+  const catKey = resolveCategoryKey(ad.category);
+
+  // Detect if a real-estate/rental ad is actually a SHORT-TERM booking
+  // (furnished apartments, daily/weekly rental, hotel-style listings)
+  const titleAndDesc = `${ad.title || ''} ${ad.description || ''}`.toLowerCase();
+  const isShortTermBooking = [
+    'يومي', 'أسبوعي', 'اسبوعي', 'شهري', 'مفروش', 'مفروشة', 'مفروشه',
+    'سياحي', 'سياحية', 'فندق', 'حجز', 'نزيل', 'إيجار يومي', 'شقة فندقية',
+    'daily', 'weekly', 'furnished', 'hotel', 'booking'
+  ].some(kw => titleAndDesc.includes(kw));
+
+  const isRentRealEstate = (catKey === 'realestate' || catKey === 'rent_housing') && (
+    titleAndDesc.includes('إيجار') ||
+    titleAndDesc.includes('ايجار') ||
+    titleAndDesc.includes('rent')
+  ) && !isShortTermBooking;
+
+  const contractFamily: 'booking' | 'lease' | 'employment' | 'service' | 'sale' = 
+    (isShortTermBooking || ['hotels', 'resorts', 'car_rental'].includes(catKey))
+      ? 'booking'
+      : (catKey === 'rent_housing' || isRentRealEstate)
+        ? 'lease'
+        : catKey === 'jobs'
+          ? 'employment'
+          : catKey === 'services'
+            ? 'service'
+            : 'sale';
+
+  const submitButtonText = 
+    contractFamily === 'employment'
+      ? '🚀 تقديم طلب التوظيف والراتب المقترح'
+      : contractFamily === 'lease'
+        ? '🚀 إرسال طلب عقد الإيجار للمالك'
+        : contractFamily === 'booking'
+          ? '🚀 إرسال طلب الحجز المؤكد للمستضيف'
+          : contractFamily === 'service'
+            ? '🚀 تقديم عرض السعر للعميل'
+            : '🚀 إرسال العرض المالي مباشرة للبائع';
+
+  const calcNights = () => {
+    try {
+      const d1 = new Date(checkInDate);
+      const d2 = new Date(checkOutDate);
+      const diff = Math.ceil((d2.getTime() - d1.getTime()) / (1000 * 3600 * 24));
+      return diff > 0 ? diff : 1;
+    } catch {
+      return 1;
+    }
+  };
+  const nightsCount = calcNights();
+  const dailyPrice = ad.price || 0;
+  const bookingTotalPrice = dailyPrice * nightsCount;
+
+  const leaseMonthlyPrice = ad.price || 0;
+  const leaseTotalPrice = leaseMonthlyPrice * leaseDurationMonths;
+
+  const handlePrintContract = () => {
+    openAndPrintContract({
+      contractNumber: getAdReferenceCode(ad.id),
+      date: new Date().toLocaleDateString('ar-EG'),
+      status: 'PENDING',
+      type: contractFamily === 'booking'
+        ? 'booking'
+        : contractFamily === 'lease'
+          ? 'lease'
+          : contractFamily === 'employment'
+            ? 'employment'
+            : contractFamily === 'service'
+              ? 'service'
+              : ad.category === 'cars'
+                ? 'auto'
+                : ad.category === 'realestate'
+                  ? 'real_estate'
+                  : 'sale',
+      adTitle: ad.title,
+      adId: ad.id,
+      price: contractFamily === 'booking' ? bookingTotalPrice : contractFamily === 'lease' ? leaseTotalPrice : ad.price,
+      currency: getCurrencyNameAr(ad.currency),
+      city: ad.city || ad.country || 'الأردن',
+      seller: {
+        name: sellerName,
+        phone: ad.contactNumber || ''
+      },
+      buyer: {
+        name: currentUser?.name || 'مشتري أسواق 22 الموثّق',
+        phone: currentUser?.phone || ''
+      },
+      platformName: 'منصة أسواق 22',
+      logoUrl: window.location.origin + '/aswaq-icon.png'
+    });
+  };
+
   return (
     <div className="fixed inset-0 z-[4000] overflow-y-auto flex items-start pt-20 pb-10 sm:pt-24 lg:items-center lg:pt-8 lg:pb-8 justify-center p-2.5 sm:p-5 md:py-8 bg-slate-950/85 backdrop-blur-md dir-rtl">
       
@@ -887,165 +1002,24 @@ const sessionViewedAdsSet = new Set<string>();
           </div>
 
           
-          {/* Main Visual Carousel */}
-          <div className="space-y-4">
-            <div className="relative aspect-video rounded-2xl overflow-hidden bg-slate-950 border border-slate-800 group/media">
-              {viewingVideo && ad.videoUrl ? (
-                <div className="relative w-full h-full flex items-center justify-center bg-black">
-                  {ad.isLive && !currentUser ? (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/95 backdrop-blur-sm z-20">
-                      <Lock className="w-12 h-12 text-rose-500 mb-4 opacity-80" />
-                      <h4 className="text-white text-base sm:text-lg font-bold mb-2">
-                        {isRtl ? 'للمسجلين فقط - البث المباشر' : 'Members Only - Live Stream'}
-                      </h4>
-                      <p className="text-slate-400 text-xs sm:text-sm text-center max-w-sm mb-6 px-4">
-                        {isRtl ? 'قم بتسجيل الدخول او إنشاء حساب مجاناً لمشاهدة البث والتفاعل مع البائع' : 'Log in or create a free account to watch the live stream and interact with the seller'}
-                      </p>
-                      <button 
-                        onClick={onLoginRequest}
-                        className="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black py-2 sm:py-2.5 px-5 sm:px-6 rounded-xl flex items-center gap-2 transition-transform active:scale-95 text-sm sm:text-base"
-                      >
-                        <LogIn className="w-4 h-4 sm:w-5 sm:h-5" />
-                        {isRtl ? 'تسجيل الدخول' : 'Log In'}
-                      </button>
-                    </div>
-                  ) : null}
-                  {(!ad.isLive || currentUser) && (
-                    <>
-                      {getYoutubeEmbedUrl(ad.videoUrl) ? (
-                        <iframe
-                          src={`${getYoutubeEmbedUrl(ad.videoUrl)}?autoplay=1&rel=0`}
-                          className="w-full h-full border-0 absolute inset-0"
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                          allowFullScreen
-                          title="معاينة بالفيديو"
-                        />
-                      ) : (
-                        <video 
-                          src={ad.videoUrl} 
-                          controls 
-                          autoPlay
-                          className="w-full h-full object-contain"
-                        />
-                      )}
-                      <div className={`absolute top-4 right-4 text-white text-[10px] font-black px-3 py-1 rounded-full flex items-center gap-1.5 shadow-lg z-30 ${ad.isLive ? 'bg-rose-600 shadow-rose-600/30' : 'bg-emerald-500 shadow-emerald-500/30 !text-slate-950'}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${ad.isLive ? 'bg-white' : 'bg-slate-950'}`}></span>
-                        {ad.isLive ? (isRtl ? 'بث مباشر حي' : 'LIVE STREAM') : (isRtl ? 'معاينة بالفيديو الحقيقي' : 'Real Video Preview')}
-                      </div>
-                    </>
-                  )}
-                </div>
-              ) : (
-                <>
-                  <img 
-                    src={activeImage || safeImages?.[0] || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600" fill="none"><rect width="800" height="600" fill="%230f172a"/><path d="M400 220L480 340H320L400 220Z" fill="%2310b981" opacity="0.6"/><path d="M460 270L520 340H400L460 270Z" fill="%23059669" opacity="0.8"/><circle cx="340" cy="200" r="30" fill="%23f59e0b" opacity="0.8"/><text x="50%" y="78%" font-family="system-ui, sans-serif" font-size="28" font-weight="bold" fill="%2394a3b8" text-anchor="middle">أَسْوَاق 22 - صورة المعاينة</text></svg>'} 
-                    alt={ad.title} 
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover/media:scale-105 cursor-zoom-in"
-                    referrerPolicy="no-referrer"
-                    onError={(e) => {
-                      const fallbackSvg = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600" fill="none"><rect width="800" height="600" fill="%230f172a"/><path d="M400 220L480 340H320L400 220Z" fill="%2310b981" opacity="0.6"/><path d="M460 270L520 340H400L460 270Z" fill="%23059669" opacity="0.8"/><circle cx="340" cy="200" r="30" fill="%23f59e0b" opacity="0.8"/><text x="50%" y="78%" font-family="system-ui, sans-serif" font-size="28" font-weight="bold" fill="%2394a3b8" text-anchor="middle">أَسْوَاق 22 - صورة المعاينة</text></svg>`;
-                      (e.currentTarget as HTMLImageElement).src = fallbackSvg;
-                    }}
-                    onClick={() => {
-                      const idx = images.indexOf(activeImage);
-                      setFullScreenIndex(idx !== -1 ? idx : 0);
-                    }}
-                  />
-                  {ad.videoUrl && (
-                    <div className="absolute bottom-4 right-4 bg-rose-500/90 text-white text-[10px] font-black px-3 py-1.5 rounded-xl flex items-center gap-1.5 animate-pulse cursor-pointer shadow-lg" onClick={() => setViewingVideo(true)}>
-                      <Video className="w-3.5 h-3.5" />
-                      شاهد الفيديو الموثق للسلعة
-                    </div>
-                  )}
-                  <div className="absolute top-4 right-4 bg-slate-900/90 text-xs px-2.5 py-1 rounded-lg border border-slate-700/30 text-slate-300">
-                    {cityName}{districtName ? ` - ${districtName}` : ''}
-                  </div>
-                  <button 
-                    onClick={() => {
-                      const idx = images.indexOf(activeImage);
-                      setFullScreenIndex(idx !== -1 ? idx : 0);
-                    }}
-                    className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/media:opacity-100 transition-opacity bg-slate-950/20"
-                  >
-                    <div className="bg-slate-900/80 p-3 rounded-full border border-slate-700/50 text-white shadow-xl">
-                      <Maximize2 className="w-6 h-6" />
-                    </div>
-                  </button>
-                </>
-              )}
-            </div>
-
-            {/* Thumbnail Preview strip */}
-            {((safeImages && safeImages.length > 0) || ad.videoUrl) && (
-              <div className="flex gap-2 flex-wrap">
-                {safeImages?.map((img, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => {
-                      setActiveImage(img);
-                      setViewingVideo(false);
-                    }}
-                    className={`w-20 h-14 rounded-xl overflow-hidden border-2 transition-all ${
-                      !viewingVideo && activeImage === img ? 'border-emerald-500 scale-100' : 'border-slate-800 scale-95 opacity-70 hover:opacity-100'
-                    }`}
-                  >
-                    <img 
-                      src={img} 
-                      alt={`ad-${idx}`} 
-                      className="w-full h-full object-cover" 
-                      referrerPolicy="no-referrer"
-                      onError={(e) => {
-                        (e.currentTarget as HTMLImageElement).src = fallbackSvg;
-                      }}
-                    />
-                  </button>
-                ))}
-
-                {ad.videoUrl && (
-                  <button
-                    onClick={() => setViewingVideo(true)}
-                    className={`w-20 h-14 rounded-xl overflow-hidden border-2 bg-rose-950/40 relative flex flex-col items-center justify-center gap-0.5 transition-all outline-none ${
-                      viewingVideo ? 'border-rose-500 scale-100' : 'border-slate-800 scale-95 opacity-80 hover:opacity-100'
-                    }`}
-                  >
-                    <Video className="w-4 h-4 text-rose-400" />
-                    <span className="text-[8px] font-black text-rose-400">فيديو حقيقي</span>
-                    <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping"></span>
-                  </button>
-                )}
-              </div>
-            )}
-
-            {/* ── Voice Note Audio Player Card ── */}
-            {(ad.audioUrl || isAudioFile(ad.videoUrl)) && (
-              <div className={`p-4 rounded-2xl border transition-all shadow-xl ${isDark ? 'bg-gradient-to-r from-emerald-950/60 via-slate-900 to-teal-950/60 border-emerald-500/30' : 'bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-100 border-emerald-200'}`}>
-                <div className="flex items-center justify-between gap-3 mb-2.5">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-black animate-pulse text-lg border border-emerald-500/30">
-                      🎙️
-                    </div>
-                    <div>
-                      <h4 className={`text-xs sm:text-sm font-extrabold ${isDark ? 'text-emerald-300' : 'text-emerald-950'}`}>
-                        {isRtl ? 'توضيح بصوت البائع (تسجيل صوتي)' : 'Advertiser Voice Explanation'}
-                      </h4>
-                      <p className="text-[10px] sm:text-xs text-slate-400">
-                        {isRtl ? 'استمع لشرح كامل ومباشر عن السلعة بصوت البائع' : 'Listen to full voice note description directly from the seller'}
-                      </p>
-                    </div>
-                  </div>
-                  <span className="text-[10px] font-mono px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-extrabold shrink-0">
-                    صوت موثّق 🔊
-                  </span>
-                </div>
-                <audio
-                  src={resolveMediaUrl(ad.audioUrl || ad.videoUrl)}
-                  controls
-                  className="w-full h-10 rounded-xl outline-none shadow-inner"
-                  style={{ accentColor: '#10b981' }}
-                />
-              </div>
-            )}
-          </div>
+          {/* Main Visual Carousel & Media Gallery Micro-component */}
+          <AdMediaGallery
+            ad={ad}
+            currentUser={currentUser}
+            isRtl={isRtl}
+            isDark={isDark}
+            activeImage={activeImage}
+            setActiveImage={setActiveImage}
+            safeImages={safeImages}
+            viewingVideo={viewingVideo}
+            setViewingVideo={setViewingVideo}
+            setFullScreenIndex={setFullScreenIndex}
+            cityName={cityName}
+            districtName={districtName}
+            onLoginRequest={onLoginRequest}
+            getYoutubeEmbedUrl={getYoutubeEmbedUrl}
+            isAudioFile={isAudioFile}
+          />
 
           {/* SOLD Overlay and Status Indicator */}
           {ad.status === 'sold' && (
@@ -1705,11 +1679,13 @@ const sessionViewedAdsSet = new Set<string>();
               </div>
             </div>
 
-            {/* نظام محاكاة وتقديم العروض التمويلية وأقساط أسواق الرقمية */}
+            {/* نظام محاكاة وتقديم العروض التمويلية والعقود والحجوزات في أسواق */}
             <div className={`p-4 rounded-2xl border space-y-4 transition-all duration-300 ${isDark ? 'bg-slate-900/40 border-slate-800' : 'bg-white border-slate-200 shadow-sm'}`}>
               <div className="flex items-center justify-between">
-                <span className={`text-xs font-black transition-colors ${isDark ? 'text-white' : 'text-slate-900'}`}>⚡ محاكاة وتفاوض مالي ذكي</span>
-                <span className="text-[9px] bg-emerald-500/10 text-emerald-400 font-extrabold px-1.5 py-0.5 rounded border border-emerald-500/20">آمن ومباشر</span>
+                <span className={`text-xs font-black transition-colors ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                  {contractFamily === 'booking' ? '🏨 نظام طلب الحجز وتحديد التواريخ' : contractFamily === 'lease' ? '🏠 طلب عقد إيجار رسمي وجدول الدفعات' : contractFamily === 'employment' ? '💼 تقديم طلب توظيف' : contractFamily === 'service' ? '⚡ طلب عرض سعر' : '⚡ محاكاة وتفاوض مالي ذكي'}
+                </span>
+                <span className="text-[9px] bg-emerald-500/10 text-emerald-400 font-extrabold px-1.5 py-0.5 rounded border border-emerald-500/20">تأكيد مباشر</span>
               </div>
 
               {/* Offer Mode Selection Buttons */}
@@ -1723,7 +1699,7 @@ const sessionViewedAdsSet = new Set<string>();
                       : 'text-slate-400 hover:text-slate-200'
                   }`}
                 >
-                  💵 تقديم عرض كاش
+                  {contractFamily === 'booking' ? '📅 حجز بالتواريخ (من / إلى)' : contractFamily === 'lease' ? '🏠 عقد إيجار جديد' : contractFamily === 'employment' ? '💼 طلب توظيف' : contractFamily === 'service' ? '⚡ طلب عرض سعر' : '💵 تقديم عرض كاش'}
                 </button>
                 <button
                   type="button"
@@ -1734,7 +1710,7 @@ const sessionViewedAdsSet = new Set<string>();
                       : 'text-slate-400 hover:text-slate-200'
                   }`}
                 >
-                  📅 محاكاة أقساط ميسرة
+                  {contractFamily === 'booking' ? '💬 تفاوض / عرض مخصص' : contractFamily === 'lease' ? '📅 جدول دفعات الإيجار' : contractFamily === 'employment' ? '📝 السيرة الذاتية' : contractFamily === 'service' ? '📝 تفاصيل الخدمة' : '📅 أقساط ميسرة'}
                 </button>
               </div>
 
@@ -1748,177 +1724,337 @@ const sessionViewedAdsSet = new Set<string>();
                     ✓
                   </div>
                   <p className="text-xs font-black text-emerald-400">{offerSuccessMessage}</p>
-                  <p className="text-[10px] text-slate-400">سيصل البائع إشعار هاتف مالي فوري لدراسة عرضك مباشرة!</p>
+                  <p className="text-[10px] text-slate-400">سيصل الطرف الآخر إشعار فوري لمتابعة طلبك مباشرة!</p>
                 </motion.div>
               ) : (
                 <div className="space-y-3.5">
-                  {offerMode === 'cash' ? (
-                    <div className="space-y-2.5">
-                      <div className="flex items-center justify-between text-[10.5px] gap-3">
-                        <span className="text-slate-400 shrink-0">العرض النقدي المقترح:</span>
-                        <div className="flex items-center gap-1.5 bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-1.5 w-44">
-                          <input
-                            type="number"
-                            value={customBidPrice || ''}
-                            onChange={(e) => {
-                              const val = e.target.value === '' ? 0 : Number(e.target.value);
-                              setCustomBidPrice(val);
-                            }}
-                            className="bg-transparent border-none text-right font-black text-rose-400 outline-none w-full text-xs"
-                            placeholder="اكتب عرضك هنا..."
-                          />
-                          <span className="text-[10px] text-slate-400 font-bold shrink-0">{getCurrencyNameAr(ad.currency)}</span>
+                  {contractFamily === 'booking' ? (
+                    offerMode === 'cash' ? (
+                      /* Full Booking Interactive Dates UI */
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
+                              <Calendar className="w-3 h-3 text-emerald-400" />
+                              <span>تاريخ الوصول (من):</span>
+                            </label>
+                            <input
+                              type="date"
+                              value={checkInDate}
+                              min={todayStr}
+                              onChange={(e) => setCheckInDate(e.target.value)}
+                              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1.5 text-[11px] font-bold text-emerald-300 outline-none focus:border-emerald-500/50"
+                            />
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
+                              <Calendar className="w-3 h-3 text-rose-400" />
+                              <span>تاريخ المغادرة (إلى):</span>
+                            </label>
+                            <input
+                              type="date"
+                              value={checkOutDate}
+                              min={checkInDate || todayStr}
+                              onChange={(e) => setCheckOutDate(e.target.value)}
+                              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1.5 text-[11px] font-bold text-rose-300 outline-none focus:border-rose-500/50"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Guests Counter */}
+                        <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-950/60 border border-slate-800">
+                          <span className="text-[10.5px] font-bold text-slate-300">عدد النزلاء والضيوف:</span>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setGuestsCount(Math.max(1, guestsCount - 1))}
+                              className="w-6 h-6 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs flex items-center justify-center"
+                            >-</button>
+                            <span className="text-xs font-black text-emerald-400 w-4 text-center">{guestsCount}</span>
+                            <button
+                              type="button"
+                              onClick={() => setGuestsCount(guestsCount + 1)}
+                              className="w-6 h-6 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs flex items-center justify-center"
+                            >+</button>
+                          </div>
+                        </div>
+
+                        {/* Booking Summary Box */}
+                        <div className="p-3 rounded-xl bg-slate-950/80 border border-emerald-500/30 space-y-1.5 text-right">
+                          <div className="flex items-center justify-between text-[10px]">
+                            <span className="text-slate-400">السعر اليومي المعلن:</span>
+                            <span className="text-slate-200 font-bold">{dailyPrice.toLocaleString()} {getCurrencyNameAr(ad.currency)} / ليلة</span>
+                          </div>
+                          <div className="flex items-center justify-between text-[10px]">
+                            <span className="text-slate-400">إجمالي مدة الإقامة:</span>
+                            <span className="text-cyan-400 font-extrabold">{nightsCount} {nightsCount > 10 ? 'ليلة' : 'ليالٍ'}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-800 font-black">
+                            <span className="text-slate-300">إجمالي تكلفة الحجز:</span>
+                            <span className="text-emerald-400 text-sm font-extrabold">
+                              {bookingTotalPrice.toLocaleString()} {getCurrencyNameAr(ad.currency)}
+                            </span>
+                          </div>
                         </div>
                       </div>
+                    ) : (
+                      /* Custom Offer for Booking */
+                      <div className="space-y-2.5">
+                        <div className="flex items-center justify-between text-[10.5px] gap-3">
+                          <span className="text-slate-400 shrink-0">عرض السعر المقترح للإقامة كاملة:</span>
+                          <div className="flex items-center gap-1.5 bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-1.5 w-44">
+                            <input
+                              type="number"
+                              value={customBidPrice || ''}
+                              onChange={(e) => setCustomBidPrice(Number(e.target.value))}
+                              className="bg-transparent border-none text-right font-black text-rose-400 outline-none w-full text-xs"
+                              placeholder="اكتب عرضك هنا..."
+                            />
+                            <span className="text-[10px] text-slate-400 font-bold shrink-0">{getCurrencyNameAr(ad.currency)}</span>
+                          </div>
+                        </div>
+                        <p className="text-[9px] text-slate-400">تقدم بعرض تخفيض خاص للمستضيف وسيصل إشعار لمناقشة طلبك.</p>
+                      </div>
+                    )
+                  ) : contractFamily === 'lease' ? (
+                    offerMode === 'cash' ? (
+                      /* Official Lease Contract Form */
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
+                              <Calendar className="w-3 h-3 text-cyan-400" />
+                              <span>تاريخ بداية العقد:</span>
+                            </label>
+                            <input
+                              type="date"
+                              value={leaseStartDate}
+                              min={todayStr}
+                              onChange={(e) => setLeaseStartDate(e.target.value)}
+                              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1.5 text-[11px] font-bold text-cyan-300 outline-none focus:border-cyan-500/50"
+                            />
+                          </div>
 
-                      {ad.price > 0 && (
-                        <>
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-bold text-slate-400">مدة العقد (شهور):</label>
+                            <select
+                              value={leaseDurationMonths}
+                              onChange={(e) => setLeaseDurationMonths(Number(e.target.value))}
+                              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-2 py-1.5 text-[11px] font-bold text-slate-200 outline-none"
+                            >
+                              <option value={6}>6 شهور</option>
+                              <option value={12}>12 شهراً</option>
+                              <option value={24}>24 شهراً</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        {/* Payment Frequency Selector */}
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-slate-400">دورية سداد دفعات الإيجار:</label>
+                          <div className="grid grid-cols-3 gap-1">
+                            {[
+                              { key: 'monthly', label: 'شهرياً 🗓️' },
+                              { key: 'quarterly', label: 'ربع سنوي 📑' },
+                              { key: 'yearly', label: 'سنوي 📜' }
+                            ].map(freq => (
+                              <button
+                                key={freq.key}
+                                type="button"
+                                onClick={() => setLeasePaymentFrequency(freq.key as any)}
+                                className={`py-1.5 text-[10px] font-black rounded-lg border transition-all ${
+                                  leasePaymentFrequency === freq.key
+                                    ? 'bg-cyan-500/20 text-cyan-300 border-cyan-400'
+                                    : 'bg-slate-950/40 text-slate-400 border-slate-800'
+                                }`}
+                              >
+                                {freq.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Lease Contract Summary Box */}
+                        <div className="p-3 rounded-xl bg-slate-950/80 border border-cyan-500/30 space-y-1.5 text-right">
+                          <div className="flex items-center justify-between text-[10px]">
+                            <span className="text-slate-400">الإيجار الشهري المعلن:</span>
+                            <span className="text-slate-200 font-bold">{leaseMonthlyPrice.toLocaleString()} {getCurrencyNameAr(ad.currency)} / شهرياً</span>
+                          </div>
+                          <div className="flex items-center justify-between text-[10px]">
+                            <span className="text-slate-400">إجمالي مدة العقد:</span>
+                            <span className="text-cyan-400 font-extrabold">{leaseDurationMonths} شهراً</span>
+                          </div>
+                          <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-800 font-black">
+                            <span className="text-slate-300">إجمالي قيمة العقد الرسمية:</span>
+                            <span className="text-cyan-400 text-sm font-extrabold">
+                              {leaseTotalPrice.toLocaleString()} {getCurrencyNameAr(ad.currency)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      /* Lease Payment Schedule / Installments */
+                      <div className="space-y-2.5">
+                        <div className="flex items-center justify-between text-[10.5px] gap-3">
+                          <span className="text-slate-400 shrink-0">عرض قيمة الإيجار الشهرية المقترحة:</span>
+                          <div className="flex items-center gap-1.5 bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-1.5 w-44">
+                            <input
+                              type="number"
+                              value={customBidPrice || ''}
+                              onChange={(e) => setCustomBidPrice(Number(e.target.value))}
+                              className="bg-transparent border-none text-right font-black text-rose-400 outline-none w-full text-xs"
+                              placeholder="اكتب عرضك هنا..."
+                            />
+                            <span className="text-[10px] text-slate-400 font-bold shrink-0">{getCurrencyNameAr(ad.currency)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  ) : (
+                    /* Standard Sale / General Offers */
+                    offerMode === 'cash' ? (
+                      <div className="space-y-2.5">
+                        <div className="flex items-center justify-between text-[10.5px] gap-3">
+                          <span className="text-slate-400 shrink-0">العرض النقدي المقترح:</span>
+                          <div className="flex items-center gap-1.5 bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-1.5 w-44">
+                            <input
+                              type="number"
+                              value={customBidPrice || ''}
+                              onChange={(e) => {
+                                const val = e.target.value === '' ? 0 : Number(e.target.value);
+                                setCustomBidPrice(val);
+                              }}
+                              className="bg-transparent border-none text-right font-black text-rose-400 outline-none w-full text-xs"
+                              placeholder="اكتب عرضك هنا..."
+                            />
+                            <span className="text-[10px] text-slate-400 font-bold shrink-0">{getCurrencyNameAr(ad.currency)}</span>
+                          </div>
+                        </div>
+
+                        {ad.price > 0 && (
+                          <>
+                            <input
+                              type="range"
+                              min={Math.round(ad.price * 0.5)}
+                              max={Math.round(ad.price * 1.5)}
+                              step={Math.round(ad.price * 0.01) || 1}
+                              value={customBidPrice || ad.price}
+                              onChange={(e) => setCustomBidPrice(Number(e.target.value))}
+                              className="w-full accent-emerald-500 cursor-pointer h-1.5 bg-slate-800 rounded-lg appearance-none"
+                            />
+
+                            <div className="flex justify-between text-[8px] text-slate-500">
+                              <span>خصم (%50-)</span>
+                              <span>السعر المعلن</span>
+                              <span>أولوية (%50+)</span>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between text-[10.5px]">
+                            <span className="text-slate-400">الدفعة الأولى المقدمة:</span>
+                            <span className="font-extrabold text-cyan-400">
+                              {(downpaymentAmount || 0).toLocaleString()} {getCurrencyNameAr(ad.currency)}
+                              <span className="text-[9px] text-slate-500 mr-1">({Math.round(((downpaymentAmount || 0) / (ad.price || 1)) * 100)}%)</span>
+                            </span>
+                          </div>
                           <input
                             type="range"
-                            min={Math.round(ad.price * 0.5)}
-                            max={Math.round(ad.price * 1.5)}
-                            step={Math.round(ad.price * 0.01) || 1}
-                            value={customBidPrice || ad.price}
-                            onChange={(e) => setCustomBidPrice(Number(e.target.value))}
-                            className="w-full accent-emerald-500 cursor-pointer h-1.5 bg-slate-800 rounded-lg appearance-none"
+                            min={Math.round(ad.price * 0.1)}
+                            max={Math.round(ad.price * 0.85)}
+                            step={Math.round(ad.price * 0.05) || 1}
+                            value={downpaymentAmount}
+                            onChange={(e) => setDownpaymentAmount(Number(e.target.value))}
+                            className="w-full accent-cyan-400 cursor-pointer h-1.5 bg-slate-800 rounded-lg appearance-none"
                           />
+                        </div>
 
-                          <div className="flex justify-between text-[8px] text-slate-500">
-                            <span>حد تفاوضي (%50-)</span>
-                            <span>السعر الأصلي</span>
-                            <span>شراء فوري (%50+)</span>
+                        <div className="space-y-1.5">
+                          <p className="text-[10px] text-slate-400">المدة (بالشهور):</p>
+                          <div className="grid grid-cols-5 gap-1">
+                            {[3, 6, 12, 18, 24].map((m) => (
+                              <button
+                                key={m}
+                                type="button"
+                                onClick={() => setDurationMonths(m)}
+                                className={`py-1 text-[10px] font-extrabold rounded-lg border transition-all ${
+                                  durationMonths === m
+                                    ? 'bg-cyan-500/20 text-cyan-300 border-cyan-400'
+                                    : 'bg-slate-950/40 text-slate-400 border-slate-800'
+                                }`}
+                              >
+                                {m} ش
+                              </button>
+                            ))}
                           </div>
-                        </>
-                      )}
+                        </div>
 
-                      {/* Cash Rating feedback text */}
-                      {ad.price > 0 ? (
-                        <div className={`p-2 rounded-lg text-[9.5px] border ${
-                          customBidPrice < ad.price * 0.85
-                            ? 'bg-rose-500/5 text-rose-300 border-rose-500/10'
-                            : customBidPrice > ad.price * 1.0
-                              ? 'bg-cyan-500/5 text-cyan-300 border-cyan-500/10'
-                              : 'bg-emerald-500/5 text-emerald-300 border-emerald-500/10'
-                        }`}>
-                          {customBidPrice < ad.price * 0.85
-                            ? '⚠️ هذا العرض منخفض جداً وقد يرفضه البائع، نوصي برفع العرض لصفقات ناجحة.'
-                            : customBidPrice > ad.price * 1.0
-                              ? '✨ هذا السعر يعبر عن رغبة شراء شديدة وعاجلة لضمان الأولوية القصوى.'
-                              : '⚡ عرض متوازن جداً وندعمه بشهادة عادلية السعر التلقائية.'}
-                        </div>
-                      ) : (
-                        <div className="p-2 rounded-lg text-[9.5px] border bg-emerald-500/5 text-emerald-300 border-emerald-500/10">
-                          ⚡ عرض مالي مباشر ومقترح لتسهيل التفاوض والاتفاق بين الطرفين.
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {/* Downpayment Slider */}
-                      <div className="space-y-1.5">
-                        <div className="flex items-center justify-between text-[10.5px]">
-                          <span className="text-slate-400">الدفعة الأولى المقدمة:</span>
-                          <span className="font-extrabold text-cyan-400">
-                            {(downpaymentAmount || 0).toLocaleString()} {getCurrencyNameAr(ad.currency)}
-                            <span className="text-[9px] text-slate-500 mr-1">({Math.round(((downpaymentAmount || 0) / (ad.price || 1)) * 100)}%)</span>
-                          </span>
-                        </div>
-                        <input
-                          type="range"
-                          min={Math.round(ad.price * 0.1)}
-                          max={Math.round(ad.price * 0.85)}
-                          step={Math.round(ad.price * 0.05) || 1}
-                          value={downpaymentAmount}
-                          onChange={(e) => setDownpaymentAmount(Number(e.target.value))}
-                          className="w-full accent-cyan-400 cursor-pointer h-1.5 bg-slate-800 rounded-lg appearance-none"
-                        />
-                      </div>
-
-                      {/* Installment duration selector */}
-                      <div className="space-y-1.5">
-                        <p className="text-[10px] text-slate-400">مدة الأقساط (بالشهور):</p>
-                        <div className="grid grid-cols-5 gap-1">
-                          {[3, 6, 12, 18, 24].map((m) => (
-                            <button
-                              key={m}
-                              type="button"
-                              onClick={() => setDurationMonths(m)}
-                              className={`py-1 text-[10px] font-extrabold rounded-lg border transition-all ${
-                                durationMonths === m
-                                  ? 'bg-cyan-500/20 text-cyan-300 border-cyan-400'
-                                  : 'bg-slate-950/40 text-slate-400 border-slate-800 hover:text-slate-300'
-                              }`}
-                            >
-                              {m} ش
-                            </button>
-                          ))}
+                        <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 space-y-1.5 text-right font-mono">
+                          <div className="flex items-center justify-between text-[10px]">
+                            <span className="text-slate-500 font-sans">المبلغ المتبقي:</span>
+                            <span className="text-slate-300 font-black">{((ad.price || 0) - (downpaymentAmount || 0)).toLocaleString()} {ad.currency}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-900 font-black">
+                            <span className="text-slate-400 font-sans">الدفع التقديري:</span>
+                            <span className="text-emerald-400 text-sm">
+                              {(Math.round(((ad.price || 0) - (downpaymentAmount || 0)) / (durationMonths || 1)) || 0).toLocaleString()} {getCurrencyNameAr(ad.currency)}
+                              <span className="text-[9px] text-slate-500 block text-left">/ شهرياً</span>
+                            </span>
+                          </div>
                         </div>
                       </div>
-
-                      {/* Installment dynamic summary calculations */}
-                      <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 space-y-1.5 text-right font-mono">
-                        <div className="flex items-center justify-between text-[10px]">
-                          <span className="text-slate-500 font-sans">المبلغ المتبقي للتمويل:</span>
-                          <span className="text-slate-300 font-black">{((ad.price || 0) - (downpaymentAmount || 0)).toLocaleString()} {ad.currency}</span>
-                        </div>
-                        <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-900 font-black">
-                          <span className="text-slate-400 font-sans">القسط الشهري الصافي (بلا فوائد ربوية):</span>
-                          <span className="text-emerald-400 text-sm">
-                            {(Math.round(((ad.price || 0) - (downpaymentAmount || 0)) / (durationMonths || 1)) || 0).toLocaleString()} {getCurrencyNameAr(ad.currency)}
-                            <span className="text-[9px] text-slate-500 block text-left">/ شهرياً</span>
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="p-2 rounded-lg bg-emerald-500/5 text-emerald-300 border border-emerald-500/10 text-[8.5px] leading-relaxed flex items-start gap-1">
-                        <span>💡</span>
-                        <span>أقساط أسواق المتوافقة مع الضوابط الإسلامية وبلا رسوم ربوية خفية أو تمويلات مركبة.</span>
-                      </div>
-                    </div>
+                    )
                   )}
 
-                  {/* Submit Offer Button */}
+                  {/* Dynamic Action Submit Button */}
                   <button
                     type="button"
                     disabled={isSubmittingOffer}
-                    onClick={() => {
+                    onClick={async () => {
                       setIsSubmittingOffer(true);
-                      setTimeout(() => {
-                        setIsSubmittingOffer(false);
+                      let msg = '';
+                      if (contractFamily === 'booking') {
+                        msg = `✓ تم إرسال طلب الحجز التفاعلي من ${checkInDate} إلى ${checkOutDate} (${nightsCount} ليالٍ - ${bookingTotalPrice.toLocaleString()} ${getCurrencyNameAr(ad.currency)}) للمستضيف بنجاح!`;
+                      } else if (contractFamily === 'lease') {
+                        msg = `✓ تم تقديم طلب عقد الإيجار لمدة ${leaseDurationMonths} شهراً تبدأ من ${leaseStartDate} (إجمالي ${leaseTotalPrice.toLocaleString()} ${getCurrencyNameAr(ad.currency)}) للمالك بنجاح!`;
+                      } else {
                         const displayAmt = offerMode === 'cash' ? (customBidPrice || 0) : Math.round(((ad.price || 0) - (downpaymentAmount || 0)) / (durationMonths || 1));
-                        const msg = offerMode === 'cash' 
+                        msg = offerMode === 'cash' 
                           ? `✓ تم تقديم عرضك الكاش بقيمة ${displayAmt.toLocaleString()} ${getCurrencyNameAr(ad.currency)} بنجاح!`
                           : `✓ تم تقديم طلب تقسيط بقسط قدره ${displayAmt.toLocaleString()} ${getCurrencyNameAr(ad.currency)}/شهرياً بنجاح!`;
-                        setOfferSuccessMessage(msg);
+                      }
 
-                        // Also append a nice notification to the seller or publish dynamically in comments so everyone sees it!
-                        if (adCommentsList) {
-                          const sysComment = {
-                            id: `sys_${Date.now()}`,
-                            author: currentUser?.name || "مشتري جاد 🤝",
-                            text: offerMode === 'cash'
-                              ? `💸 تقدمت بعرض شراء نقدي جاد ومباشر بقيمة ${displayAmt.toLocaleString()} ${getCurrencyNameAr(ad.currency)} عبر محاكي عروض أسواق السريعة!`
-                              : `📅 تقدمت بطلب تقسيط ميسر: قسط شهري ${displayAmt.toLocaleString()} ${getCurrencyNameAr(ad.currency)} على ${durationMonths} شهراً مع دفعة أولى ${downpaymentAmount.toLocaleString()} ${getCurrencyNameAr(ad.currency)}.`,
-                            time: "الآن"
-                          };
-                          setAdCommentsList(prev => [...prev, sysComment]);
-                        }
-                      }, 1000);
+                      setTimeout(() => {
+                        setIsSubmittingOffer(false);
+                        setOfferSuccessMessage(msg);
+                      }, 800);
                     }}
                     className={`w-full py-2.5 rounded-xl font-black text-xs transition-all active:scale-95 duration-200 cursor-pointer flex items-center justify-center gap-1.5 ${
-                      offerMode === 'cash'
-                        ? 'bg-gradient-to-l from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/10'
-                        : 'bg-gradient-to-l from-cyan-500 to-cyan-600 hover:from-cyan-400 hover:to-cyan-500 text-slate-950 shadow-lg shadow-cyan-500/10'
+                      contractFamily === 'booking'
+                        ? 'bg-gradient-to-l from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 shadow-lg shadow-emerald-500/20'
+                        : contractFamily === 'lease'
+                          ? 'bg-gradient-to-l from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 shadow-lg shadow-cyan-500/20'
+                          : 'bg-gradient-to-l from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/10'
                     }`}
                   >
                     {isSubmittingOffer ? (
                       <>
                         <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        <span>جاري تسجيل العرض الذكي...</span>
+                        <span>جاري إرسال الطلب للمستضيف...</span>
                       </>
                     ) : (
                       <>
-                        <span>🚀 إرسال العرض المالي مباشرة للبائع</span>
+                        <span>
+                          {contractFamily === 'booking'
+                            ? `🚀 إرسال طلب الحجز المؤكد (${nightsCount} ليالٍ - ${bookingTotalPrice.toLocaleString()} ${getCurrencyNameAr(ad.currency)})`
+                            : contractFamily === 'lease'
+                              ? `🚀 إرسال طلب عقد الإيجار الرسمي (${leaseDurationMonths} شهراً)`
+                              : submitButtonText}
+                        </span>
                       </>
                     )}
                   </button>
@@ -1929,152 +2065,30 @@ const sessionViewedAdsSet = new Set<string>();
             {/* Seller Info Container */}
             <div className="space-y-3">
               <p className={`text-xs font-bold transition-colors ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>المعلَن والناشر</p>
-              <div 
-                onClick={() => {
-                  let usr = allUsers.find(u => u.id === ad.userId) || INITIAL_USERS.find(u => u.id === ad.userId);
-                  if (!usr && ad.userId) {
-                    usr = {
-                      id: ad.userId,
-                      name: sellerName,
-                      avatar: sellerAvatar || '',
-                      verified: !!ad.userVerified,
-                      phone: ad.contactNumber || '',
-                      role: 'USER',
-                      isVerified: !!ad.userVerified,
-                      phoneVerified: true,
-                      emailVerified: false,
-                      bio: 'عضو أسواق نشط'
-                    };
-                  }
-                  if (usr && onViewUser) onViewUser(usr);
-                }}
-                className={`flex items-center justify-between gap-3 p-3 rounded-xl border transition-colors cursor-pointer group ${isDark ? 'bg-slate-900/60 border-slate-800/80 hover:border-slate-700' : 'bg-white border-slate-200 shadow-sm hover:border-slate-300'}`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <Avatar 
-                    src={sellerAvatar} 
-                    name={sellerName} 
-                    sizeClassName="w-10 h-10"
-                  />
-                  <div>
-                    <h4 className={`text-xs font-bold flex items-center gap-1 transition-colors group-hover:text-emerald-500 ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-                      {sellerName}
-                      {(ad.userVerified || ad.userId === 'user_1' || ad.userId === 'user_2') && (
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 fill-emerald-950" />
-                      )}
-                    </h4>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="text-[10px] text-slate-500 font-medium">
-                        {ad.contactNumber ? (isRtl ? 'حساب موثق برقم الهاتف' : 'Verified phone account') : (isRtl ? 'عضو في أسواق' : 'Aswaq Member')}
-                      </span>
-                    </div>
-                    {/* Social Verification Links */}
-                    <div className="flex gap-2 mt-2">
-                       {ad.whatsappLink && (
-                         <a 
-                           href={ad.whatsappLink} 
-                           target="_blank" 
-                           rel="noreferrer"
-                           className="flex items-center gap-1 text-[9px] font-black text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-lg border border-emerald-500/20 hover:bg-emerald-500/20 transition-all no-underline"
-                         >
-                           <MessageCircle className="w-3 h-3" />
-                           توثيق واتساب
-                         </a>
-                       )}
-                       {ad.instagramLink && (
-                         <a 
-                           href={`https://instagram.com/${ad.instagramLink}`} 
-                           target="_blank" 
-                           rel="noreferrer"
-                           className="flex items-center gap-1 text-[9px] font-black text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded-lg border border-rose-500/20 hover:bg-rose-500/20 transition-all no-underline"
-                         >
-                           <MessageSquare className="w-3 h-3" />
-                           توثيق انستقرام
-                         </a>
-                       )}
-                    </div>
-                  </div>
-                </div>
-
-                {!isMyAd && onToggleFollowSeller && (
-                  <button
-                    type="button"
-                    onClick={() => onToggleFollowSeller(ad.userId)}
-                    className={`px-3 py-1.5 rounded-lg text-[10px] font-black tracking-wide border transition-all cursor-pointer flex items-center gap-1 active:scale-95 ${
-                      isFollowed
-                        ? isDark 
-                          ? 'bg-emerald-950/40 text-emerald-400 border-emerald-500/20 hover:bg-emerald-900/40'
-                          : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-                        : 'bg-emerald-500 text-slate-950 border-transparent hover:bg-emerald-400'
-                    }`}
-                  >
-                    {isFollowed ? (
-                      <>
-                        <UserMinus className="w-3 h-3" />
-                        <span>إلغاء المتابعة</span>
-                      </>
-                    ) : (
-                      <>
-                        <UserPlus className="w-3 h-3" />
-                        <span>متابعة الحساب 👥</span>
-                      </>
-                    )}
-                  </button>
-                )}
-              </div>
+              <AdSellerCard
+                sellerName={sellerName}
+                sellerAvatar={sellerAvatar}
+                isOwner={isOwner}
+                isDark={isDark}
+                isRtl={isRtl}
+                isFollowed={isFollowed}
+                onToggleFollowSeller={onToggleFollowSeller}
+                sellerUserId={ad.userId}
+                onViewUser={onViewUser}
+                contractFamily={contractFamily}
+              />
             </div>
 
             {/* Contact Actions */}
-            {!isMyAd && ad.status !== 'sold' && (
-              hideContactNumber ? (
-                <div className={`mt-4 p-4 border rounded-2xl flex flex-col items-center justify-center text-center gap-2 transition-colors ${
-                  isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-sm'
-                }`}>
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}>
-                    <EyeOff className="w-5 h-5 text-slate-400" />
-                  </div>
-                  <p className={`text-[11px] font-bold max-w-[200px] transition-colors ${isDark ? 'text-slate-400' : 'text-slate-655'}`}>
-                    قام المعلن بإخفاء رقم التواصل. يمكنك مراسلته عبر الدردشة الفورية.
-                  </p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-2 mt-4 hide-scrollbar">
-                  <a 
-                    href={`https://wa.me/${ad.contactNumber || ad.whatsappLink?.split('/').pop() || '000000000'}?text=مرحباً، بخصوص إعلانك: ${ad.title}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="bg-[#25D366] hover:bg-[#1ebd5a] text-white flex items-center justify-center gap-2 py-3 rounded-xl transition-all cursor-pointer shadow-lg shadow-[#25D366]/20 font-black text-xs h-11 relative z-10"
-                  >
-                    <MessageCircle className="w-4 h-4" />
-                    <span>تواصل واتساب</span>
-                  </a>
-                  
-                  <a 
-                    href={`tel:${ad.contactNumber || '000000000'}`}
-                    className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 flex items-center justify-center gap-2 py-3 rounded-xl transition-all cursor-pointer shadow-lg shadow-emerald-500/20 font-black text-xs h-11 relative z-10"
-                  >
-                    <Phone className="w-4 h-4" />
-                    <span>إتصال مباشر</span>
-                  </a>
-                </div>
-              )
-            )}
-
-            {!isMyAd && (
-              <div className="mt-2 flex justify-center">
-                <button 
-                  onClick={() => setShowReportForm(true)}
-                  className={`text-[10px] font-black flex items-center gap-1 transition-all ${
-                    isDark 
-                      ? 'text-rose-400 hover:text-rose-300 opacity-80' 
-                      : 'text-rose-600 hover:text-rose-700 opacity-100'
-                  }`}
-                >
-                  <ShieldAlert className="w-3 h-3" />
-                  الإبلاغ عن مشكلة في هذا الإعلان
-                </button>
-              </div>
-            )}	
+            <AdActionButtons
+              ad={ad}
+              isDark={isDark}
+              isMyAd={isMyAd}
+              contractFamily={contractFamily}
+              onRequestDelivery={() => setShowDeliveryModal(true)}
+              onShowReportForm={() => setShowReportForm(true)}
+              onPrintContract={handlePrintContract}
+            />
 
             {/* Public Comments Section - Replaced Contact buttons based on user request */}
             {ad.status !== 'sold' && (

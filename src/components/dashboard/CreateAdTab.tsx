@@ -34,9 +34,47 @@ if (typeof window !== "undefined") {
 
 import VideoRecorder from "../VideoRecorder.tsx";
 import { uploadFileWithProgress } from "../../lib/upload.ts";
+import { compressAndOptimizeImage } from "../../lib/imageOptimizer.ts";
 import { User, Ad, Category } from "../../types.ts";
 import { Market, getCurrencyAr, getCurrencyNameAr } from "../../markets.ts";
 import { CITIES, DISTRICTS, SUB_CATEGORIES } from "../../data.ts";
+
+const getCategorySlug = (catId: string, categoriesList: any[]) => {
+  if (!catId) return "";
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(catId)) {
+    return catId;
+  }
+  const catObj = categoriesList.find(c => c.id === catId);
+  if (!catObj) return catId;
+  
+  const nameEn = (catObj.nameEn || "").toLowerCase();
+  if (nameEn.includes("job") || nameEn.includes("وظائف")) return "jobs";
+  if (nameEn.includes("vehicle") || nameEn.includes("car")) {
+    if (nameEn.includes("rental")) return "car_rental";
+    return "cars";
+  }
+  if (nameEn.includes("real estate")) return "realestate";
+  if (nameEn.includes("rent")) return "rent_housing";
+  if (nameEn.includes("hotel")) return "hotels";
+  if (nameEn.includes("resort")) return "resorts";
+  if (nameEn.includes("electronic")) return "electronics";
+  if (nameEn.includes("furniture")) return "furniture";
+  if (nameEn.includes("handicraft")) return "handicrafts";
+  if (nameEn.includes("food")) return "food";
+  if (nameEn.includes("service")) return "services";
+  if (nameEn.includes("bicycle") || nameEn.includes("bike")) return "bicycles";
+  if (nameEn.includes("heavy") || nameEn.includes("truck")) return "heavy_equipment";
+  if (nameEn.includes("perfume") || nameEn.includes("beauty")) return "perfumes";
+  if (nameEn.includes("book")) return "books";
+  if (nameEn.includes("computer") || nameEn.includes("laptop")) return "laptops";
+  if (nameEn.includes("medical")) return "medical";
+  if (nameEn.includes("fashion") || nameEn.includes("cloth")) return "fashion";
+  if (nameEn.includes("building") || nameEn.includes("material")) return "building_materials";
+  if (nameEn.includes("animal") || nameEn.includes("live")) return "livestock";
+  if (nameEn.includes("phone") || nameEn.includes("smartphone")) return "phones";
+  if (nameEn.includes("other")) return "other";
+  return catId;
+};
 
 interface CreateAdTabProps {
   currentUser: User;
@@ -65,6 +103,7 @@ export default function CreateAdTab({
 }: CreateAdTabProps) {
   const { t } = useTranslation();
   const isRtl = true;
+  const prevEditingAdRef = useRef<Ad | null | undefined>(undefined);
 
   // Stepper state
   const [adStep, setAdStep] = useState<number>(1);
@@ -89,6 +128,7 @@ export default function CreateAdTab({
   }, [currentMarket.id, editingAd]);
   const [district, setDistrict] = useState("");
   const [category, setCategory] = useState(categories[0]?.id || "");
+  const categorySlug = getCategorySlug(category, categories);
   const [subCategory, setSubCategory] = useState("");
   const [adImages, setAdImages] = useState<string[]>([]);
   const [videoUrl, setVideoUrl] = useState("");
@@ -161,78 +201,82 @@ export default function CreateAdTab({
 
   // Sync edit values
   useEffect(() => {
-    if (editingAd) {
-      setTitle(editingAd.title);
-      setDescription(editingAd.description);
-      setPrice(String(editingAd.price));
-      setCurrency(editingAd.currency);
-      setCity(editingAd.city);
-      setDistrict(editingAd.district || "");
-      setCategory(editingAd.category);
-      setSubCategory(editingAd.subCategory || "");
-      setAdImages(editingAd.images || []);
-      setVideoUrl(editingAd.videoUrl || "");
-      setAudioUrl(editingAd.audioUrl || (editingAd.videoUrl?.match(/\.(mp3|wav|m4a|ogg|aac|webm)$/i) ? editingAd.videoUrl : ""));
-      setAdStatus(editingAd.status === "sold" ? "sold" : "active");
-      setContactNumber(editingAd.contactNumber || "");
-      setShowPhone(!!editingAd.contactNumber);
-      setCustomCategoryName("");
-      setLatitude(editingAd.latitude !== undefined ? editingAd.latitude : null);
-      setLongitude(editingAd.longitude !== undefined ? editingAd.longitude : null);
-      setShowOnMap(editingAd.showOnMap !== undefined ? editingAd.showOnMap : true);
+    if (prevEditingAdRef.current !== editingAd) {
+      if (editingAd) {
+        setTitle(editingAd.title);
+        setDescription(editingAd.description);
+        setPrice(String(editingAd.price));
+        setCurrency(editingAd.currency);
+        setCity(editingAd.city);
+        setDistrict(editingAd.district || "");
+        setCategory(editingAd.category);
+        setSubCategory(editingAd.subCategory || "");
+        setAdImages(editingAd.images || []);
+        setVideoUrl(editingAd.videoUrl || "");
+        setAudioUrl(editingAd.audioUrl || (editingAd.videoUrl?.match(/\.(mp3|wav|m4a|ogg|aac|webm)$/i) ? editingAd.videoUrl : ""));
+        setAdStatus(editingAd.status === "sold" ? "sold" : "active");
+        setContactNumber(editingAd.contactNumber || "");
+        setShowPhone(!!editingAd.contactNumber);
+        setCustomCategoryName("");
+        setLatitude(editingAd.latitude !== undefined ? editingAd.latitude : null);
+        setLongitude(editingAd.longitude !== undefined ? editingAd.longitude : null);
+        setShowOnMap(editingAd.showOnMap !== undefined ? editingAd.showOnMap : true);
 
-      if (editingAd.category === "realestate") {
-        setRooms(editingAd.rooms || 0);
-        setPropertyType(editingAd.propertyType || "apartment");
-        setAmenities(editingAd.amenities || []);
-      } else if (editingAd.category === "cars") {
-        setMake(editingAd.make || "");
-        setModelYear(editingAd.modelYear || "");
-        setTransmission(editingAd.transmission || "automatic");
-        setFuelType(editingAd.fuelType || "gasoline");
-      } else if (["electronics", "phones", "laptops"].includes(editingAd.category)) {
-        setCondition(editingAd.condition || "used_mint");
-        setBrand(editingAd.brand || "");
-      } else if (editingAd.category === "jobs") {
-        setJobType(editingAd.jobType || "hiring");
+        const editCatSlug = getCategorySlug(editingAd.category, categories);
+        if (editCatSlug === "realestate") {
+          setRooms(editingAd.rooms || 0);
+          setPropertyType(editingAd.propertyType || "apartment");
+          setAmenities(editingAd.amenities || []);
+        } else if (editCatSlug === "cars") {
+          setMake(editingAd.make || "");
+          setModelYear(editingAd.modelYear || "");
+          setTransmission(editingAd.transmission || "automatic");
+          setFuelType(editingAd.fuelType || "gasoline");
+        } else if (["electronics", "phones", "laptops"].includes(editCatSlug)) {
+          setCondition(editingAd.condition || "used_mint");
+          setBrand(editingAd.brand || "");
+        } else if (editCatSlug === "jobs") {
+          setJobType(editingAd.jobType || "hiring");
+        }
+      } else {
+        setTitle("");
+        setDescription("");
+        setPrice("");
+        setCurrency(currentMarket.currency || "USD");
+        setCity(currentMarket.cities?.[0]?.id || "sanaa_city");
+        setDistrict("");
+        setCategory(categories[0]?.id || "");
+        setSubCategory("");
+        setAdImages([]);
+        setVideoUrl("");
+        setAdStatus("active");
+        setContactNumber(currentUser.phone || "");
+        setShowPhone(true);
+        setCustomCategoryName("");
+        setLatitude(null);
+        setLongitude(null);
+        setShowOnMap(true);
+        setRooms(0);
+        setPropertyType("apartment");
+        setAmenities([]);
+        setMake("");
+        setModelYear("");
+        setTransmission("automatic");
+        setFuelType("gasoline");
+        setCondition("used_mint");
+        setBrand("");
+        setJobType("hiring");
       }
-    } else {
-      setTitle("");
-      setDescription("");
-      setPrice("");
-      setCurrency(currentMarket.currency || "USD");
-      setCity(currentMarket.cities?.[0]?.id || "sanaa_city");
-      setDistrict("");
-      setCategory(categories[0]?.id || "");
-      setSubCategory("");
-      setAdImages([]);
-      setVideoUrl("");
-      setAdStatus("active");
-      setContactNumber(currentUser.phone || "");
-      setShowPhone(true);
-      setCustomCategoryName("");
-      setLatitude(null);
-      setLongitude(null);
-      setShowOnMap(true);
-      setRooms(0);
-      setPropertyType("apartment");
-      setAmenities([]);
-      setMake("");
-      setModelYear("");
-      setTransmission("automatic");
-      setFuelType("gasoline");
-      setCondition("used_mint");
-      setBrand("");
-      setJobType("hiring");
+      prevEditingAdRef.current = editingAd;
     }
   }, [editingAd, currentMarket, currentUser, categories]);
 
   // Synchronize jobType when category changes
   useEffect(() => {
-    if (category === "jobs") {
+    if (categorySlug === "jobs") {
       setJobType("hiring");
     }
-  }, [category]);
+  }, [categorySlug]);
 
   // Minimap initialization
   useEffect(() => {
@@ -330,11 +374,14 @@ export default function CreateAdTab({
       return;
     }
 
-    for (const file of files) {
+    for (let file of files) {
       if (file.size > 15 * 1024 * 1024) {
         addToast?.("الملف كبير جداً ⚠️", `الملف "${file.name}" يتجاوز الحد الأقصى المسموح به للصور (15 ميجابايت).`, "error");
         continue;
       }
+
+      // Client-side image optimization to WebP (zero-crash fallback)
+      file = await compressAndOptimizeImage(file);
 
       const previewUrl = URL.createObjectURL(file);
 
@@ -395,7 +442,7 @@ const readAsCompressedDataUrl = (file: File): Promise<string> => {
         });
 
         if (presignRes.ok) {
-          const { uploadUrl, objectKey } = await presignRes.json();
+          const { uploadUrl, objectKey, publicUrl } = await presignRes.json();
           const uploadRes = await fetch(uploadUrl, {
             method: "PUT",
             headers: { "Content-Type": file.type || "image/jpeg" },
@@ -404,8 +451,8 @@ const readAsCompressedDataUrl = (file: File): Promise<string> => {
 
           if (uploadRes.ok) {
             uploadedKey = objectKey;
-            // Always use the resolved media URL from objectKey - works for both R2 and local storage
-            uploadedUrl = resolveMediaUrl(objectKey);
+            // Use the direct publicUrl returned by the server (handles R2 correctly), fallback to resolveMediaUrl
+            uploadedUrl = publicUrl || resolveMediaUrl(objectKey);
           }
         }
       } catch (err) {
@@ -599,7 +646,8 @@ const readAsCompressedDataUrl = (file: File): Promise<string> => {
       return { url: rawUrl, sortOrder: idx };
     }).filter((img: any) => (img.url && img.url !== "") || img.objectKey);
 
-    const finalCategory = category === "other" && customCategoryName.trim() ? customCategoryName.trim() : category;
+    const finalCategory = categorySlug === "other" && customCategoryName.trim() ? customCategoryName.trim() : category;
+    const finalCategorySlug = getCategorySlug(finalCategory, categories);
 
     const body = {
       title,
@@ -622,15 +670,25 @@ const readAsCompressedDataUrl = (file: File): Promise<string> => {
       userVerified: currentUser.verified,
       videoUrl: videoUrl.trim() || (!videoUrl && audioUrl ? audioUrl.trim() : undefined),
       audioUrl: audioUrl.trim() || undefined,
-      customFieldValues,
-      ...(finalCategory === "realestate"
+      customFieldValues: {
+        ...customFieldValues,
+        ...(categorySlug === "hotels" || categorySlug === "rent_housing"
+          ? {
+              hotelType,
+              bookingSystem,
+              hotelBeds,
+              hotelAmenities,
+            }
+          : {}),
+      },
+      ...(finalCategorySlug === "realestate"
         ? {
             rooms,
             propertyType: propertyType as any,
             amenities,
           }
         : {}),
-      ...(finalCategory === "cars"
+      ...(finalCategorySlug === "cars"
         ? {
             make,
             modelYear: Number(modelYear),
@@ -638,13 +696,13 @@ const readAsCompressedDataUrl = (file: File): Promise<string> => {
             fuelType: fuelType as any,
           }
         : {}),
-      ...(["electronics", "phones", "laptops"].includes(finalCategory)
+      ...(["electronics", "phones", "laptops"].includes(finalCategorySlug)
         ? {
             condition: condition as any,
             brand,
           }
         : {}),
-      ...(finalCategory === "jobs"
+      ...(finalCategorySlug === "jobs"
         ? {
             jobType: jobType,
           }
@@ -1000,7 +1058,7 @@ const readAsCompressedDataUrl = (file: File): Promise<string> => {
                   {/* SubCategory Selection */}
                   {(() => {
                     const activeCatObj = categories.find((c) => c.id === category);
-                    const currentSubCategories = activeCatObj?.subCategories && activeCatObj.subCategories.length > 0 ? activeCatObj.subCategories : SUB_CATEGORIES[category] || [];
+                    const currentSubCategories = activeCatObj?.subCategories && activeCatObj.subCategories.length > 0 ? activeCatObj.subCategories : SUB_CATEGORIES[categorySlug] || [];
 
                     if (currentSubCategories.length === 0) return null;
 
@@ -1072,7 +1130,7 @@ const readAsCompressedDataUrl = (file: File): Promise<string> => {
                   })()}
                 </div>
 
-                {category === "other" && (
+                {categorySlug === "other" && (
                   <div className="space-y-1.5 mt-2 bg-emerald-950/10 border border-emerald-500/20 p-4 rounded-xl text-right">
                     <label className="text-xs font-bold text-emerald-400 flex items-center gap-1.5 justify-end">
                       <span>✏️ اكتب اسم القسم المخصص الجديد:</span>
@@ -1123,7 +1181,7 @@ const readAsCompressedDataUrl = (file: File): Promise<string> => {
                     </button>
                   </div>
                 </div>
-                {["hotels", "rent_housing"].includes(category) && (
+                {["hotels", "rent_housing"].includes(categorySlug) && (
                   <div className={`p-6 rounded-2xl space-y-6 text-right border transition-colors ${isDark ? "bg-slate-950/50 border-slate-800" : "bg-slate-50 border-slate-200 shadow-sm"}`}>
                     <div className="flex items-center gap-2 justify-end">
                       <Sliders className="w-4 h-4 text-amber-400" />
@@ -1249,7 +1307,7 @@ const readAsCompressedDataUrl = (file: File): Promise<string> => {
                 )}
 
                 {/* Real Estate Specific Advanced Fields */}
-                {category === "realestate" && (
+                {categorySlug === "realestate" && (
                   <div className={`p-6 rounded-2xl space-y-6 text-right border transition-colors ${isDark ? "bg-slate-950/50 border-slate-800" : "bg-slate-50 border-slate-200 shadow-sm"}`}>
                     <div className="flex items-center gap-2 justify-end">
                       <Sliders className="w-4 h-4 text-emerald-400" />
@@ -1331,7 +1389,7 @@ const readAsCompressedDataUrl = (file: File): Promise<string> => {
                 )}
 
                 {/* Cars / Rent / Bicycles / Heavy Equipment Specific Fields */}
-                {["cars", "car_rental", "bicycles", "heavy_equipment"].includes(category) && (
+                {["cars", "car_rental", "bicycles", "heavy_equipment"].includes(categorySlug) && (
                   <div className={`p-6 rounded-2xl space-y-6 text-right border transition-colors ${isDark ? "bg-slate-950/50 border-slate-800" : "bg-slate-50 border-slate-200 shadow-sm"}`}>
                     <div className="flex items-center gap-2 justify-end">
                       <Sliders className="w-4 h-4 text-yellow-400" />
@@ -1417,7 +1475,7 @@ const readAsCompressedDataUrl = (file: File): Promise<string> => {
                 )}
 
                 {/* Electronics Specific Advanced Fields */}
-                {["electronics", "phones", "laptops"].includes(category) && (
+                {["electronics", "phones", "laptops"].includes(categorySlug) && (
                   <div className={`p-6 rounded-2xl space-y-6 text-right border transition-colors ${isDark ? "bg-slate-950/50 border-slate-800" : "bg-slate-50 border-slate-200 shadow-sm"}`}>
                     <div className="flex items-center gap-2 justify-end">
                       <Sliders className="w-4 h-4 text-blue-400" />
@@ -1460,7 +1518,7 @@ const readAsCompressedDataUrl = (file: File): Promise<string> => {
                 )}
 
                 {/* Jobs & Opportunities Specific Advanced Fields */}
-                {category === "jobs" && (
+                {categorySlug === "jobs" && (
                   <div className={`p-6 rounded-2xl space-y-6 text-right border transition-colors ${isDark ? "bg-slate-950/50 border-slate-800" : "bg-slate-50 border-slate-200 shadow-sm"}`}>
                     <div className="flex items-center gap-2 justify-end">
                       <Briefcase className="w-4 h-4 text-purple-400" />
@@ -1605,7 +1663,7 @@ const readAsCompressedDataUrl = (file: File): Promise<string> => {
                 )}
 
                 {/* Services & Maintenance & Shipping Specific Fields */}
-                {category === "services" && (
+                {categorySlug === "services" && (
                   <div className={`p-6 rounded-2xl space-y-6 text-right border transition-colors ${isDark ? "bg-slate-950/50 border-slate-800" : "bg-slate-50 border-slate-200 shadow-sm"}`}>
                     <div className="flex items-center gap-2 justify-end">
                       <Wrench className="w-4 h-4 text-emerald-400" />
@@ -1715,7 +1773,7 @@ const readAsCompressedDataUrl = (file: File): Promise<string> => {
                 )}
 
                 {/* Resorts & Chalets Specific Fields */}
-                {category === "resorts" && (
+                {categorySlug === "resorts" && (
                   <div className={`p-6 rounded-2xl space-y-6 text-right border transition-colors ${isDark ? "bg-slate-950/50 border-slate-800" : "bg-slate-50 border-slate-200 shadow-sm"}`}>
                     <div className="flex items-center gap-2 justify-end">
                       <Sliders className="w-4 h-4 text-emerald-400" />
@@ -1789,7 +1847,7 @@ const readAsCompressedDataUrl = (file: File): Promise<string> => {
                 )}
 
                 {/* Solar & Energy Specific Fields */}
-                {category === "solar" && (
+                {categorySlug === "solar" && (
                   <div className={`p-6 rounded-2xl space-y-6 text-right border transition-colors ${isDark ? "bg-slate-950/50 border-slate-800" : "bg-slate-50 border-slate-200 shadow-sm"}`}>
                     <div className="flex items-center gap-2 justify-end">
                       <Sliders className="w-4 h-4 text-amber-400" />
@@ -1836,7 +1894,7 @@ const readAsCompressedDataUrl = (file: File): Promise<string> => {
                 )}
 
                 {/* Furniture Specific Fields */}
-                {category === "furniture" && (
+                {categorySlug === "furniture" && (
                   <div className={`p-6 rounded-2xl space-y-6 text-right border transition-colors ${isDark ? "bg-slate-950/50 border-slate-800" : "bg-slate-50 border-slate-200 shadow-sm"}`}>
                     <div className="flex items-center gap-2 justify-end">
                       <Sliders className="w-4 h-4 text-orange-400" />
@@ -1872,7 +1930,7 @@ const readAsCompressedDataUrl = (file: File): Promise<string> => {
                 )}
 
                 {/* Fashion & Perfumes & Watches Fields */}
-                {["fashion", "perfumes", "watches"].includes(category) && (
+                {["fashion", "perfumes", "watches"].includes(categorySlug) && (
                   <div className={`p-6 rounded-2xl space-y-6 text-right border transition-colors ${isDark ? "bg-slate-950/50 border-slate-800" : "bg-slate-50 border-slate-200 shadow-sm"}`}>
                     <div className="flex items-center gap-2 justify-end">
                       <Sliders className="w-4 h-4 text-pink-400" />
@@ -1920,7 +1978,7 @@ const readAsCompressedDataUrl = (file: File): Promise<string> => {
                 )}
 
                 {/* Handicrafts & Antiques (Heritage, Janbiya, Agate) Fields */}
-                {["handicrafts", "antiques"].includes(category) && (
+                {["handicrafts", "antiques"].includes(categorySlug) && (
                   <div className={`p-6 rounded-2xl space-y-6 text-right border transition-colors ${isDark ? "bg-slate-950/50 border-slate-800" : "bg-slate-50 border-slate-200 shadow-sm"}`}>
                     <div className="flex items-center gap-2 justify-end">
                       <Sliders className="w-4 h-4 text-amber-400" />
@@ -1970,7 +2028,7 @@ const readAsCompressedDataUrl = (file: File): Promise<string> => {
                 )}
 
                 {/* Food & Honey & Coffee Fields */}
-                {category === "food" && (
+                {categorySlug === "food" && (
                   <div className={`p-6 rounded-2xl space-y-6 text-right border transition-colors ${isDark ? "bg-slate-950/50 border-slate-800" : "bg-slate-50 border-slate-200 shadow-sm"}`}>
                     <div className="flex items-center gap-2 justify-end">
                       <Sliders className="w-4 h-4 text-yellow-500" />
@@ -2019,7 +2077,7 @@ const readAsCompressedDataUrl = (file: File): Promise<string> => {
                 )}
 
                 {/* Building Materials Fields */}
-                {category === "building_materials" && (
+                {categorySlug === "building_materials" && (
                   <div className={`p-6 rounded-2xl space-y-6 text-right border transition-colors ${isDark ? "bg-slate-950/50 border-slate-800" : "bg-slate-50 border-slate-200 shadow-sm"}`}>
                     <div className="flex items-center gap-2 justify-end">
                       <Sliders className="w-4 h-4 text-stone-400" />
@@ -2068,7 +2126,7 @@ const readAsCompressedDataUrl = (file: File): Promise<string> => {
                 )}
 
                 {/* Medical & Kids Supplies Fields */}
-                {["medical", "kids"].includes(category) && (
+                {["medical", "kids"].includes(categorySlug) && (
                   <div className={`p-6 rounded-2xl space-y-6 text-right border transition-colors ${isDark ? "bg-slate-950/50 border-slate-800" : "bg-slate-50 border-slate-200 shadow-sm"}`}>
                     <div className="flex items-center gap-2 justify-end">
                       <Sliders className="w-4 h-4 text-cyan-400" />
@@ -2103,7 +2161,7 @@ const readAsCompressedDataUrl = (file: File): Promise<string> => {
                 )}
 
                 {/* Books & Sports Fields */}
-                {["books", "sports"].includes(category) && (
+                {["books", "sports"].includes(categorySlug) && (
                   <div className={`p-6 rounded-2xl space-y-6 text-right border transition-colors ${isDark ? "bg-slate-950/50 border-slate-800" : "bg-slate-50 border-slate-200 shadow-sm"}`}>
                     <div className="flex items-center gap-2 justify-end">
                       <Sliders className="w-4 h-4 text-emerald-400" />

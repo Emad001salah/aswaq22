@@ -63,6 +63,7 @@ import {
   Megaphone,
   ShieldCheck,
   Truck,
+  Save,
 } from 'lucide-react';
 import DeliveryDashboard from '../modules/shipping/DeliveryDashboard';
 import { Avatar } from './Avatar';
@@ -241,6 +242,9 @@ function AdminPanelInner({
   const [reports, setReports] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [dbMarkets, setDbMarkets] = useState<any[]>([]);
+  const [yemenRates, setYemenRates] = useState<{sanaaUsd: number; sanaaSar: number; adenUsd: number; adenSar: number} | null>(null);
+  const [yemenRatesLoading, setYemenRatesLoading] = useState(false);
+  const [yemenRatesSaving, setYemenRatesSaving] = useState(false);
 
   // ── UI States ──
   const [loading, setLoading] = useState(false);
@@ -509,6 +513,48 @@ function AdminPanelInner({
     }
   }, [adminFetch]);
 
+  const fetchYemenRates = useCallback(async () => {
+    setYemenRatesLoading(true);
+    try {
+      const res = await fetch('/api/exchange-rates');
+      if (res.ok) {
+        const json = await res.json();
+        setYemenRates({
+          sanaaUsd: json.rates?.sanaaUsd ?? 535,
+          sanaaSar: json.rates?.sanaaSar ?? 140,
+          adenUsd: json.rates?.adenUsd ?? 1560,
+          adenSar: json.rates?.adenSar ?? 410,
+        });
+      }
+    } catch (e) {
+      console.error('Error fetching Yemen rates:', e);
+    } finally {
+      setYemenRatesLoading(false);
+    }
+  }, []);
+
+  const saveYemenRates = useCallback(async () => {
+    if (!yemenRates) return;
+    setYemenRatesSaving(true);
+    try {
+      const res = await adminFetch('/api/admin/exchange-rates', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(yemenRates),
+      });
+      if (res.ok) {
+        alert('✅ تم حفظ أسعار الصرف وتعميمها على جميع المستخدمين بنجاح!');
+      } else {
+        alert('❌ حدث خطأ أثناء حفظ الأسعار. يرجى المحاولة مرة أخرى.');
+      }
+    } catch (e) {
+      console.error('Error saving Yemen rates:', e);
+      alert('❌ تعذر الاتصال بالسيرفر. يرجى المحاولة مرة أخرى.');
+    } finally {
+      setYemenRatesSaving(false);
+    }
+  }, [adminFetch, yemenRates]);
+
   const fetchReports = useCallback(async () => {
     setLoading(true);
     try {
@@ -535,10 +581,10 @@ function AdminPanelInner({
     if (activeTab === 'polls') fetchPolls();
     if (activeTab === 'reels') fetchReels();
     if (activeTab === 'categories') fetchCategories();
-    if (activeTab === 'markets') fetchMarkets();
+    if (activeTab === 'markets') { fetchMarkets(); fetchYemenRates(); }
     if (activeTab === 'reports') fetchReports();
     if (activeTab === 'analytics') { fetchStats(); fetchAds(); fetchUsers(); }
-  }, [activeTab, selectedMarket, fetchCategories, fetchMarkets, fetchReports]);
+  }, [activeTab, selectedMarket, fetchCategories, fetchMarkets, fetchYemenRates, fetchReports]);
 
   useEffect(() => {
     if (activeTab === 'users') fetchUsers();
@@ -2254,6 +2300,101 @@ function AdminPanelInner({
               {/* ════════════════════════════════════════════════════════════ */}
               {activeTab === 'markets' && (
                 <div className="space-y-6 animate-in fade-in duration-300">
+
+                  {/* ── Yemen Exchange Rates Control ── */}
+                  <div className="p-5 rounded-2xl bg-slate-800/40 border border-emerald-500/20">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h3 className="text-sm font-black text-white flex items-center gap-2">
+                          💱 أسعار الصرف اليمنية
+                        </h3>
+                        <p className="text-[10px] text-slate-500 mt-0.5">تحديث أسعار صنعاء وعدن — يُطبق فوراً على جميع المستخدمين</p>
+                      </div>
+                      <button
+                        onClick={fetchYemenRates}
+                        disabled={yemenRatesLoading}
+                        className="px-3 py-1.5 bg-slate-700/50 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl text-[10px] font-bold transition-all border-none cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+                      >
+                        <RefreshCw className={`w-3 h-3 ${yemenRatesLoading ? 'animate-spin' : ''}`} />
+                        تحديث من السيرفر
+                      </button>
+                    </div>
+
+                    {yemenRatesLoading ? (
+                      <div className="flex items-center justify-center h-24">
+                        <Loader2 className="w-6 h-6 text-emerald-500 animate-spin" />
+                      </div>
+                    ) : yemenRates ? (
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          {/* Sanaa */}
+                          <div className="p-4 rounded-xl bg-slate-900/60 border border-white/5">
+                            <p className="text-xs font-black text-white mb-3 flex items-center gap-1.5">🏛️ سوق صنعاء</p>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <label className="text-[10px] font-bold text-slate-500 mb-1 block">💵 الدولار (YER)</label>
+                                <input
+                                  type="number"
+                                  value={yemenRates.sanaaUsd}
+                                  onChange={e => setYemenRates({...yemenRates, sanaaUsd: Number(e.target.value)})}
+                                  className="w-full bg-slate-800 text-white text-sm px-3 py-2 rounded-lg border border-slate-600 outline-none focus:border-emerald-500"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-[10px] font-bold text-slate-500 mb-1 block">🇸🇦 الريال السعودي (YER)</label>
+                                <input
+                                  type="number"
+                                  value={yemenRates.sanaaSar}
+                                  onChange={e => setYemenRates({...yemenRates, sanaaSar: Number(e.target.value)})}
+                                  className="w-full bg-slate-800 text-white text-sm px-3 py-2 rounded-lg border border-slate-600 outline-none focus:border-emerald-500"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                          {/* Aden */}
+                          <div className="p-4 rounded-xl bg-slate-900/60 border border-white/5">
+                            <p className="text-xs font-black text-white mb-3 flex items-center gap-1.5">⚓ سوق عدن</p>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <label className="text-[10px] font-bold text-slate-500 mb-1 block">💵 الدولار (YER)</label>
+                                <input
+                                  type="number"
+                                  value={yemenRates.adenUsd}
+                                  onChange={e => setYemenRates({...yemenRates, adenUsd: Number(e.target.value)})}
+                                  className="w-full bg-slate-800 text-white text-sm px-3 py-2 rounded-lg border border-slate-600 outline-none focus:border-emerald-500"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-[10px] font-bold text-slate-500 mb-1 block">🇸🇦 الريال السعودي (YER)</label>
+                                <input
+                                  type="number"
+                                  value={yemenRates.adenSar}
+                                  onChange={e => setYemenRates({...yemenRates, adenSar: Number(e.target.value)})}
+                                  className="w-full bg-slate-800 text-white text-sm px-3 py-2 rounded-lg border border-slate-600 outline-none focus:border-emerald-500"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          onClick={saveYemenRates}
+                          disabled={yemenRatesSaving}
+                          className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-60 text-white font-black rounded-xl transition-all border-none cursor-pointer flex items-center justify-center gap-2 text-sm"
+                        >
+                          {yemenRatesSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                          {yemenRatesSaving ? 'جاري الحفظ والتعميم...' : '💾 حفظ وتعميم على جميع المستخدمين'}
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={fetchYemenRates}
+                        className="w-full py-3 bg-emerald-500/10 text-emerald-400 rounded-xl text-sm font-bold border-none cursor-pointer hover:bg-emerald-500/20 transition-all"
+                      >
+                        تحميل أسعار الصرف الحالية
+                      </button>
+                    )}
+                  </div>
+
                   <div className="flex justify-between items-center mb-6">
                     <SectionHeader title="إدارة الأسواق والبلدان" subtitle={`البلدان المتاحة بالمنصة (${dbMarkets.length} بلد)`} />
                     <button

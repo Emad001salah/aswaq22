@@ -16,6 +16,7 @@ import { cacheService } from '../services/cache.service.ts';
 import { AppError } from '../middleware/error.ts';
 import { enqueueAdImageJob } from '../lib/image-queue.ts';
 import { resolveAdImageUrls } from '../utils/ad-image-resolver.ts';
+import { InstantIndexingService } from '../services/instant-indexing.service.ts';
 
 
 const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -125,9 +126,10 @@ export const AdsController = (io?: Server) => {
           categoryId: category ? (uuidRegex.test(String(category)) ? String(category) : getDeterministicUuid(String(category))) : undefined,
           status: 'ACTIVE',
         },
-        orderBy: {
-          createdAt: 'desc',
-        },
+        orderBy: [
+          { isFeatured: 'desc' },
+          { createdAt: 'desc' }
+        ],
         include: {
           images: {
             orderBy: { sortOrder: 'asc' },
@@ -280,8 +282,38 @@ export const AdsController = (io?: Server) => {
       if (sortBy === 'price_desc') orderByClause = [{ price: 'desc' }, { id: 'desc' }];
       if (sortBy === 'views') orderByClause = [{ views: 'desc' }, { id: 'desc' }];
 
+      // Build flexible search variants (Arabic normalization + multi-token)
+      let searchConditions: any[] | undefined = undefined;
+      if (searchQuery) {
+        const cleanQuery = searchQuery.trim();
+        const tokens = cleanQuery.split(/\s+/).filter(t => t.length > 0);
+        const terms = new Set<string>();
+        terms.add(cleanQuery);
+        tokens.forEach(t => terms.add(t));
+
+        const normalize = (s: string) => s
+          .replace(/[أإآ]/g, 'ا')
+          .replace(/ة/g, 'ه')
+          .replace(/ى/g, 'ي')
+          .replace(/[ًٌٍَُِّْـ]/g, '')
+          .trim();
+
+        tokens.forEach(t => {
+          const n = normalize(t);
+          if (n) terms.add(n);
+        });
+
+        const termList = Array.from(terms);
+        searchConditions = termList.flatMap(term => [
+          { title: { contains: term, mode: 'insensitive' } },
+          { description: { contains: term, mode: 'insensitive' } },
+          { city: { contains: term, mode: 'insensitive' } },
+          { district: { contains: term, mode: 'insensitive' } },
+        ]);
+      }
+
       // 2. Database Fallback (Prisma full-text & filter query)
-      console.log(`[Search] Querying database using Prisma for market: ${market || 'ALL'}...`);
+      console.log(`[Search] Querying database using Prisma for market: ${market || 'ALL'} with ${searchConditions?.length || 0} conditions...`);
       const ads = await prisma.ad.findMany({
         where: {
           status: 'ACTIVE',
@@ -293,10 +325,7 @@ export const AdsController = (io?: Server) => {
             lte: maxPrice ? parseFloat(String(maxPrice)) : undefined,
           } : undefined,
           images: hasImages === 'true' ? { some: {} } : undefined,
-          OR: searchQuery ? [
-            { title: { contains: searchQuery, mode: 'insensitive' } },
-            { description: { contains: searchQuery, mode: 'insensitive' } }
-          ] : undefined,
+          OR: searchConditions,
         },
         orderBy: orderByClause,
         include: { images: true, user: { select: { id: true, name: true, avatar: true, isVerified: true } } },
@@ -598,6 +627,14 @@ export const AdsController = (io?: Server) => {
         io.emit('new-ad', mappedAd);
       }
 
+      // Trigger Instant Indexing in background for immediate Google & Bing indexing
+      try {
+        const catNameEn = adWithUser?.category?.nameEn || 'general';
+        InstantIndexingService.notifyAd(result.ad, catNameEn);
+      } catch (seoErr) {
+        logger.warn(`[AdsController] Instant indexing queue non-fatal error: ${seoErr}`);
+      }
+
       res.status(201).json({
         message: 'تم نشر الإعلان بنجاح.',
         ad: mappedAd
@@ -664,11 +701,12 @@ export const AdsController = (io?: Server) => {
           }
         });
         ad = allActiveAds.find(a => {
+          if (a.id === idParam) return true;
           const hexPart = (a.id || '').replace(/[^0-9a-f]/gi, '').substring(0, 8);
           const num = parseInt(hexPart || '10000000', 16);
           const code = ((num % 900000000) + 100000000).toString();
           return code === idParam;
-        }) || allActiveAds[0];
+        });
       }
 
       if (!ad) return res.status(404).json({ error: 'Ad not found', message: 'الإعلان غير موجود.' });
@@ -708,6 +746,82 @@ export const AdsController = (io?: Server) => {
       res.json(mappedAd);
     } catch (e: any) {
       res.status(500).json({ error: 'Database Error', message: e.message });
+    }
+  });
+
+  // POST /api/ads/:id/feature (Promote ad to Featured/VIP - Requires Admin approval for regular users)
+  router.post('/:id/feature', authMiddleware, async (req: AuthenticatedRequest, res) => {
+    try {
+      const adId = req.params.id;
+      const { days = 7 } = req.body;
+      const user = req.user!;
+      const isAdmin = user.role === 'ADMIN' || user.role === 'SUPER_ADMIN';
+
+      const ad = await prisma.ad.findUnique({
+        where: { id: adId },
+        include: { user: true }
+      });
+
+      if (!ad) {
+        return res.status(404).json({ error: 'الإعلان غير موجود' });
+      }
+
+      // If user is a regular user, send feature request to admins for review
+      if (!isAdmin) {
+        // Send push/in-app notification to admins
+        const admins = await prisma.user.findMany({
+          where: { role: { in: ['ADMIN', 'SUPER_ADMIN'] } },
+          select: { id: true }
+        });
+
+        const notifyTitle = 'طلب تمييز إعلان جديد ✨';
+        const notifyDesc = `طلب المستخدم (${user.name || user.phone || 'مستخدم'}) تمييز الإعلان "${ad.title.substring(0, 30)}..."`;
+
+        for (const admin of admins) {
+          await prisma.notification.create({
+            data: {
+              userId: admin.id,
+              title: notifyTitle,
+              description: notifyDesc,
+              type: 'FEATURE_REQUEST'
+            }
+          });
+          NotificationService.sendPushToUser(admin.id, {
+            title: notifyTitle,
+            body: notifyDesc,
+            type: 'FEATURE_REQUEST',
+            data: { adId }
+          }).catch(() => {});
+        }
+
+        return res.json({
+          success: true,
+          message: 'تم إرسال طلب تمييز الإعلان إلى الإدارة للمراجعة والموافقة ⏳',
+          pendingApproval: true
+        });
+      }
+
+      // Admin directly approves / features the ad
+      const featuredUntil = new Date();
+      featuredUntil.setDate(featuredUntil.getDate() + (parseInt(days) || 7));
+
+      const updated = await prisma.ad.update({
+        where: { id: adId },
+        data: {
+          isFeatured: true,
+          featuredUntil
+        }
+      });
+
+      await cacheService.invalidateFeedCaches();
+
+      res.json({
+        success: true,
+        message: 'تم ترقية الإعلان إلى مميز بنجاح ✨',
+        ad: updated
+      });
+    } catch (e: any) {
+      res.status(500).json({ error: 'Failed to promote ad', message: e.message });
     }
   });
 
@@ -829,15 +943,14 @@ export const AdsController = (io?: Server) => {
       // Validate category exists before accepting update
       if (req.body.category) {
         const catRaw = req.body.category as string;
-        const catSlug = slugify(catRaw);
-        const catUuid = uuidRegex.test(catRaw) ? catRaw : getDeterministicUuid(catSlug || catRaw.toLowerCase().trim());
+        const catSlug = catRaw.toLowerCase().trim();
+        const catUuid = uuidRegex.test(catRaw) ? catRaw : getDeterministicUuid(catSlug);
         const cat = await prisma.category.findFirst({
           where: {
             OR: [
               { id: catUuid },
               { nameEn: { equals: catRaw, mode: 'insensitive' } },
-              { nameAr: { equals: catRaw, mode: 'insensitive' } },
-              { slug: catSlug }
+              { nameAr: { equals: catRaw, mode: 'insensitive' } }
             ]
           }
         });
@@ -848,16 +961,15 @@ export const AdsController = (io?: Server) => {
 
       if (req.body.subCategory) {
         const subRaw = req.body.subCategory as string;
-        const subSlug = slugify(subRaw);
-        const subUuid = uuidRegex.test(subRaw) ? subRaw : getDeterministicUuid(subSlug || subRaw.toLowerCase().trim());
+        const subSlug = subRaw.toLowerCase().trim();
+        const subUuid = uuidRegex.test(subRaw) ? subRaw : getDeterministicUuid(subSlug);
         const targetCatId = dataUpdate.categoryId || ad.categoryId;
         const sub = await prisma.subCategory.findFirst({
           where: {
             OR: [
               { id: subUuid },
               { nameEn: { equals: subRaw, mode: 'insensitive' } },
-              { nameAr: { equals: subRaw, mode: 'insensitive' } },
-              { slug: subSlug }
+              { nameAr: { equals: subRaw, mode: 'insensitive' } }
             ],
             ...(targetCatId ? { categoryId: targetCatId } : {})
           }

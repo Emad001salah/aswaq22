@@ -112,6 +112,7 @@ router.post('/presign', authMiddleware, async (req: AuthenticatedRequest, res: R
     success: true,
     uploadUrl: result.uploadUrl,
     objectKey: result.objectKey,
+    publicUrl: result.publicUrl,
     fields: result.fields,
     expiresIn: result.expiresIn,
   });
