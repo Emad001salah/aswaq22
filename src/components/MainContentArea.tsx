@@ -289,16 +289,6 @@ export default function MainContentArea({
                 {isRtl ? 'البحث في كل المناطق' : 'Search in All Regions'}
               </button>
             )}
-
-            {onOpenAiAssistant && (
-              <button
-                onClick={onOpenAiAssistant}
-                className="px-5 py-3.5 rounded-2xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-black text-xs sm:text-sm transition-all shadow-lg shadow-indigo-600/20 active:scale-95 flex items-center gap-2 cursor-pointer"
-              >
-                <Sparkles className="w-4 h-4" />
-                {isRtl ? 'اسأل المساعد الذكي AI' : 'Ask AI Assistant'}
-              </button>
-            )}
           </div>
         </motion.div>
       ) : (
