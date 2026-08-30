@@ -3084,9 +3084,19 @@ Sitemap: ${BASE_URL}/sitemap.xml
           logoLetter: settings.logoLetter || 'أ',
           logoUrl: settings.logoUrl || '',
           maintenanceMode: !!settings.maintenanceMode,
+          supportPhone: settings.supportPhone || '+962790186572',
+          supportWhatsapp: settings.supportWhatsapp || '+962790186572',
+          supportEmail: settings.supportEmail || 'emad333salah@gmail.com',
         });
       } catch (err: any) {
-        res.json({ appName: 'أسواق', logoLetter: 'أ', logoUrl: '' });
+        res.json({
+          appName: 'أسواق',
+          logoLetter: 'أ',
+          logoUrl: '',
+          supportPhone: '+962790186572',
+          supportWhatsapp: '+962790186572',
+          supportEmail: 'emad333salah@gmail.com',
+        });
       }
     });
 

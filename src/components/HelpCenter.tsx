@@ -131,12 +131,18 @@ export default function HelpCenter({ onClose, isDark, addToast, platformSettings
     e.preventDefault();
     if (!customQuestion.trim()) return;
 
+    if (contactMethod === "whatsapp") {
+      const cleanPhone = (platformSettings?.supportWhatsapp || "962790186572").replace(/[^0-9]/g, "").replace(/^00/, "");
+      const msg = encodeURIComponent(`مرحباً دعم أسواق 22، لدي استفسار:\n${customQuestion.trim()}`);
+      window.open(`https://wa.me/${cleanPhone}?text=${msg}`, '_blank');
+    }
+
     if (addToast) {
       addToast(
         isRtl ? "تم إرسال استفسارك بنجاح! 📨" : "Inquiry Sent! 📨",
         isRtl 
-          ? "تلقينا سؤالك، سيقوم مرشدو مركز الدعم والتوثيق بالتواصل معك عبر الواتساب أو البريد المدون خلال ساعات قليلة."
-          : "We have received your question. Our support experts will reach you via WhatsApp or Email within a few hours.",
+          ? "تلقينا سؤالك، سيقوم مرشدو مركز الدعم بالتواصل معك مباشرة عبر وسيلة التواصل المحددة."
+          : "We have received your inquiry. Our support team will reach out to you shortly.",
         "success"
       );
     }
@@ -413,42 +419,42 @@ export default function HelpCenter({ onClose, isDark, addToast, platformSettings
           <div id="help-contacts" className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <a
               id="help-whatsapp-link"
-              href={`https://wa.me/${(platformSettings?.supportWhatsapp || "00966500000000").replace(/\+/g, "").replace(/\s+/g, "")}`}
+              href={`https://wa.me/${(platformSettings?.supportWhatsapp || "962790186572").replace(/[^0-9]/g, "").replace(/^00/, "")}?text=${encodeURIComponent(isRtl ? "مرحباً، أود التواصل مع الدعم الفني لمنصة أسواق." : "Hello, I would like to contact Aswaq Support.")}`}
               target="_blank"
               rel="noreferrer"
-              className={`p-3 rounded-2xl border flex items-center gap-2.5 transition-all text-xs font-black ${
-                isDark ? "bg-slate-900/30 border-zinc-900 hover:border-emerald-500/20" : "bg-white border-slate-200 hover:border-slate-350 shadow-sm"
+              className={`p-3 rounded-2xl border flex items-center gap-2.5 transition-all text-xs font-black hover:scale-[1.02] active:scale-95 ${
+                isDark ? "bg-slate-900/30 border-zinc-900 hover:border-emerald-500/30" : "bg-white border-slate-200 hover:border-emerald-300 shadow-sm"
               }`}
             >
-              <MessageCircle className="w-4 h-4 text-emerald-500" />
+              <MessageCircle className="w-4 h-4 text-emerald-500 shrink-0" />
               <div>
-                <span className="block text-[9px] text-slate-400 font-bold">{isRtl ? "المراسلة الفورية" : "Instant Chat"}</span>
+                <span className="block text-[9px] text-slate-400 font-bold">{isRtl ? "المراسلة الفورية (واتساب)" : "Instant Chat (WhatsApp)"}</span>
                 <span className="text-[10px] font-mono text-emerald-500">{platformSettings?.supportWhatsapp || "+962790186572"}</span>
               </div>
             </a>
 
-            <div
+            <a
               id="help-phone-box"
-              onClick={() => addToast && addToast(isRtl ? "رقم الدعم" : "Support Tel", platformSettings?.supportPhone || "+962790186572", "info")}
-              className={`p-3 rounded-2xl border flex items-center gap-2.5 transition-all text-xs font-black cursor-pointer ${
-                isDark ? "bg-slate-900/30 border-zinc-900 hover:border-emerald-500/20" : "bg-white border-slate-200 hover:border-slate-350 shadow-sm"
+              href={`tel:${(platformSettings?.supportPhone || "+962790186572").replace(/\s+/g, "")}`}
+              className={`p-3 rounded-2xl border flex items-center gap-2.5 transition-all text-xs font-black hover:scale-[1.02] active:scale-95 ${
+                isDark ? "bg-slate-900/30 border-zinc-900 hover:border-sky-500/30" : "bg-white border-slate-200 hover:border-sky-300 shadow-sm"
               }`}
             >
-              <PhoneCall className="w-4 h-4 text-sky-500" />
+              <PhoneCall className="w-4 h-4 text-sky-500 shrink-0" />
               <div>
-                <span className="block text-[9px] text-slate-400 font-bold">{isRtl ? "الرقم الساخن" : "Support Helpline"}</span>
+                <span className="block text-[9px] text-slate-400 font-bold">{isRtl ? "الاتصال المباشر" : "Direct Call"}</span>
                 <span className="text-[10px] font-mono text-sky-500">{platformSettings?.supportPhone || "+962790186572"}</span>
               </div>
-            </div>
+            </a>
 
             <a
               id="help-email-link"
               href={`mailto:${platformSettings?.supportEmail || "emad333salah@gmail.com"}`}
-              className={`p-3 rounded-2xl border flex items-center gap-2.5 transition-all text-xs font-black ${
-                isDark ? "bg-slate-900/30 border-zinc-900 hover:border-emerald-500/20" : "bg-white border-slate-200 hover:border-slate-350 shadow-sm"
+              className={`p-3 rounded-2xl border flex items-center gap-2.5 transition-all text-xs font-black hover:scale-[1.02] active:scale-95 ${
+                isDark ? "bg-slate-900/30 border-zinc-900 hover:border-purple-500/30" : "bg-white border-slate-200 hover:border-purple-300 shadow-sm"
               }`}
             >
-              <Mail className="w-4 h-4 text-purple-500" />
+              <Mail className="w-4 h-4 text-purple-500 shrink-0" />
               <div>
                 <span className="block text-[9px] text-slate-400 font-bold">{isRtl ? "البريد المعتمد" : "Email Office"}</span>
                 <span className="text-[10px] font-mono text-purple-500">{platformSettings?.supportEmail || "emad333salah@gmail.com"}</span>

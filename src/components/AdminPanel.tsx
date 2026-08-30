@@ -3315,6 +3315,45 @@ function AdminPanelInner({
                         </div>
                       </div>
 
+                      {/* Support & Contact Settings */}
+                      <div className="p-5 rounded-2xl bg-slate-800/30 border border-white/5">
+                        <h3 className="text-sm font-black text-white mb-4 flex items-center gap-2">
+                          <MessageCircle className="w-4 h-4 text-emerald-400" /> بيانات التواصل والدعم الفني
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div>
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1 block">رقم الواتساب للدعم</label>
+                            <input
+                              type="text"
+                              value={settings.supportWhatsapp || '+962790186572'}
+                              onChange={e => setSettings({ ...settings, supportWhatsapp: e.target.value })}
+                              className="w-full bg-slate-700 text-white text-sm px-4 py-2.5 rounded-xl border border-slate-600 outline-none focus:border-emerald-500 font-mono"
+                              placeholder="+962790186572"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1 block">رقم الهاتف للدعم</label>
+                            <input
+                              type="text"
+                              value={settings.supportPhone || '+962790186572'}
+                              onChange={e => setSettings({ ...settings, supportPhone: e.target.value })}
+                              className="w-full bg-slate-700 text-white text-sm px-4 py-2.5 rounded-xl border border-slate-600 outline-none focus:border-emerald-500 font-mono"
+                              placeholder="+962790186572"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1 block">البريد الإلكتروني للدعم</label>
+                            <input
+                              type="email"
+                              value={settings.supportEmail || 'emad333salah@gmail.com'}
+                              onChange={e => setSettings({ ...settings, supportEmail: e.target.value })}
+                              className="w-full bg-slate-700 text-white text-sm px-4 py-2.5 rounded-xl border border-slate-600 outline-none focus:border-emerald-500 font-mono"
+                              placeholder="emad333salah@gmail.com"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
                       {/* Toggles */}
                       <div className="p-5 rounded-2xl bg-slate-800/30 border border-white/5">
                         <h3 className="text-sm font-black text-white mb-4 flex items-center gap-2">
