@@ -41,39 +41,37 @@ import { CITIES, DISTRICTS, SUB_CATEGORIES } from "../../data.ts";
 
 const getCategorySlug = (catId: string, categoriesList: any[]) => {
   if (!catId) return "";
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(catId)) {
-    return catId;
-  }
-  const catObj = categoriesList.find(c => c.id === catId);
-  if (!catObj) return catId;
-  
-  const nameEn = (catObj.nameEn || "").toLowerCase();
-  if (nameEn.includes("job") || nameEn.includes("وظائف")) return "jobs";
-  if (nameEn.includes("vehicle") || nameEn.includes("car")) {
-    if (nameEn.includes("rental")) return "car_rental";
+  const str = String(catId).toLowerCase().trim();
+  const catObj = categoriesList.find(c => c.id === catId || c.nameEn?.toLowerCase() === str || c.nameAr === catId || c.slug === str);
+  const nameEn = (catObj?.nameEn || str).toLowerCase();
+  const nameAr = (catObj?.nameAr || str);
+
+  if (nameEn.includes("job") || nameAr.includes("وظائف") || nameAr.includes("توظيف")) return "jobs";
+  if (nameEn.includes("vehicle") || nameEn.includes("car") || nameAr.includes("سيار") || nameAr.includes("مركب")) {
+    if (nameEn.includes("rental") || nameAr.includes("تأجير")) return "car_rental";
     return "cars";
   }
-  if (nameEn.includes("real estate")) return "realestate";
-  if (nameEn.includes("rent")) return "rent_housing";
-  if (nameEn.includes("hotel")) return "hotels";
-  if (nameEn.includes("resort")) return "resorts";
-  if (nameEn.includes("electronic")) return "electronics";
-  if (nameEn.includes("furniture")) return "furniture";
-  if (nameEn.includes("handicraft")) return "handicrafts";
-  if (nameEn.includes("food")) return "food";
-  if (nameEn.includes("service")) return "services";
-  if (nameEn.includes("bicycle") || nameEn.includes("bike")) return "bicycles";
-  if (nameEn.includes("heavy") || nameEn.includes("truck")) return "heavy_equipment";
-  if (nameEn.includes("perfume") || nameEn.includes("beauty")) return "perfumes";
-  if (nameEn.includes("book")) return "books";
-  if (nameEn.includes("computer") || nameEn.includes("laptop")) return "laptops";
-  if (nameEn.includes("medical")) return "medical";
-  if (nameEn.includes("fashion") || nameEn.includes("cloth")) return "fashion";
-  if (nameEn.includes("building") || nameEn.includes("material")) return "building_materials";
-  if (nameEn.includes("animal") || nameEn.includes("live")) return "livestock";
-  if (nameEn.includes("phone") || nameEn.includes("smartphone")) return "phones";
-  if (nameEn.includes("other")) return "other";
-  return catId;
+  if (nameEn.includes("real estate") || nameEn.includes("realestate") || nameAr.includes("عقار") || nameAr.includes("شقق") || nameAr.includes("أراض")) return "realestate";
+  if (nameEn.includes("rent") || nameAr.includes("إيجار") || nameAr.includes("ايجار")) return "rent_housing";
+  if (nameEn.includes("hotel") || nameAr.includes("فندق") || nameAr.includes("فنادق")) return "hotels";
+  if (nameEn.includes("resort") || nameAr.includes("منتجع") || nameAr.includes("منتجعات")) return "resorts";
+  if (nameEn.includes("electronic") || nameAr.includes("إلكترون") || nameAr.includes("الكترون")) return "electronics";
+  if (nameEn.includes("furniture") || nameAr.includes("أثاث") || nameAr.includes("مفروشات")) return "furniture";
+  if (nameEn.includes("handicraft") || nameAr.includes("حرف")) return "handicrafts";
+  if (nameEn.includes("food") || nameAr.includes("طعام") || nameAr.includes("أغذية")) return "food";
+  if (nameEn.includes("service") || nameAr.includes("خدمات")) return "services";
+  if (nameEn.includes("bicycle") || nameEn.includes("bike") || nameAr.includes("دراج")) return "bicycles";
+  if (nameEn.includes("heavy") || nameEn.includes("truck") || nameAr.includes("شاحن") || nameAr.includes("معدات ثقيلة")) return "heavy_equipment";
+  if (nameEn.includes("perfume") || nameEn.includes("beauty") || nameAr.includes("عطور") || nameAr.includes("تجميل")) return "perfumes";
+  if (nameEn.includes("book") || nameAr.includes("كتب")) return "books";
+  if (nameEn.includes("computer") || nameEn.includes("laptop") || nameAr.includes("حاسوب") || nameAr.includes("كمبيوتر") || nameAr.includes("لابتوب")) return "laptops";
+  if (nameEn.includes("medical") || nameAr.includes("طبي")) return "medical";
+  if (nameEn.includes("fashion") || nameEn.includes("cloth") || nameAr.includes("أزياء") || nameAr.includes("ملابس")) return "fashion";
+  if (nameEn.includes("building") || nameEn.includes("material") || nameAr.includes("بناء")) return "building_materials";
+  if (nameEn.includes("animal") || nameEn.includes("live") || nameAr.includes("حيوان") || nameAr.includes("مواشي")) return "livestock";
+  if (nameEn.includes("phone") || nameEn.includes("smartphone") || nameAr.includes("هاتف") || nameAr.includes("جوال")) return "phones";
+  if (nameEn.includes("other") || nameAr.includes("أخرى") || nameAr.includes("اخرى")) return "other";
+  return catObj?.slug || (catObj?.nameEn ? catObj.nameEn.toLowerCase().replace(/\s+/g, '_') : catId);
 };
 
 interface CreateAdTabProps {
@@ -649,9 +647,34 @@ const readAsCompressedDataUrl = (file: File): Promise<string> => {
     const finalCategory = categorySlug === "other" && customCategoryName.trim() ? customCategoryName.trim() : category;
     const finalCategorySlug = getCategorySlug(finalCategory, categories);
 
+    // Assemble structured specifications to guarantee persistent storage
+    const embeddedSpecs: any = {
+      ...(customFieldValues || {}),
+    };
+    if (finalCategorySlug === "cars" || make || modelYear || transmission || fuelType) {
+      if (make) embeddedSpecs.make = make;
+      if (modelYear) embeddedSpecs.modelYear = Number(modelYear);
+      if (transmission) embeddedSpecs.transmission = transmission;
+      if (fuelType) embeddedSpecs.fuelType = fuelType;
+    }
+    if (finalCategorySlug === "realestate" || propertyType || rooms || amenities?.length) {
+      if (propertyType) embeddedSpecs.propertyType = propertyType;
+      if (rooms) embeddedSpecs.rooms = rooms;
+      if (amenities) embeddedSpecs.amenities = amenities;
+    }
+    if (["electronics", "phones", "laptops"].includes(finalCategorySlug) || brand || condition) {
+      if (brand) embeddedSpecs.brand = brand;
+      if (condition) embeddedSpecs.condition = condition;
+    }
+
+    const cleanBaseDesc = (description || '').replace(/<!--SPECS:.*?-->/g, '').trim();
+    const finalDescription = Object.keys(embeddedSpecs).length > 0
+      ? `${cleanBaseDesc}\n\n<!--SPECS:${JSON.stringify(embeddedSpecs)}-->`
+      : cleanBaseDesc;
+
     const body = {
       title,
-      description,
+      description: finalDescription,
       price: Number(price),
       currency,
       city,
@@ -670,17 +693,7 @@ const readAsCompressedDataUrl = (file: File): Promise<string> => {
       userVerified: currentUser.verified,
       videoUrl: videoUrl.trim() || (!videoUrl && audioUrl ? audioUrl.trim() : undefined),
       audioUrl: audioUrl.trim() || undefined,
-      customFieldValues: {
-        ...customFieldValues,
-        ...(categorySlug === "hotels" || categorySlug === "rent_housing"
-          ? {
-              hotelType,
-              bookingSystem,
-              hotelBeds,
-              hotelAmenities,
-            }
-          : {}),
-      },
+      customFieldValues: embeddedSpecs,
       ...(finalCategorySlug === "realestate"
         ? {
             rooms,
@@ -688,10 +701,10 @@ const readAsCompressedDataUrl = (file: File): Promise<string> => {
             amenities,
           }
         : {}),
-      ...(finalCategorySlug === "cars"
+      ...(finalCategorySlug === "cars" || make || modelYear
         ? {
             make,
-            modelYear: Number(modelYear),
+            modelYear: modelYear ? Number(modelYear) : undefined,
             transmission: transmission as any,
             fuelType: fuelType as any,
           }

@@ -34,6 +34,17 @@ export function sanitizeAvatarUrl(url?: string | null): string | null {
   return trimmed;
 }
 
+export function extractAdSpecs(description?: string | null): Record<string, any> {
+  if (!description || typeof description !== 'string') return {};
+  const match = description.match(/<!--SPECS:(.*?)-->/);
+  if (match) {
+    try {
+      return JSON.parse(match[1]);
+    } catch (_) {}
+  }
+  return {};
+}
+
 export const AdsController = (io?: Server) => {
   const router = Router();
 
@@ -526,11 +537,29 @@ export const AdsController = (io?: Server) => {
           subCategoryId = subCategory.id;
         }
 
+        // Ensure specifications are embedded in description
+        let finalDescription = dto.description || '';
+        const specs: any = { ...(dto.customFieldValues || {}) };
+        if (dto.make) specs.make = dto.make;
+        if (dto.modelYear) specs.modelYear = dto.modelYear;
+        if (dto.transmission) specs.transmission = dto.transmission;
+        if (dto.fuelType) specs.fuelType = dto.fuelType;
+        if (dto.kilometers) specs.kilometers = dto.kilometers;
+        if (dto.propertyType) specs.propertyType = dto.propertyType;
+        if (dto.rooms) specs.rooms = dto.rooms;
+        if (dto.amenities) specs.amenities = dto.amenities;
+        if (dto.brand) specs.brand = dto.brand;
+        if (dto.condition) specs.condition = dto.condition;
+
+        if (Object.keys(specs).length > 0 && !finalDescription.includes('<!--SPECS:')) {
+          finalDescription = `${finalDescription}\n\n<!--SPECS:${JSON.stringify(specs)}-->`;
+        }
+
         // Create the core Ad
         const ad = await tx.ad.create({
           data: {
             title: dto.title,
-            description: dto.description,
+            description: finalDescription,
             price: dto.price,
             currency: dto.currency || 'YER',
             categoryId,
@@ -729,8 +758,10 @@ export const AdsController = (io?: Server) => {
         return { url: resolved.detailUrl || String(img) };
       }) : [];
 
+      const specs = extractAdSpecs(ad.description);
       const mappedAd = {
         ...ad,
+        ...specs,
         images: safeImgs,
         likes: ad._count?.likedBy || 0,
         highestBid,
@@ -926,12 +957,28 @@ export const AdsController = (io?: Server) => {
 
       // Status on update: admins with BYPASS_MODERATION can set any status; others preserve current
       const statusValue = hasPermission(req.user?.role, 'BYPASS_MODERATION')
-        ? ((req.body.status ? req.body.status.toString().toUpperCase() : null) || ad.status)
-        : ad.status; // Regular users cannot change the status field
+      // Assemble updated description with specs
+      let updatedDescription = req.body.description !== undefined ? req.body.description : ad.description;
+      const specs: any = { ...(req.body.customFieldValues || {}) };
+      if (req.body.make) specs.make = req.body.make;
+      if (req.body.modelYear) specs.modelYear = req.body.modelYear;
+      if (req.body.transmission) specs.transmission = req.body.transmission;
+      if (req.body.fuelType) specs.fuelType = req.body.fuelType;
+      if (req.body.kilometers) specs.kilometers = req.body.kilometers;
+      if (req.body.propertyType) specs.propertyType = req.body.propertyType;
+      if (req.body.rooms) specs.rooms = req.body.rooms;
+      if (req.body.amenities) specs.amenities = req.body.amenities;
+      if (req.body.brand) specs.brand = req.body.brand;
+      if (req.body.condition) specs.condition = req.body.condition;
+
+      if (Object.keys(specs).length > 0) {
+        updatedDescription = (updatedDescription || '').replace(/<!--SPECS:.*?-->/g, '').trim();
+        updatedDescription = `${updatedDescription}\n\n<!--SPECS:${JSON.stringify(specs)}-->`;
+      }
 
       const dataUpdate: any = {
         title: req.body.title,
-        description: req.body.description,
+        description: updatedDescription,
         price: req.body.price ? parseFloat(req.body.price) : undefined,
         city: req.body.city,
         district: req.body.district,
@@ -1109,8 +1156,10 @@ export const AdsController = (io?: Server) => {
         }
       });
 
+      const updatedSpecs = extractAdSpecs(updated.description);
       const mappedAd = {
         ...updated,
+        ...updatedSpecs,
         category: getLegacyName(updated.categoryId) || '',
         subCategory: getLegacyName(updated.subCategoryId) || null,
         userName: updated.user?.name,

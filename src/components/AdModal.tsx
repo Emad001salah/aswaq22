@@ -79,7 +79,119 @@ const getYoutubeEmbedUrl = (url?: string): string | null => {
 
 const resolveCategoryKey = (cat?: string): string => {
   if (!cat) return '';
-  return String(cat).toLowerCase().trim();
+  const s = String(cat).toLowerCase().trim();
+  if (s.includes('car') || s.includes('vehicle') || s.includes('سيار') || s.includes('مركب')) return 'cars';
+  if (s.includes('realestate') || s.includes('real estate') || s.includes('عقار') || s.includes('شقق') || s.includes('بيوت') || s.includes('أراض')) return 'realestate';
+  if (s.includes('rent') || s.includes('إيجار') || s.includes('ايجار')) return 'rent_housing';
+  if (s.includes('hotel') || s.includes('فندق') || s.includes('فنادق')) return 'hotels';
+  if (s.includes('resort') || s.includes('منتجع')) return 'resorts';
+  if (s.includes('phone') || s.includes('هاتف') || s.includes('جوال')) return 'phones';
+  if (s.includes('laptop') || s.includes('computer') || s.includes('حاسوب') || s.includes('كمبيوتر') || s.includes('لابتوب')) return 'laptops';
+  if (s.includes('electronic') || s.includes('إلكترون') || s.includes('الكترون')) return 'electronics';
+  if (s.includes('job') || s.includes('وظائف') || s.includes('توظيف')) return 'jobs';
+  return s;
+};
+
+const getAdSpecs = (ad: Ad) => {
+  let specs: any = {};
+  if (ad?.description && typeof ad.description === 'string' && ad.description.includes('<!--SPECS:')) {
+    const m = ad.description.match(/<!--SPECS:(.*?)-->/);
+    if (m) {
+      try {
+        specs = JSON.parse(m[1]);
+      } catch (_) {}
+    }
+  }
+
+  const titleAndDesc = `${ad?.title || ''} ${ad?.description || ''}`;
+  
+  // Year extraction (1980 - 2027)
+  const yearMatch = titleAndDesc.match(/\b(19[89]\d|20[0-2]\d)\b/);
+  const detectedYear = yearMatch ? parseInt(yearMatch[1], 10) : undefined;
+
+  // Make extraction
+  const carBrands = [
+    { name: 'تويوتا هايلوكس', pattern: /(تويوتا\s+)?هايلوكس|hilux/i },
+    { name: 'تويوتا كورولا', pattern: /(تويوتا\s+)?كورولا|corolla/i },
+    { name: 'تويوتا كامري', pattern: /(تويوتا\s+)?كامري|camry/i },
+    { name: 'تويوتا لاندكروزر', pattern: /(تويوتا\s+)?لاندكروزر|land\s*cruiser/i },
+    { name: 'تويوتا برادو', pattern: /(تويوتا\s+)?برادو|prado/i },
+    { name: 'تويوتا يارس', pattern: /(تويوتا\s+)?يارس|yaris/i },
+    { name: 'تويوتا', pattern: /تويوتا|toyota/i },
+    { name: 'هيونداي سوناتا', pattern: /(هيونداي\s+)?سوناتا|sonata/i },
+    { name: 'هيونداي النترا', pattern: /(هيونداي\s+)?النترا|إلنترا|elantra/i },
+    { name: 'هيونداي توسان', pattern: /(هيونداي\s+)?توسان|tucson/i },
+    { name: 'هيونداي سنتافي', pattern: /(هيونداي\s+)?سنتافي|santa\s*fe/i },
+    { name: 'هيونداي اكسنت', pattern: /(هيونداي\s+)?اكسنت|أكسنت|accent/i },
+    { name: 'هيونداي', pattern: /هيونداي|hyundai/i },
+    { name: 'كيا سبورتاج', pattern: /(كيا\s+)?سبورتاج|sportage/i },
+    { name: 'كيا اوبتيما', pattern: /(كيا\s+)?اوبتيما|optima|k5/i },
+    { name: 'كيا سيراتو', pattern: /(كيا\s+)?سيراتو|cerato/i },
+    { name: 'كيا سورينتو', pattern: /(كيا\s+)?سورينتو|sorento/i },
+    { name: 'كيا', pattern: /كيا|kia/i },
+    { name: 'مرسيدس بنز', pattern: /مرسيدس|mercedes/i },
+    { name: 'بي ام دبليو', pattern: /بي\s*ام\s*دبليو|bmw/i },
+    { name: 'نيسان باترول', pattern: /(نيسان\s+)?باترول|patrol/i },
+    { name: 'نيسان صني', pattern: /(نيسان\s+)?صني|sunny/i },
+    { name: 'نيسان التيما', pattern: /(نيسان\s+)?التيما|ألتيما|altima/i },
+    { name: 'نيسان', pattern: /نيسان|nissan/i },
+    { name: 'هوندا اكورد', pattern: /(هوندا\s+)?اكورد|أكورد|accord/i },
+    { name: 'هوندا سيفيك', pattern: /(هوندا\s+)?سيفيك|civic/i },
+    { name: 'هوندا', pattern: /هوندا|honda/i },
+    { name: 'فورد تورس', pattern: /(فورد\s+)?تورس|taurus/i },
+    { name: 'فورد اكسبلورر', pattern: /(فورد\s+)?اكسبلورر|explorer/i },
+    { name: 'فورد', pattern: /فورد|ford/i },
+    { name: 'ميتسوبيشي باجيرو', pattern: /(ميتسوبيشي\s+)?باجيرو|pajero/i },
+    { name: 'ميتسوبيشي لانسر', pattern: /(ميتسوبيشي\s+)?لانسر|lancer/i },
+    { name: 'ميتسوبيشي', pattern: /ميتسوبيشي|mitsubishi/i },
+    { name: 'شيفروليه تاهو', pattern: /(شفر\s*وليه\s+)?تاهو|tahoe/i },
+    { name: 'شيفروليه', pattern: /شفروليه|شيفروليه|chevrolet|chevy/i },
+    { name: 'لكزس', pattern: /لكزس|lexus/i },
+    { name: 'جي ام سي', pattern: /جمس|جي\s*ام\s*سي|gmc/i },
+    { name: 'سوزوكي', pattern: /سوزوكي|suzuki/i },
+    { name: 'مازدا', pattern: /مازدا|mazda/i },
+    { name: 'جيلي', pattern: /جيلي|geely/i },
+    { name: 'شانجان', pattern: /شانجان|changan/i },
+    { name: 'ام جي', pattern: /ام\s*جي|mg/i },
+    { name: 'هافال', pattern: /هافال|haval/i },
+    { name: 'شيري', pattern: /شيري|chery/i },
+  ];
+
+  let detectedMake: string | undefined;
+  for (const b of carBrands) {
+    if (b.pattern.test(titleAndDesc)) {
+      detectedMake = b.name;
+      break;
+    }
+  }
+
+  let detectedTransmission = ad?.transmission || specs.transmission;
+  if (!detectedTransmission) {
+    if (/أوتوماتيك|اوتوماتيك|تماتيك|automatic|auto/i.test(titleAndDesc)) detectedTransmission = 'automatic';
+    else if (/عادي|يدوي|جير عادي|قير عادي|manual/i.test(titleAndDesc)) detectedTransmission = 'manual';
+  }
+
+  let detectedFuel = ad?.fuelType || specs.fuelType;
+  if (!detectedFuel) {
+    if (/هايبرد|هجين|hybrid/i.test(titleAndDesc)) detectedFuel = 'hybrid';
+    else if (/كهرباء|كهربائي|ev|electric/i.test(titleAndDesc)) detectedFuel = 'electric';
+    else if (/ديزل|diesel/i.test(titleAndDesc)) detectedFuel = 'diesel';
+    else if (/بترول|بنزين|gasoline|petrol/i.test(titleAndDesc)) detectedFuel = 'gasoline';
+  }
+
+  return {
+    make: ad?.make || specs.make || detectedMake || '',
+    modelYear: ad?.modelYear || specs.modelYear || detectedYear || '',
+    transmission: detectedTransmission || '',
+    fuelType: detectedFuel || '',
+    kilometers: ad?.kilometers || specs.kilometers,
+    condition: ad?.condition || specs.condition,
+    brand: ad?.brand || specs.brand,
+    propertyType: ad?.propertyType || specs.propertyType,
+    rooms: ad?.rooms || specs.rooms,
+    amenities: ad?.amenities || specs.amenities,
+    cleanDescription: ad?.description ? ad.description.replace(/<!--SPECS:.*?-->/g, '').trim() : ''
+  };
 };
 
 interface AdModalProps {
@@ -218,9 +330,8 @@ export default function AdModal({
 
   const [viewingVideo, setViewingVideo] = useState(!!ad?.isLive);
   const [votedMatch, setVotedMatch] = useState<'yes' | 'no' | null>(null);
-  const stableSeed = (ad?.title || '').length + (((ad?.price || 0)) % 7);
-  const [yesVotes, setYesVotes] = useState(stableSeed * 4 + 7);
-  const [noVotes, setNoVotes] = useState((stableSeed % 3) + 1);
+  const [yesVotes, setYesVotes] = useState(0);
+  const [noVotes, setNoVotes] = useState(0);
   const [verificationSent, setVerificationSent] = useState(false);
   const [internalViews, setInternalViews] = useState(ad?.views || 0);
   const [hideContactNumber, setHideContactNumber] = useState(() => !ad?.contactNumber || !!ad?.hideContactNumber);
@@ -684,19 +795,33 @@ const sessionViewedAdsSet = new Set<string>();
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [fullScreenIndex]);
 
+  const catKey = resolveCategoryKey(ad?.category);
+  const resolvedSpecs = getAdSpecs(ad);
+  const hasRealImages = Boolean(safeImages && safeImages.length > 0 && !safeImages[0].includes('data:image/svg+xml'));
+
   // Dynamic consistent price valuation indicator based on details
   const getAdValuation = () => {
-    const p = ad.price || 0;
-    const isUSD = ad.currency === 'USD';
+    const p = ad?.price || 0;
+    const isUSD = ad?.currency === 'USD';
     
-    if (ad.category === 'cars') {
+    if (p <= 0) {
+      return { 
+        label: 'السعر غير محدد (على السوم / عند الاتصال / قابل للتفاوض)', 
+        color: 'text-slate-400 bg-slate-800/30 border-slate-700/30', 
+        pct: '0%', 
+        badge: '💬 على السوم',
+        isZeroPrice: true 
+      };
+    }
+
+    if (catKey === 'cars') {
       if (isUSD) {
         if (p < 15000) return { label: 'فرصة نادرة جداً ومغرية للشراء', color: 'text-emerald-400 bg-emerald-950/25 border-emerald-500/20', pct: '25%', badge: '🔥 صيد لقطة' };
         if (p <= 35000) return { label: 'سعر عادل ومواكب للمواصفات', color: 'text-cyan-400 bg-cyan-950/25 border-cyan-500/20', pct: '50%', badge: '⚖️ سعر ممتاز' };
         return { label: 'فئة فاخرة من سلع النخبة والمستورد البكر', color: 'text-amber-400 bg-amber-950/25 border-amber-500/20', pct: '80%', badge: '💎 سبيكة ملكية' };
       }
     }
-    if (ad.category === 'realestate') {
+    if (catKey === 'realestate') {
       if (isUSD) {
         if (p < 80000) return { label: 'فرصة عقارية مغرية فريدة', color: 'text-emerald-400 bg-emerald-950/25 border-emerald-500/20', pct: '20%', badge: '🔥 سعر تصفية' };
         if (p <= 150000) return { label: 'موافق لمتوسط أسعار المنطقة والتشطيب', color: 'text-cyan-400 bg-cyan-950/25 border-cyan-500/20', pct: '55%', badge: '⚖️ قيمة ممتازة' };
@@ -710,8 +835,6 @@ const sessionViewedAdsSet = new Set<string>();
     return { label: 'سعر حصري للجودة والأصل المضمون', color: 'text-amber-400 bg-amber-950/25 border-amber-500/20', pct: `${valPct}%`, badge: '💎 جودة ممتازة' };
   };
   const valuation = getAdValuation();
-
-  const catKey = resolveCategoryKey(ad.category);
 
   // Detect if a real-estate/rental ad is actually a SHORT-TERM booking
   // (furnished apartments, daily/weekly rental, hotel-style listings)
@@ -1198,12 +1321,12 @@ const sessionViewedAdsSet = new Set<string>();
               </span>
             </div>
 
-            {images.length === 0 ? (
+            {!hasRealImages ? (
               <div className="flex flex-col items-center justify-center py-6 text-center space-y-2.5 bg-slate-100/50 dark:bg-slate-950/20 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 p-4">
                 <ShieldAlert className="w-8 h-8 text-amber-500 animate-pulse" />
-                <h5 className={`text-xs font-black ${isDark ? 'text-slate-300' : 'text-slate-800'}`}>لم يتم إرفاق صور للمنتج في هذا الإعلان</h5>
+                <h5 className={`text-xs font-black ${isDark ? 'text-slate-300' : 'text-slate-800'}`}>لم يتم إرفاق صور لهذا الإعلان</h5>
                 <p className={`text-[10px] leading-relaxed max-w-[320px] font-bold ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>
-                  هذا الإعلان لا يحتوي على صور للفحص. لبناء ثقة ومصداقية كاملة، يُنصح دائماً بإرفاق صور واقعية للسلعة المعروضة لتفعيل فحص الأمان المائي وحماية المجتمع.
+                  تم إدراج هذا الإعلان بدون صور. يمكنك التواصل مباشرة مع صاحب الإعلان لطلب صور أو معاينة واقعية.
                 </p>
               </div>
             ) : (
@@ -1212,14 +1335,14 @@ const sessionViewedAdsSet = new Set<string>();
                 <div className="space-y-2">
                   <div className="flex justify-between items-center text-xs">
                     <span className={`font-bold ${isDark ? 'text-slate-400' : 'text-slate-700'}`}>مؤشر واقعية ومصداقية صور المنتج:</span>
-                    <span className={`font-black ${ad.videoUrl ? "text-emerald-500 animate-pulse" : "text-amber-500"}`}>
-                      {ad.videoUrl ? "100% موثق بالفيديو الحقيقي" : "94% فحص مصداقية الصور"}
+                    <span className={`font-black ${ad.videoUrl ? "text-emerald-500 animate-pulse" : "text-emerald-500"}`}>
+                      {ad.videoUrl ? "100% موثق بالفيديو الحقيقي" : "صور أصلية مرفوعة من البائع"}
                     </span>
                   </div>
                   <div className={`h-2 rounded-full overflow-hidden flex ${isDark ? 'bg-slate-950' : 'bg-slate-200'}`}>
                     <div 
-                      className={`h-full rounded-full transition-all duration-500 ${ad.videoUrl ? "bg-gradient-to-l from-emerald-500 to-emerald-400" : "bg-gradient-to-l from-amber-500 to-yellow-400"}`} 
-                      style={{ width: ad.videoUrl ? "100%" : "94%" }}
+                      className={`h-full rounded-full transition-all duration-500 ${ad.videoUrl ? "bg-gradient-to-l from-emerald-500 to-emerald-400" : "bg-gradient-to-l from-emerald-500 to-emerald-400"}`} 
+                      style={{ width: "100%" }}
                     />
                   </div>
                 </div>
@@ -1330,7 +1453,11 @@ const sessionViewedAdsSet = new Set<string>();
                     
                     {/* Visual feedback percentages */}
                     <div className={`text-[10px] font-bold whitespace-nowrap ${isDark ? 'text-slate-400' : 'text-slate-650'}`}>
-                      نسبة الواقعية: <span className="text-emerald-500 font-black">{Math.round((yesVotes / (yesVotes + noVotes)) * 105) > 100 ? 100 : Math.round((yesVotes / (yesVotes + noVotes)) * 100)}%</span>
+                      {yesVotes + noVotes > 0 ? (
+                        <>نسبة الواقعية: <span className="text-emerald-500 font-black">{Math.round((yesVotes / (yesVotes + noVotes)) * 100)}%</span></>
+                      ) : (
+                        <span className="text-slate-400 font-medium">كن أول من يقيّم الصور</span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1400,7 +1527,7 @@ const sessionViewedAdsSet = new Set<string>();
               {readingMode && (
                 <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-500/30 via-amber-500/80 to-amber-500/30" />
               )}
-              {ad.description}
+              {resolvedSpecs.cleanDescription || ad.description}
             </div>
           </div>
 
@@ -1428,42 +1555,49 @@ const sessionViewedAdsSet = new Set<string>();
                   </tr>
                   <tr className={`border-b ${isDark ? 'border-slate-800/60' : 'border-slate-200/60'}`}>
                     <td className="p-3 font-bold text-slate-500">السعر المطلوب</td>
-                    <td className={`p-3 font-extrabold ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>{ad.price?.toLocaleString()} {isRtl ? getCurrencyAr(ad.currency) : ad.currency}</td>
+                    <td className={`p-3 font-extrabold ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                      {ad.price && ad.price > 0 ? `${ad.price.toLocaleString()} ${isRtl ? getCurrencyAr(ad.currency) : ad.currency}` : 'على السوم / قابل للتفاوض'}
+                    </td>
                   </tr>
-                  {ad.make && (
+                  {resolvedSpecs.make && (
                     <tr className={`border-b ${isDark ? 'border-slate-800/60' : 'border-slate-200/60'}`}>
                       <td className="p-3 font-bold text-slate-500">الماركة/الشركة</td>
-                      <td className={`p-3 font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{ad.make}</td>
+                      <td className={`p-3 font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{resolvedSpecs.make}</td>
                     </tr>
                   )}
-                  {ad.modelYear && (
+                  {resolvedSpecs.modelYear && (
                     <tr className={`border-b ${isDark ? 'border-slate-800/60' : 'border-slate-200/60'}`}>
                       <td className="p-3 font-bold text-slate-500">سنة الصنع/الموديل</td>
-                      <td className={`p-3 font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{ad.modelYear}</td>
+                      <td className={`p-3 font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{resolvedSpecs.modelYear}</td>
                     </tr>
                   )}
-                  {ad.transmission && (
+                  {resolvedSpecs.transmission && (
                     <tr className={`border-b ${isDark ? 'border-slate-800/60' : 'border-slate-200/60'}`}>
                       <td className="p-3 font-bold text-slate-500">ناقل الحركة</td>
-                      <td className={`p-3 font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{ad.transmission === 'automatic' ? 'أوتوماتيك' : 'يدوي'}</td>
+                      <td className={`p-3 font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{resolvedSpecs.transmission === 'automatic' ? 'أوتوماتيك' : 'يدوي'}</td>
                     </tr>
                   )}
-                  {ad.fuelType && (
+                  {resolvedSpecs.fuelType && (
                     <tr className={`border-b ${isDark ? 'border-slate-800/60' : 'border-slate-200/60'}`}>
                       <td className="p-3 font-bold text-slate-500">نوع الوقود</td>
-                      <td className={`p-3 font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{ad.fuelType}</td>
+                      <td className={`p-3 font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                        {resolvedSpecs.fuelType === 'gasoline' ? 'بترول (بنزين)' : 
+                         resolvedSpecs.fuelType === 'diesel' ? 'ديزل' : 
+                         resolvedSpecs.fuelType === 'hybrid' ? 'هايبرد' : 
+                         resolvedSpecs.fuelType === 'electric' ? 'كهرباء' : resolvedSpecs.fuelType}
+                      </td>
                     </tr>
                   )}
-                  {ad.kilometers && (
+                  {resolvedSpecs.kilometers && (
                     <tr className={`border-b ${isDark ? 'border-slate-800/60' : 'border-slate-200/60'}`}>
                       <td className="p-3 font-bold text-slate-500">المسافة المقطوعة</td>
-                      <td className={`p-3 font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{ad.kilometers.toLocaleString()} كم</td>
+                      <td className={`p-3 font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{resolvedSpecs.kilometers.toLocaleString()} كم</td>
                     </tr>
                   )}
-                  {ad.condition && (
+                  {resolvedSpecs.condition && (
                     <tr className={`border-b ${isDark ? 'border-slate-800/60' : 'border-slate-200/60'}`}>
                       <td className="p-3 font-bold text-slate-500">حالة السلعة</td>
-                      <td className={`p-3 font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{ad.condition === 'new' ? 'جديد' : 'مستعمل ممتازة'}</td>
+                      <td className={`p-3 font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{resolvedSpecs.condition === 'new' ? 'جديد' : 'مستعمل'}</td>
                     </tr>
                   )}
                   <tr className={`border-b ${isDark ? 'border-slate-800/60' : 'border-slate-200/60'}`}>
@@ -1476,7 +1610,7 @@ const sessionViewedAdsSet = new Set<string>();
           </div>
 
           {/* Real Estate Specific Details Display */}
-          {ad.category === 'realestate' && (
+          {catKey === 'realestate' && (
             <div className="space-y-3">
               <h4 className={`text-xs font-bold ${isDark ? 'text-slate-400' : 'text-slate-700'}`}>مواصفات العقار الموثق</h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1484,17 +1618,17 @@ const sessionViewedAdsSet = new Set<string>();
                   <div className={`flex justify-between items-center text-sm border-b pb-2 ${isDark ? 'border-slate-800/50' : 'border-slate-100'}`}>
                     <span className="text-slate-500 font-bold">نوع العقار</span>
                     <span className={`font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                      {ad.propertyType === 'villa' ? 'فيلا' : 
-                       ad.propertyType === 'apartment' ? 'شقة' : 
-                       ad.propertyType === 'land' ? 'أرض' : 
-                       ad.propertyType === 'commercial' ? 'تجاري' : 
-                       ad.propertyType === 'building' ? 'عمارة/مبنى' : 'عقار'}
+                      {resolvedSpecs.propertyType === 'villa' ? 'فيلا' : 
+                       resolvedSpecs.propertyType === 'apartment' ? 'شقة' : 
+                       resolvedSpecs.propertyType === 'land' ? 'أرض' : 
+                       resolvedSpecs.propertyType === 'commercial' ? 'تجاري' : 
+                       resolvedSpecs.propertyType === 'building' ? 'عمارة/مبنى' : 'عقار'}
                     </span>
                   </div>
-                  {ad.rooms && ad.rooms > 0 && (
+                  {resolvedSpecs.rooms && resolvedSpecs.rooms > 0 && (
                     <div className={`flex justify-between items-center text-sm border-b pb-2 ${isDark ? 'border-slate-800/50' : 'border-slate-100'}`}>
                       <span className="text-slate-500 font-bold">عدد الغرف</span>
-                      <span className={`font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{ad.rooms} غرف</span>
+                      <span className={`font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{resolvedSpecs.rooms} غرف</span>
                     </div>
                   )}
                 </div>
@@ -1502,8 +1636,8 @@ const sessionViewedAdsSet = new Set<string>();
                 <div className={`border p-4 rounded-2xl ${isDark ? 'bg-slate-950/30 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
                   <span className={`text-[10px] font-bold uppercase tracking-wider block mb-2 ${isDark ? 'text-zinc-500' : 'text-slate-500'}`}>الخدمات والمرافق</span>
                   <div className="flex flex-wrap gap-1.5">
-                    {Array.isArray(ad?.amenities) && ad.amenities.length > 0 ? (
-                      ad.amenities.map((amenity, idx) => (
+                    {Array.isArray(resolvedSpecs.amenities) && resolvedSpecs.amenities.length > 0 ? (
+                      resolvedSpecs.amenities.map((amenity: any, idx: number) => (
                         <span key={idx} className="px-2 py-1 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 rounded-lg text-[10px] font-bold">
                           {amenity === 'water' ? 'مشروع مياه' : 
                            amenity === 'electricity' ? 'كهرباء' : 
@@ -1521,31 +1655,31 @@ const sessionViewedAdsSet = new Set<string>();
           )}
 
           {/* Vehicle Specific Details Display */}
-          {ad.category === 'cars' && (
+          {(catKey === 'cars' || resolvedSpecs.make || resolvedSpecs.modelYear) && (
             <div className="space-y-3">
               <h4 className={`text-xs font-bold ${isDark ? 'text-slate-400' : 'text-slate-700'}`}>مواصفات المركبة الموثقة</h4>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className={`border p-3 rounded-2xl text-center ${isDark ? 'bg-slate-950/30 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
                   <span className={`text-[9px] font-bold block mb-1 ${isDark ? 'text-zinc-500' : 'text-slate-500'}`}>الماركة</span>
-                  <span className={`font-bold text-xs ${isDark ? 'text-white' : 'text-slate-900'}`}>{ad.make || 'غير محدد'}</span>
+                  <span className={`font-bold text-xs ${isDark ? 'text-white' : 'text-slate-900'}`}>{resolvedSpecs.make || 'غير محدد'}</span>
                 </div>
                 <div className={`border p-3 rounded-2xl text-center ${isDark ? 'bg-slate-950/30 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
                   <span className={`text-[9px] font-bold block mb-1 ${isDark ? 'text-zinc-500' : 'text-slate-500'}`}>سنة الصنع</span>
-                  <span className={`font-bold text-xs ${isDark ? 'text-white' : 'text-slate-900'}`}>{ad.modelYear || 'غير محدد'}</span>
+                  <span className={`font-bold text-xs ${isDark ? 'text-white' : 'text-slate-900'}`}>{resolvedSpecs.modelYear || 'غير محدد'}</span>
                 </div>
                 <div className={`border p-3 rounded-2xl text-center ${isDark ? 'bg-slate-950/30 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
                   <span className={`text-[9px] font-bold block mb-1 ${isDark ? 'text-zinc-500' : 'text-slate-500'}`}>ناقل الحركة</span>
                   <span className={`font-bold text-xs ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                    {ad.transmission === 'automatic' ? 'تماتيك' : ad.transmission === 'manual' ? 'عادي' : 'غير محدد'}
+                    {resolvedSpecs.transmission === 'automatic' ? 'أوتوماتيك' : resolvedSpecs.transmission === 'manual' ? 'عادي' : (resolvedSpecs.transmission || 'غير محدد')}
                   </span>
                 </div>
                 <div className={`border p-3 rounded-2xl text-center ${isDark ? 'bg-slate-950/30 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
                   <span className={`text-[9px] font-bold block mb-1 ${isDark ? 'text-zinc-500' : 'text-slate-500'}`}>نوع الوقود</span>
                   <span className={`font-bold text-xs ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                    {ad.fuelType === 'gasoline' ? 'بترول' : 
-                     ad.fuelType === 'diesel' ? 'ديزل' : 
-                     ad.fuelType === 'hybrid' ? 'هايبرد' : 
-                     ad.fuelType === 'electric' ? 'كهرباء' : 'غير محدد'}
+                    {resolvedSpecs.fuelType === 'gasoline' ? 'بترول (بنزين)' : 
+                     resolvedSpecs.fuelType === 'diesel' ? 'ديزل' : 
+                     resolvedSpecs.fuelType === 'hybrid' ? 'هايبرد' : 
+                     resolvedSpecs.fuelType === 'electric' ? 'كهرباء' : (resolvedSpecs.fuelType || 'غير محدد')}
                   </span>
                 </div>
               </div>
@@ -1553,22 +1687,22 @@ const sessionViewedAdsSet = new Set<string>();
           )}
 
           {/* Electronics Specific Details Display */}
-          {['electronics', 'phones', 'laptops'].includes(ad.category) && (
+          {['electronics', 'phones', 'laptops'].includes(catKey) && (
             <div className="space-y-3">
               <h4 className={`text-xs font-bold ${isDark ? 'text-slate-400' : 'text-slate-700'}`}>مواصفات الجهاز الموثقة</h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className={`border p-4 rounded-2xl flex justify-between items-center ${isDark ? 'bg-slate-950/30 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
                   <span className="text-slate-500 font-bold text-xs">حالة الجهاز</span>
                   <span className="px-2.5 py-1 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-lg text-[10px] font-black">
-                    {ad.condition === 'new' ? 'جديد (كرت)' : 
-                     ad.condition === 'used_mint' ? 'مستخدم نظيف' : 
-                     ad.condition === 'used_good' ? 'مستخدم جيد' : 
-                     ad.condition === 'used_fair' ? 'مستخدم بحالة جيدة' : 'غير محدد'}
+                    {resolvedSpecs.condition === 'new' ? 'جديد (كرت)' : 
+                     resolvedSpecs.condition === 'used_mint' ? 'مستخدم نظيف' : 
+                     resolvedSpecs.condition === 'used_good' ? 'مستخدم جيد' : 
+                     resolvedSpecs.condition === 'used_fair' ? 'مستخدم بحالة جيدة' : 'غير محدد'}
                   </span>
                 </div>
                 <div className={`border p-4 rounded-2xl flex justify-between items-center ${isDark ? 'bg-slate-950/30 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
                   <span className="text-slate-500 font-bold text-xs">الماركة / الشركة</span>
-                  <span className={`font-black text-xs ${isDark ? 'text-white' : 'text-slate-900'}`}>{ad.brand || 'غير محدد'}</span>
+                  <span className={`font-black text-xs ${isDark ? 'text-white' : 'text-slate-900'}`}>{resolvedSpecs.brand || 'غير محدد'}</span>
                 </div>
               </div>
             </div>
@@ -1654,10 +1788,19 @@ const sessionViewedAdsSet = new Set<string>();
             }`}>
               <div>
                 <p className={`text-[11px] font-semibold tracking-wider transition-colors ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>السعر المطلوب</p>
-                <p className={`text-3xl font-black mt-2 transition-colors ${isDark ? 'text-rose-400' : 'text-rose-600'}`}>
-                  {(ad.price ?? 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                  <span className={`text-xs mr-2 transition-colors ${isDark ? 'text-rose-400' : 'text-rose-600'}`}>{getCurrencyNameAr(ad.currency)}</span>
-                </p>
+                {ad.price && ad.price > 0 ? (
+                  <p className={`text-3xl font-black mt-2 transition-colors ${isDark ? 'text-rose-400' : 'text-rose-600'}`}>
+                    {(ad.price).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                    <span className={`text-xs mr-2 transition-colors ${isDark ? 'text-rose-400' : 'text-rose-600'}`}>{getCurrencyNameAr(ad.currency)}</span>
+                  </p>
+                ) : (
+                  <div className="mt-2 space-y-1">
+                    <p className={`text-2xl font-black transition-colors ${isDark ? 'text-cyan-400' : 'text-cyan-600'}`}>
+                      على السوم
+                    </p>
+                    <span className={`text-[10px] font-bold block ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>قابل للتفاوض / عند الاتصال</span>
+                  </div>
+                )}
               </div>
 
               {/* Dynamic Price Valuation Meter */}
@@ -1671,7 +1814,7 @@ const sessionViewedAdsSet = new Set<string>();
                 {/* Simulated bar meter */}
                 <div className={`h-1.5 w-full rounded-full overflow-hidden relative border transition-colors ${isDark ? 'bg-slate-950 border-slate-800' : 'bg-slate-100 border-slate-200'}`}>
                   <div 
-                    className="h-full bg-gradient-to-l from-emerald-500 to-cyan-400 rounded-full transition-all duration-500"
+                    className={`h-full rounded-full transition-all duration-500 ${valuation.isZeroPrice ? 'bg-slate-500' : 'bg-gradient-to-l from-emerald-500 to-cyan-400'}`}
                     style={{ width: valuation.pct }}
                   />
                 </div>
