@@ -29,9 +29,10 @@ interface AdCardProps {
   currentMarket?: Market;
   loading?: boolean;
   isDark?: boolean;
+  layout?: 'grid' | 'list';
 }
 
-export default React.memo(function AdCard({ ad, onClick, onLikeToggle, onChatClick, isFavorite, distanceInKm, currentMarket, loading, isDark }: AdCardProps) {
+export default React.memo(function AdCard({ ad, onClick, onLikeToggle, onChatClick, isFavorite, distanceInKm, currentMarket, loading, isDark, layout = 'grid' }: AdCardProps) {
   const { t, i18n } = useTranslation();
   const isRtl = i18n.language === 'ar';
 
@@ -43,6 +44,18 @@ export default React.memo(function AdCard({ ad, onClick, onLikeToggle, onChatCli
 
   // Skeleton Render
   if (loading || !ad) {
+    if (layout === 'list') {
+      return (
+        <div className={`group relative rounded-2xl overflow-hidden bg-white dark:bg-slate-900/60 backdrop-blur-sm border border-slate-200 dark:border-slate-800/80 p-2.5 flex items-center gap-3 animate-shimmer shadow-sm`}>
+          <div className="w-24 h-24 sm:w-28 sm:h-28 shrink-0 bg-slate-100 dark:bg-slate-950 rounded-xl animate-pulse" />
+          <div className="flex-1 space-y-2">
+            <div className="h-3 w-3/4 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
+            <div className="h-2 w-1/2 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
+            <div className="h-4 w-1/3 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
+          </div>
+        </div>
+      );
+    }
     return (
       <div className={`group relative rounded-2xl sm:rounded-3xl overflow-hidden bg-white dark:bg-slate-900/60 backdrop-blur-sm border border-slate-200 dark:border-slate-800/80 transition-all ${isRtl ? 'text-right dir-rtl' : 'text-left dir-ltr'} flex flex-col animate-shimmer shadow-sm`}>
         <div className="relative w-full aspect-video shrink-0 bg-slate-100 dark:bg-slate-950 animate-pulse" />
@@ -307,6 +320,164 @@ export default React.memo(function AdCard({ ad, onClick, onLikeToggle, onChatCli
       </div>
     );
   };
+
+  const cleanUserDisplayName = sanitizeName(ad.userName);
+  let currentUser: any = null;
+  try {
+    const storedUserStr = typeof window !== 'undefined' ? localStorage.getItem('aswaq_current_user') : null;
+    if (storedUserStr) currentUser = JSON.parse(storedUserStr);
+  } catch {}
+  const isOwner = !!(currentUser && (currentUser.id === ad.userId || (currentUser.name && ad.userName && currentUser.name.trim() === ad.userName.trim())));
+  const effectiveUserAvatar = (isOwner && currentUser?.avatar) ? currentUser.avatar : ad.userAvatar;
+
+  // Horizontal Compact Card (List Layout Mode)
+  if (layout === 'list') {
+    return (
+      <AnimatePresence>
+        {!isDismissed && (
+          <motion.a
+            layout
+            href={adUrl}
+            onClick={handleCardClick}
+            whileHover={{ y: -2, scale: 1.005 }}
+            whileTap={{ scale: 0.99 }}
+            transition={{ duration: 0.15 }}
+            className={`group relative rounded-2xl border transition-all duration-300 cursor-pointer overflow-hidden ${isRtl ? 'text-right dir-rtl' : 'text-left dir-ltr'} flex items-stretch gap-2.5 sm:gap-4 p-2 sm:p-3 ${
+              ad.isFeatured
+                ? 'bg-emerald-50/30 dark:bg-emerald-950/10 border-emerald-500/40 hover:border-emerald-500 shadow-sm'
+                : 'bg-white dark:bg-slate-900/60 backdrop-blur-sm border-slate-200 dark:border-slate-800/80 hover:border-emerald-500/50 hover:shadow-md'
+            }`}
+            id={`ad-card-list-${ad.id}`}
+          >
+            {/* Thumbnail Image Container */}
+            <div className="relative w-28 h-28 sm:w-36 sm:h-36 shrink-0 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-950 group/img">
+              <img
+                src={imgSrc}
+                alt={ad.title}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                referrerPolicy="no-referrer"
+                loading="lazy"
+                decoding="async"
+                onError={handleImageError}
+              />
+              {ad.isFeatured && (
+                <span className="absolute top-1.5 right-1.5 z-10 bg-amber-400 text-slate-950 font-black text-[8px] px-1.5 py-0.5 rounded shadow">
+                  ✨ مميز
+                </span>
+              )}
+              {ad.videoUrl && (
+                <span className="absolute bottom-1.5 right-1.5 z-10 bg-rose-500 text-white font-black text-[7px] px-1.5 py-0.5 rounded shadow">
+                  🎥 فيديو
+                </span>
+              )}
+              {categoryName && (
+                <span className="absolute top-1.5 left-1.5 z-10 bg-black/60 text-white text-[8px] font-bold px-1.5 py-0.5 rounded backdrop-blur-sm">
+                  {categoryName}
+                </span>
+              )}
+            </div>
+
+            {/* Middle & Right Content */}
+            <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
+              <div>
+                {/* Seller & Date */}
+                <div className="flex items-center justify-between gap-1 text-[9.5px] font-mono text-slate-500 dark:text-slate-400 mb-1">
+                  <div className="flex items-center gap-1.5 truncate">
+                    <Avatar 
+                      src={effectiveUserAvatar} 
+                      name={cleanUserDisplayName}
+                      sizeClassName="w-4 h-4"
+                      className="rounded-full"
+                    />
+                    <span className="truncate font-bold text-slate-700 dark:text-slate-300">{cleanUserDisplayName}</span>
+                    {ad.userVerified && <CheckCircle2 className="w-3 h-3 text-emerald-500 inline shrink-0" />}
+                  </div>
+                  <span className="shrink-0">{relativeDateString()}</span>
+                </div>
+
+                {/* Title */}
+                <h3 className={`text-xs sm:text-sm font-bold line-clamp-2 leading-snug hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                  {ad.title}
+                </h3>
+
+                {/* City & Specs */}
+                <div className="flex items-center gap-2 mt-1 text-[10px] text-slate-500 dark:text-slate-400">
+                  <span className="flex items-center gap-0.5 truncate">
+                    <MapPin className="w-3 h-3 text-emerald-500 shrink-0" />
+                    <span className="truncate">{cityName}{districtName ? ` - ${districtName}` : ''}</span>
+                  </span>
+                  {renderSpecChips()}
+                </div>
+              </div>
+
+              {/* Bottom Row: Price & Actions */}
+              <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-100 dark:border-slate-800/60 mt-1">
+                {/* Price */}
+                <div className="flex items-baseline gap-1">
+                  {ad.price && ad.price > 0 ? (
+                    <>
+                      <span className={`text-sm sm:text-base font-black ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                        {formatPrice(ad.price)}
+                      </span>
+                      <span className="text-[9px] sm:text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                        {isRtl ? getCurrencyAr(ad.currency) : ad.currency}
+                      </span>
+                    </>
+                  ) : (
+                    <span className={`text-xs font-bold ${isDark ? 'text-cyan-400' : 'text-cyan-600'}`}>
+                      على السوم
+                    </span>
+                  )}
+                </div>
+
+                {/* Compact Action Buttons */}
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={handleLikeClick}
+                    className={`p-1.5 rounded-lg border text-slate-500 transition-all ${liked ? 'bg-rose-500 text-white border-rose-500' : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700'}`}
+                    title="المفضلة"
+                  >
+                    <Heart className={`w-3 h-3 sm:w-3.5 sm:h-3.5 ${liked ? 'fill-current' : ''}`} />
+                  </button>
+                  <button
+                    onClick={handleShareClick}
+                    className="p-1.5 rounded-lg border bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 hover:text-emerald-500 transition-all"
+                    title="مشاركة"
+                  >
+                    <Share2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                  </button>
+                  <button
+                    onClick={handlePhoneClick}
+                    className="flex items-center gap-1 bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-2 py-1.5 rounded-lg text-[10px] transition-all"
+                    title="اتصال"
+                  >
+                    <Phone className="w-3 h-3" />
+                    <span className="hidden sm:inline">{showPhone ? (ad.contactNumber || 'اتصال') : 'اتصل'}</span>
+                  </button>
+                  <button
+                    onClick={handleWhatsappClick}
+                    className="flex items-center gap-1 bg-emerald-600/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500 hover:text-white border border-emerald-500/30 font-bold px-2 py-1.5 rounded-lg text-[10px] transition-all"
+                    title="واتساب"
+                  >
+                    <MessageSquare className="w-3 h-3" />
+                    <span className="hidden sm:inline">واتساب</span>
+                  </button>
+                  <button
+                    onClick={handleChatDirectClick}
+                    className="flex items-center gap-1 bg-cyan-600/10 text-cyan-600 dark:text-cyan-400 hover:bg-cyan-500 hover:text-white border border-cyan-500/30 font-bold px-2 py-1.5 rounded-lg text-[10px] transition-all"
+                    title="شات"
+                  >
+                    <MessageCircle className="w-3 h-3" />
+                    <span className="hidden sm:inline">شات</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </motion.a>
+        )}
+      </AnimatePresence>
+    );
+  }
 
   return (
     <AnimatePresence>

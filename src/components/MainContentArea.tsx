@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { AnimatePresence, motion } from "motion/react";
-import { Search, SearchX, RotateCcw, Sparkles, MapPin, X } from "lucide-react";
+import { Search, SearchX, RotateCcw, Sparkles, MapPin, X, LayoutGrid, List } from "lucide-react";
 import AdCard from "./AdCard";
 import { Ad } from "../types";
 import { Market } from "../markets";
@@ -32,6 +32,8 @@ interface Props {
   onOpenAiAssistant?: () => void;
   selectedCategory?: string;
   onClearCategory?: () => void;
+  activeTab?: 'all' | 'favs' | 'followed';
+  onResetTab?: () => void;
 }
 
 export default function MainContentArea({
@@ -57,10 +59,29 @@ export default function MainContentArea({
   onOpenAiAssistant,
   selectedCategory,
   onClearCategory,
+  activeTab = 'all',
+  onResetTab,
 }: Props) {
   const { t, i18n } = useTranslation();
   const isRtl = i18n.language === "ar";
   const sentinelRef = useRef<HTMLDivElement>(null);
+
+  const [layoutMode, setLayoutMode] = useState<'grid' | 'list'>(() => {
+    try {
+      const saved = localStorage.getItem('aswaq_feed_layout_mode');
+      if (saved === 'list' || saved === 'grid') return saved;
+      // Default to list on mobile for compact vertical space, grid on desktop
+      if (typeof window !== 'undefined' && window.innerWidth < 640) return 'list';
+    } catch {}
+    return 'grid';
+  });
+
+  const handleSetLayoutMode = (mode: 'grid' | 'list') => {
+    setLayoutMode(mode);
+    try {
+      localStorage.setItem('aswaq_feed_layout_mode', mode);
+    } catch {}
+  };
 
   // Auto-trigger loadMore when sentinel enters viewport (IntersectionObserver infinite scroll)
   useEffect(() => {
@@ -252,7 +273,11 @@ export default function MainContentArea({
           <h3 className="text-xl sm:text-2xl font-black mb-3 text-slate-900 dark:text-white">
             {searchQuery 
               ? (isRtl ? `لم نتمكن من العثور على أي نتائج مطابقة لـ "${searchQuery}"` : `No matching results found for "${searchQuery}"`)
-              : (isRtl ? 'لا توجد إعلانات مطابقة للخيارات المحددة' : 'No ads found matching your criteria')
+              : activeTab === 'favs'
+                ? (isRtl ? 'قائمة المفضلة فارغة حالياً' : 'Your favorites list is currently empty')
+                : activeTab === 'followed'
+                  ? (isRtl ? 'لا توجد إعلانات من التجار الذين تتابعهم' : 'No ads from followed sellers')
+                  : (isRtl ? 'لا توجد إعلانات مطابقة للخيارات المحددة' : 'No ads found matching your criteria')
             }
           </h3>
 
@@ -261,14 +286,32 @@ export default function MainContentArea({
               ? (isRtl 
                   ? 'لم يتم العثور على إعلانات بهذا الاسم. جرّب البحث بكلمات عامة أخرى (مثل: شقق، سيارات، أثاث...)، أو اختر "كل المناطق" لتوسيع نطاق البحث.' 
                   : 'No ads found matching this query. Try searching with other common terms (e.g., apartments, cars, furniture...), or select "All Regions" to broaden your search.')
-              : (isRtl
-                  ? 'لم يتم نشر إعلانات نشطة بهذه المواصفات بعد. جرب إلغاء بعض الفلاتر لعرض مزيد من العروض.'
-                  : 'No active ads currently match these specifications. Try clearing some filters to see more results.')
+              : activeTab === 'favs'
+                ? (isRtl
+                    ? 'لم تقم بحفظ أي إعلانات في المفضلة بعد. انقر على رمز القلب ❤️ في أي إعلان لحفظه والوصول إليه بسرعة هنا.'
+                    : 'You haven\'t saved any ads to favorites yet. Tap the heart ❤️ icon on any ad to save it here.')
+                : activeTab === 'followed'
+                  ? (isRtl
+                      ? 'عندما تتابع تجاراً ومعلنين في أسواق، ستظهر جميع إعلاناتهم الجديدة هنا فور نشرها وستصلك إشعارات بها مباشرة.'
+                      : 'When you follow sellers on Aswaq, all their new ads will appear here and you\'ll receive instant notifications.')
+                  : (isRtl
+                      ? 'لم يتم نشر إعلانات نشطة بهذه المواصفات بعد. جرب إلغاء بعض الفلاتر لعرض مزيد من العروض.'
+                      : 'No active ads currently match these specifications. Try clearing some filters to see more results.')
             }
           </p>
 
           <div className="flex flex-wrap items-center justify-center gap-3.5">
-            {(searchQuery || selectedCity || selectedCategory) && onClearSearch && (
+            {activeTab !== 'all' && onResetTab && (
+              <button
+                onClick={onResetTab}
+                className="px-6 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs sm:text-sm transition-all shadow-lg shadow-emerald-600/20 active:scale-95 flex items-center gap-2 cursor-pointer"
+              >
+                <RotateCcw className="w-4 h-4" />
+                {isRtl ? 'عرض كافة الإعلانات' : 'View All Ads'}
+              </button>
+            )}
+
+            {(searchQuery || selectedCity || selectedCategory) && onClearSearch && activeTab === 'all' && (
               <button
                 onClick={onClearSearch}
                 className="px-6 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs sm:text-sm transition-all shadow-lg shadow-emerald-600/20 active:scale-95 flex items-center gap-2 cursor-pointer"
@@ -292,34 +335,76 @@ export default function MainContentArea({
           </div>
         </motion.div>
       ) : (
-        /* Ads Grid - Expanded Full Width */
-        <div className="grid gap-6 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5">
-          {loading ? (
-            Array.from({ length: 8 }).map((_, i) => (
-              <AdCard key={`skeleton-${i}`} loading={true} />
-            ))
-          ) : (
-            <AnimatePresence mode="popLayout">
-              {filteredAds.map((ad, index) => (
-                <motion.div
-                  key={ad.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{ duration: 0.25, delay: Math.min(index % 20, 8) * 0.04 }}
-                >
-                  <AdCard
-                    ad={ad}
-                    isFavorite={favorites.includes(ad.id)}
-                    onLikeToggle={handleLikeToggle}
-                    onClick={() => setSelectedAd(ad)}
-                    currentMarket={currentMarket}
-                    isDark={isDark}
-                  />
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          )}
+        <div>
+          {/* Feed Layout Toolbar (Switch between Grid and Horizontal List) */}
+          <div className="flex items-center justify-between gap-2 mb-4 pb-2 border-b border-slate-200/60 dark:border-slate-800/60">
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+              {isRtl ? `عرض (${filteredAds.length}) إعلان` : `Showing (${filteredAds.length}) ads`}
+            </span>
+            <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => handleSetLayoutMode('grid')}
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  layoutMode === 'grid'
+                    ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-sm border border-slate-200/50 dark:border-slate-700/50'
+                    : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                }`}
+                title={isRtl ? 'عرض شبكة بطاقات' : 'Grid view'}
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+                <span className="text-[11px]">{isRtl ? 'شبكة' : 'Grid'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSetLayoutMode('list')}
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  layoutMode === 'list'
+                    ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-sm border border-slate-200/50 dark:border-slate-700/50'
+                    : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                }`}
+                title={isRtl ? 'عرض أفقي مدمج' : 'List view'}
+              >
+                <List className="w-3.5 h-3.5" />
+                <span className="text-[11px]">{isRtl ? 'أفقي' : 'List'}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Ads Cards Container - Either Grid or Horizontal List */}
+          <div className={
+            layoutMode === 'list'
+              ? "flex flex-col gap-2.5 sm:gap-3"
+              : "grid gap-3 sm:gap-6 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5"
+          }>
+            {loading ? (
+              Array.from({ length: 8 }).map((_, i) => (
+                <AdCard key={`skeleton-${i}`} loading={true} layout={layoutMode} />
+              ))
+            ) : (
+              <AnimatePresence mode="popLayout">
+                {filteredAds.map((ad, index) => (
+                  <motion.div
+                    key={ad.id}
+                    initial={{ opacity: 0, y: 15 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{ duration: 0.2, delay: Math.min(index % 10, 5) * 0.03 }}
+                  >
+                    <AdCard
+                      ad={ad}
+                      isFavorite={favorites.includes(ad.id)}
+                      onLikeToggle={handleLikeToggle}
+                      onClick={() => setSelectedAd(ad)}
+                      currentMarket={currentMarket}
+                      isDark={isDark}
+                      layout={layoutMode}
+                    />
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            )}
+          </div>
         </div>
       )}
 

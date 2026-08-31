@@ -1349,6 +1349,16 @@ useEffect(() => {
         if (prev.some(a => a.id === newAd.id)) return prev;
         return [newAd, ...prev];
       });
+
+      // Check if new ad is from a followed seller
+      const sellerId = newAd.userId || newAd.user?.id;
+      if (sellerId && followedSellers.includes(sellerId)) {
+        addToast(
+          isRtl ? `إعلان جديد من ${newAd.userName || 'تاجر تتابعه'}` : `New ad from ${newAd.userName || 'followed seller'}`,
+          isRtl ? `قام بنشر "${newAd.title}" الآن` : `Just posted "${newAd.title}"`,
+          "info"
+        );
+      }
     };
 
     const handleNewSocialPost = (post: any) => {
@@ -2187,6 +2197,31 @@ useEffect(() => {
     currentMarket,
   ]);
 
+
+  // Calculate counts and filtered list for Personalized Feed Tabs
+  const marketFavoritesCount = useMemo(() => {
+    return filteredAds.filter(ad => favorites.includes(ad.id)).length;
+  }, [filteredAds, favorites]);
+
+  const marketFollowedCount = useMemo(() => {
+    return filteredAds.filter(ad => {
+      const sellerId = ad.userId || ad.user?.id;
+      return sellerId && followedSellers.includes(sellerId);
+    }).length;
+  }, [filteredAds, followedSellers]);
+
+  const displayedAds = useMemo(() => {
+    if (activeTab === "favs") {
+      return filteredAds.filter(ad => favorites.includes(ad.id));
+    }
+    if (activeTab === "followed") {
+      return filteredAds.filter(ad => {
+        const sellerId = ad.userId || ad.user?.id;
+        return sellerId && followedSellers.includes(sellerId);
+      });
+    }
+    return filteredAds;
+  }, [filteredAds, activeTab, favorites, followedSellers]);
 
   // Handle GPS Detection
   const handleGpsDetection = () => {
@@ -3394,7 +3429,7 @@ useEffect(() => {
                         >
                           🌍 {t('dashboard.allAds', { market: currentMarket.labelAr })}{" "}
                           <span className="text-[10px] opacity-60">
-                            ({ads.length})
+                            ({filteredAds.length})
                           </span>
                         </button>
                         <button
@@ -3403,7 +3438,7 @@ useEffect(() => {
                         >
                           💗 {t('dashboard.favorites')}{" "}
                           <span className="text-[10px] opacity-60">
-                            ({favorites.length})
+                            ({marketFavoritesCount})
                           </span>
                         </button>
                         <button
@@ -3412,7 +3447,7 @@ useEffect(() => {
                         >
                           👥 {t('dashboard.following')}{" "}
                           <span className="text-[10px] opacity-60">
-                            ({followedSellers.length})
+                            ({marketFollowedCount})
                           </span>
                         </button>
                       </div>
@@ -3672,7 +3707,9 @@ useEffect(() => {
                       <MainContentArea
                         onMapRef={(ref) => mapRef.current = ref}
                         viewMode={viewMode}
-                        filteredAds={filteredAds}
+                        filteredAds={displayedAds}
+                        activeTab={activeTab}
+                        onResetTab={() => setActiveTab("all")}
                         selectedCity={selectedCity}
                         setSelectedCity={setSelectedCity}
                         setSelectedAd={handleSelectAd}
