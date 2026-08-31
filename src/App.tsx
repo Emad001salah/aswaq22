@@ -402,10 +402,24 @@ useEffect(() => {
 
     window.addEventListener('aswaq:auth-required', handleAuthRequired);
 
+    const handleVisibilityOrFocus = () => {
+      if (document.visibilityState === 'visible') {
+        const storedUser = localStorage.getItem('aswaq_current_user');
+        const storedToken = localStorage.getItem('aswaq_access_token');
+        if (storedUser && storedToken) {
+          restoreSession();
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityOrFocus);
+    window.addEventListener('focus', handleVisibilityOrFocus);
+
     return () => {
       cancelled = true;
       unsubscribeAuth();
       window.removeEventListener('aswaq:auth-required', handleAuthRequired);
+      document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
+      window.removeEventListener('focus', handleVisibilityOrFocus);
     };
   }, []);
 

@@ -59,13 +59,13 @@ export class AuthService {
     const accessToken = jwt.sign(
       { sub: userId, email, role },
       JWT_SECRET,
-      { expiresIn: '15m' },   // Short-lived access token (15 minutes)
+      { expiresIn: '30d' },   // Long-lived persistent access token (30 days)
     );
 
     const refreshToken = jwt.sign(
       { sub: userId, email, role, sid: currentSessionId },
       JWT_REFRESH_SECRET,
-      { expiresIn: '7d' },    // Rotated refresh token (7 days)
+      { expiresIn: '90d' },    // Rotated refresh token (90 days)
     );
 
     const tokenHash = this.hashToken(refreshToken);

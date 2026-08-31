@@ -562,6 +562,8 @@ export class App {
     this.app.use('/api/admin', AdminController());
 
     // Legacy routes (backward compat – redirect to v1)
+    this.app.use('/api/auth',    AuthController());
+    this.app.use('/api/auth',    OAuthController());
     this.app.use('/api/ads',     AdsController(this.io));
     this.app.use('/api/users',   UsersController());
     this.app.use('/api/storage', StorageController());
